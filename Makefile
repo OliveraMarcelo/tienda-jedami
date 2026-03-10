@@ -1,4 +1,4 @@
-# Makefile para tienda-backend
+# Makefile para tienda-jedami
 
 install:
 	npm install
