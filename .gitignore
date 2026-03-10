@@ -1,1 +1,18 @@
-node_modules
+# Backend
+jedami-bff/node_modules/
+jedami-bff/dist/
+jedami-bff/.env
+
+# Frontend Web
+jedami-web/node_modules/
+jedami-web/dist/
+
+# Mobile
+jedami-mobile/.dart_tool/
+jedami-mobile/build/
+jedami-mobile/.flutter-plugins
+jedami-mobile/.flutter-plugins-dependencies
+
+# General
+.DS_Store
+*.log
