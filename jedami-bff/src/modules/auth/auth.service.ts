@@ -18,12 +18,18 @@ function generateRefreshToken(): string {
   return crypto.randomBytes(40).toString('hex');
 }
 
+function parseExpiresInMs(value: string): number {
+  const match = /^(\d+)([smhd])$/.exec(value);
+  if (!match) return 7 * 24 * 60 * 60 * 1000; // default 7 días
+  const amount = parseInt(match[1], 10);
+  const unit = match[2];
+  const multipliers: Record<string, number> = { s: 1000, m: 60_000, h: 3_600_000, d: 86_400_000 };
+  return amount * multipliers[unit];
+}
+
 async function storeRefreshToken(userId: number, token: string): Promise<void> {
   const tokenHash = hashToken(token);
-  const expiresAt = new Date();
-  const [amount, unit] = [parseInt(ENV.JWT_REFRESH_EXPIRES_IN), ENV.JWT_REFRESH_EXPIRES_IN.replace(/\d/g, '')];
-  const days = unit === 'd' ? amount : unit === 'h' ? Math.ceil(amount / 24) : 7;
-  expiresAt.setDate(expiresAt.getDate() + days);
+  const expiresAt = new Date(Date.now() + parseExpiresInMs(ENV.JWT_REFRESH_EXPIRES_IN));
 
   await pool.query(
     `INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)`,
@@ -65,12 +71,17 @@ export async function register(email: string, password: string) {
   };
 }
 
+// Hash inerte usado para normalizar el tiempo de respuesta cuando el usuario no existe
+// (previene enumeración de emails por timing side-channel)
+const DUMMY_HASH = '$2b$10$invalidhashfortimingprotection.';
+
 // ─── Login ─────────────────────────────────────────────────────────────────────
 
 export async function login(email: string, password: string) {
   const user = await usersRepository.findByEmailWithRoles(email);
 
-  const isValid = user && (await bcrypt.compare(password, user.password_hash));
+  // Siempre ejecutar bcrypt.compare para normalizar el tiempo de respuesta
+  const isValid = await bcrypt.compare(password, user?.password_hash ?? DUMMY_HASH);
   if (!user || !isValid) {
     throw new AppError(
       401,

@@ -32,7 +32,7 @@ para que pueda gestionar el catálogo de productos de forma segura.
 - [x] Task 1 — Crear `src/modules/auth/auth.service.ts` (AC: #1, #2, #3, #4)
   - [x] Función `register(email, password)`: bcrypt hash con salt=10, verificar email único, insertar en `users`, retornar `{ id, email, createdAt }` (sin `passwordHash`)
   - [x] Función `login(email, password)`: buscar usuario con roles via `findByEmailWithRoles`, comparar hash, firmar JWT con `{ id, roles }` y `JWT_EXPIRES_IN=24h`, retornar `{ token }`
-  - [x] **NO auto-asignar ningún rol en registro** — en esta story los usuarios se registran sin rol (el admin recibe su rol via seed 003_seed_admin.sql o via Story 1.3)
+  - [x] **Auto-asignar rol `retail` en registro** — modificado en Epic 4 (Story 4-1): los usuarios públicos reciben el rol `retail` al registrarse. El admin sigue recibiendo su rol vía seed `003_seed_admin.sql` / Story 1.3.
   - [x] Lanzar errores tipados con `status` y `type` para que el error middleware los interprete correctamente
 
 - [x] Task 2 — Crear `src/modules/auth/auth.controller.ts` (AC: #1, #2, #3, #4)

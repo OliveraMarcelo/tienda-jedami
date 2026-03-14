@@ -3,13 +3,18 @@ import { AppError } from '../../types/app-error.js';
 import { JwtUserPayload } from './jwt-payload.js';
 import * as authService from './auth.service.js';
 
-export async function register(req: Request, res: Response, next: NextFunction) {
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export async function register(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
-      return next(
-        new AppError(400, 'Datos incompletos', 'https://jedami.com/errors/validation', 'Email y password son obligatorios'),
-      );
+      next(new AppError(400, 'Datos incompletos', 'https://jedami.com/errors/validation', 'Email y password son obligatorios'));
+      return;
+    }
+    if (!EMAIL_REGEX.test(String(email))) {
+      next(new AppError(400, 'Email inválido', 'https://jedami.com/errors/validation', 'El email no tiene un formato válido'));
+      return;
     }
     const user = await authService.register(email, password);
     res.status(201).json({ data: user });
@@ -18,13 +23,12 @@ export async function register(req: Request, res: Response, next: NextFunction) 
   }
 }
 
-export async function login(req: Request, res: Response, next: NextFunction) {
+export async function login(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
-      return next(
-        new AppError(400, 'Datos incompletos', 'https://jedami.com/errors/validation', 'Email y password son obligatorios'),
-      );
+      next(new AppError(400, 'Datos incompletos', 'https://jedami.com/errors/validation', 'Email y password son obligatorios'));
+      return;
     }
     const result = await authService.login(email, password);
     res.status(200).json({ data: result });
@@ -33,13 +37,12 @@ export async function login(req: Request, res: Response, next: NextFunction) {
   }
 }
 
-export async function refresh(req: Request, res: Response, next: NextFunction) {
+export async function refresh(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { refreshToken } = req.body;
     if (!refreshToken) {
-      return next(
-        new AppError(400, 'Datos incompletos', 'https://jedami.com/errors/validation', 'refreshToken es obligatorio'),
-      );
+      next(new AppError(400, 'Datos incompletos', 'https://jedami.com/errors/validation', 'refreshToken es obligatorio'));
+      return;
     }
     const result = await authService.refreshAccessToken(refreshToken);
     res.status(200).json({ data: result });
@@ -48,7 +51,7 @@ export async function refresh(req: Request, res: Response, next: NextFunction) {
   }
 }
 
-export async function logout(req: Request, res: Response, next: NextFunction) {
+export async function logout(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const user = req.user as JwtUserPayload;
     await authService.logout(user.id);
