@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { createProduct as apiCreate, updateProduct as apiUpdate, createVariant as apiCreateVariant, addImage as apiAddImage, deleteImage as apiDeleteImage } from '@/api/admin.api'
+import { createProduct as apiCreate, updateProduct as apiUpdate, createVariant as apiCreateVariant, deleteImage as apiDeleteImage } from '@/api/admin.api'
 import { fetchProducts } from '@/api/products.api'
 import type { Product, Variant } from '@/types/api'
 
@@ -58,11 +58,6 @@ export const useAdminProductsStore = defineStore('adminProducts', () => {
     return res.data
   }
 
-  async function addImage(productId: number, url: string, position?: number) {
-    await apiAddImage(productId, url, position)
-    await fetchAll()
-  }
-
   async function deleteImage(productId: number, imageId: number) {
     await apiDeleteImage(productId, imageId)
     const product = products.value.find(p => p.id === productId)
@@ -71,5 +66,5 @@ export const useAdminProductsStore = defineStore('adminProducts', () => {
     }
   }
 
-  return { products, loading, error, totalProducts, fetchAll, createProduct, updateProduct, createVariant, addImage, deleteImage }
+  return { products, loading, error, totalProducts, fetchAll, createProduct, updateProduct, createVariant, deleteImage }
 })

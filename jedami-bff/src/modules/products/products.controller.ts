@@ -3,6 +3,7 @@ import { AppError } from '../../types/app-error.js';
 import * as productsService from './products.service.js';
 import { cacheGet, cacheSet, cacheDel } from '../../config/redis.js';
 import { ENV } from '../../config/env.js';
+import { uploadMiddleware } from '../../config/upload.js';
 
 const CATALOG_KEY = 'catalog:*';
 const PRODUCT_KEY = (id: number) => `product:${id}`;
@@ -125,20 +126,32 @@ export async function listProducts(req: Request, res: Response, next: NextFuncti
   }
 }
 
-export async function addImageHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
-  try {
-    const productId = parseId(req.params.id);
-    if (!productId) {
-      next(new AppError(400, 'ID inválido', 'https://jedami.com/errors/validation', 'El id del producto debe ser un entero positivo'));
+export function uploadImageHandler(req: Request, res: Response, next: NextFunction): void {
+  uploadMiddleware(req, res, async (err) => {
+    if (err) {
+      next(new AppError(400, 'Upload inválido', 'https://jedami.com/errors/validation', err.message));
       return;
     }
-    const { url, position } = req.body;
-    const image = await productsService.addImage(productId, url, position);
-    await cacheDel(CATALOG_KEY, PRODUCT_KEY(productId));
-    res.status(201).json({ data: image });
-  } catch (err) {
-    next(err);
-  }
+    try {
+      const productId = parseId(req.params.id);
+      if (!productId) {
+        next(new AppError(400, 'ID inválido', 'https://jedami.com/errors/validation', 'El id del producto debe ser un entero positivo'));
+        return;
+      }
+      if (!req.file) {
+        next(new AppError(400, 'Archivo requerido', 'https://jedami.com/errors/validation', 'Debe enviar un archivo de imagen (campo "image")'));
+        return;
+      }
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const url = `${baseUrl}/uploads/products/${req.file.filename}`;
+      const position = req.body.position != null ? parseInt(req.body.position, 10) : undefined;
+      const image = await productsService.addImage(productId, url, position);
+      await cacheDel(CATALOG_KEY, PRODUCT_KEY(productId));
+      res.status(201).json({ data: image });
+    } catch (uploadErr) {
+      next(uploadErr);
+    }
+  });
 }
 
 export async function deleteImageHandler(req: Request, res: Response, next: NextFunction): Promise<void> {

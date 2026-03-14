@@ -3,7 +3,7 @@ import { ref, watch } from 'vue'
 import Dialog from '@/components/ui/Dialog.vue'
 import type { Product } from '@/types/api'
 import { useProductsStore } from '@/stores/products.store'
-import { addImage as apiAddImage, deleteImage as apiDeleteImage, fetchProductDetail } from '@/api/admin.api'
+import { uploadImage as apiUploadImage, deleteImage as apiDeleteImage, fetchProductDetail } from '@/api/admin.api'
 
 const props = defineProps<{
   open: boolean
@@ -21,7 +21,6 @@ const name = ref('')
 const description = ref('')
 const categoryId = ref<number | null>(null)
 const localImages = ref<{ id: number; url: string; position: number }[]>([])
-const newImageUrl = ref('')
 const imageError = ref('')
 const imageLoading = ref(false)
 const loading = ref(false)
@@ -32,7 +31,6 @@ watch(() => props.open, async (val) => {
     name.value = props.product?.name ?? ''
     description.value = props.product?.description ?? ''
     categoryId.value = props.product?.categoryId ?? null
-    newImageUrl.value = ''
     imageError.value = ''
     serverError.value = ''
     localImages.value = []
@@ -53,27 +51,25 @@ const isValid = () => name.value.trim().length > 0
 
 const title = () => props.product ? 'Editar producto' : 'Nuevo producto'
 
-async function handleAddImage() {
-  const url = newImageUrl.value.trim()
-  if (!url) return
-  if (!url.startsWith('http')) {
-    imageError.value = 'Ingresá una URL válida (debe empezar con http)'
-    return
-  }
+async function handleFileSelected(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
   if (!props.product) {
     imageError.value = 'Guardá el producto primero antes de agregar fotos'
+    input.value = ''
     return
   }
   imageError.value = ''
   imageLoading.value = true
   try {
-    const res = await apiAddImage(props.product.id, url, localImages.value.length)
+    const res = await apiUploadImage(props.product.id, file, localImages.value.length)
     localImages.value.push(res.data)
-    newImageUrl.value = ''
   } catch {
-    imageError.value = 'Error al agregar la foto'
+    imageError.value = 'Error al subir la foto'
   } finally {
     imageLoading.value = false
+    input.value = ''
   }
 }
 
@@ -168,23 +164,25 @@ async function handleSubmit() {
         <p v-else-if="product" class="text-xs text-gray-400 mb-2">Sin fotos. Agregá la primera.</p>
         <p v-else class="text-xs text-gray-400 mb-2">Guardá el producto primero para agregar fotos.</p>
 
-        <div v-if="product" class="flex gap-2">
-          <input
-            v-model="newImageUrl"
-            type="url"
-            placeholder="https://ejemplo.com/foto.jpg"
-            class="flex-1 h-9 rounded-md border border-gray-300 px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#E91E8C]"
-            @keydown.enter.prevent="handleAddImage"
-          />
-          <button
-            type="button"
-            @click="handleAddImage"
-            :disabled="imageLoading"
-            class="px-3 h-9 rounded-md bg-gray-100 border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors disabled:opacity-50"
+        <div v-if="product">
+          <label
+            :class="[
+              'flex items-center justify-center gap-2 h-9 px-4 rounded-md border-2 border-dashed text-sm font-medium cursor-pointer transition-colors',
+              imageLoading
+                ? 'border-gray-200 text-gray-400 cursor-not-allowed'
+                : 'border-gray-300 text-gray-600 hover:border-[#E91E8C] hover:text-[#E91E8C]',
+            ]"
           >
-            <span v-if="imageLoading">...</span>
-            <span v-else>+ Agregar</span>
-          </button>
+            <span v-if="imageLoading">Subiendo...</span>
+            <span v-else>+ Subir foto</span>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              class="hidden"
+              :disabled="imageLoading"
+              @change="handleFileSelected"
+            />
+          </label>
         </div>
         <p v-if="imageError" class="text-xs text-red-500 mt-1">{{ imageError }}</p>
       </div>

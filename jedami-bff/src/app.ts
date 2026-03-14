@@ -8,6 +8,7 @@ import { ENV } from './config/env.js';
 import routes from './routes/index.js';
 import { errorMiddleware } from './middlewares/error.middleware.js';
 import { generalRateLimit } from './middlewares/rate-limit.middleware.js';
+import { UPLOADS_DIR } from './config/upload.js';
 
 export function createApp() {
   const app = express();
@@ -30,6 +31,9 @@ export function createApp() {
       (req as express.Request & { rawBody: Buffer }).rawBody = buf;
     },
   }));
+
+  // Archivos estáticos — imágenes de productos subidas
+  app.use('/uploads/products', express.static(UPLOADS_DIR));
 
   // Documentación API
   app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

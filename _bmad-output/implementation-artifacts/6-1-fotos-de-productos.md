@@ -10,29 +10,44 @@ para que los clientes vean imágenes reales en el catálogo y en el detalle de p
 
 **Depende de:** Epic 1 done
 
+## Decisión de diseño: upload de archivos, NO URLs externas
+
+Las imágenes se suben como archivos (`multipart/form-data`) desde el panel admin.
+El BFF las almacena en un volumen local (`/uploads/products/`) y las sirve como archivos estáticos.
+El frontend consume las URLs del propio BFF (ej. `http://localhost:3000/uploads/products/abc123.jpg`).
+**No se usan URLs de servicios externos** — todo el contenido queda bajo control propio.
+
 ## Acceptance Criteria
 
-1. **Given** el admin hace `POST /api/v1/products/:id/images` con `{ url, position? }`
-   **Then** se inserta una fila en `product_images` y se devuelve `{ data: { id, productId, url, position } }`
+1. **Given** el admin hace `POST /api/v1/products/:id/images/upload` con `multipart/form-data` (campo `image`)
+   **Then** el archivo se guarda en el servidor en `/uploads/products/`
+   **And** se inserta una fila en `product_images` con la URL interna del archivo
+   **And** se devuelve `{ data: { id, productId, url, position } }`
 
 2. **Given** el admin hace `DELETE /api/v1/products/:id/images/:imageId`
-   **Then** se elimina la imagen y se responde `204 No Content`
+   **Then** se elimina el archivo del disco y la fila de `product_images`
+   **And** se responde `204 No Content`
 
 3. **Given** se hace `GET /api/v1/products` (catálogo)
-   **Then** cada producto incluye `imageUrl` con la URL de la primera imagen (por `position ASC, id ASC`)
+   **Then** cada producto incluye `imageUrl` con la URL servida por el BFF
    **And** si no hay imágenes, `imageUrl` es `null`
 
 4. **Given** se hace `GET /api/v1/products/:id`
    **Then** el producto incluye `images: [{ id, url, position }]` ordenados por posición
 
+5. **Given** el frontend hace `<input type="file">` en el panel admin
+   **Then** el archivo seleccionado se sube al BFF con `FormData`
+   **And** la imagen aparece en la lista de fotos del producto inmediatamente
+
 ## Tasks
 
 - [x] Migración `010_product_images.sql`: tabla `product_images(id, product_id, url, position, created_at)`
-- [x] Query `find-images-by-product.ts`
-- [x] `products.repository`: `findImagesByProductId`, `addImage`, `deleteImage`
-- [x] `products.service`: `addImage(productId, url, position?)`, `deleteImage(productId, imageId)`
-- [x] `products.controller`: `addImageHandler`, `deleteImageHandler`
-- [x] `products.routes`: `POST /:id/images`, `DELETE /:id/images/:imageId` (admin)
 - [x] LATERAL JOIN en `find-all-with-variants.ts` para `image_url`
-- [x] `getProductWithVariants` incluye `images[]` en paralelo con variantes
-- [x] Migración `014_seed_product_images.sql`: 2 fotos por producto para dev
+- [x] `getProductWithVariants` incluye `images[]`
+- [ ] Instalar `multer` en BFF
+- [ ] Configurar directorio `/uploads/products/` y servirlo como estático en Express
+- [ ] Endpoint `POST /products/:id/images/upload` acepta `multipart/form-data`, guarda el archivo, inserta en `product_images`
+- [ ] `deleteImage` elimina también el archivo del disco (`fs.unlink`)
+- [ ] Actualizar `admin.api.ts`: `uploadImage(productId, file: File)` usando `FormData`
+- [ ] Reemplazar input URL por `<input type="file">` en `ProductFormDialog`
+- [ ] Seed de imágenes existente puede quedar como fallback (URLs Unsplash para datos iniciales)

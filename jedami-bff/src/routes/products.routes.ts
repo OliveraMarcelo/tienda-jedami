@@ -6,7 +6,7 @@ import {
   updateProduct,
   getProduct,
   listProducts,
-  addImageHandler,
+  uploadImageHandler,
   deleteImageHandler,
 } from '../modules/products/products.controller.js';
 import { authMiddleware } from '../middlewares/auth.middleware.js';
@@ -23,7 +23,7 @@ router.post('/', authMiddleware, requireRole(['admin']), createProduct);
 router.put('/:id', authMiddleware, requireRole(['admin']), updateProduct);
 router.post('/:id/variants', authMiddleware, requireRole(['admin']), createVariant);
 router.put('/:id/variants/:variantId', authMiddleware, requireRole(['admin']), updateVariantHandler);
-router.post('/:id/images', authMiddleware, requireRole(['admin']), addImageHandler);
+router.post('/:id/images/upload', authMiddleware, requireRole(['admin']), uploadImageHandler);
 router.delete('/:id/images/:imageId', authMiddleware, requireRole(['admin']), deleteImageHandler);
 
 export default router;

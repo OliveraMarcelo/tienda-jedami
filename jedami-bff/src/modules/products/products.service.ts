@@ -187,9 +187,23 @@ export async function addImage(productId: number, url: string, position?: number
 }
 
 export async function deleteImage(productId: number, imageId: number) {
+  // Obtener la URL antes de eliminar para poder borrar el archivo del disco
+  const images = await productsRepository.findImagesByProductId(productId);
+  const image = images.find(img => img.id === imageId);
+
   const deleted = await productsRepository.deleteImage(imageId, productId);
   if (!deleted) {
     throw new AppError(404, 'Imagen no encontrada', 'https://jedami.com/errors/not-found', `No existe imagen con id ${imageId} para el producto ${productId}`);
+  }
+
+  // Borrar el archivo del disco solo si es una imagen subida al servidor (no URL externa)
+  if (image?.url) {
+    const filename = image.url.split('/uploads/products/')[1];
+    if (filename) {
+      const { unlink } = await import('fs/promises');
+      const { UPLOADS_DIR } = await import('../../config/upload.js');
+      await unlink(`${UPLOADS_DIR}/${filename}`).catch(() => { /* silencioso si ya no existe */ });
+    }
   }
 }
 

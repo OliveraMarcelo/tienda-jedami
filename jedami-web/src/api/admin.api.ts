@@ -40,12 +40,17 @@ export async function createVariant(productId: number, dto: CreateVariantDTO): P
   return res.data
 }
 
-export async function addImage(
+export async function uploadImage(
   productId: number,
-  url: string,
+  file: File,
   position?: number,
 ): Promise<{ data: { id: number; productId: number; url: string; position: number } }> {
-  const res = await apiClient.post(`/products/${productId}/images`, { url, position })
+  const form = new FormData()
+  form.append('image', file)
+  if (position != null) form.append('position', String(position))
+  const res = await apiClient.post(`/products/${productId}/images/upload`, form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
   return res.data
 }
 
