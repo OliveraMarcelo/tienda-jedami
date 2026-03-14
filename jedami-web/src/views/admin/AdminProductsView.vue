@@ -4,12 +4,14 @@ import AppLayout from '@/layouts/AppLayout.vue'
 import ProductFormDialog from '@/components/features/admin/ProductFormDialog.vue'
 import VariantFormDialog from '@/components/features/admin/VariantFormDialog.vue'
 import { useAdminProductsStore } from '@/stores/admin.products.store'
+import { useProductsStore } from '@/stores/products.store'
 import type { Product } from '@/types/api'
 
 // La protección de ruta admin está en el router guard (requiresRole: 'admin')
 // No se duplica aquí para evitar conflicto con la navegación asíncrona
 
 const adminStore = useAdminProductsStore()
+const productsStore = useProductsStore()
 
 const showProductDialog = ref(false)
 const editingProduct = ref<Product | undefined>(undefined)
@@ -19,6 +21,7 @@ const actionError = ref<string | null>(null)
 
 onMounted(() => {
   adminStore.fetchAll()
+  productsStore.loadCategories()
 })
 
 function openNewProduct() {

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch } from 'vue'
 import Dialog from '@/components/ui/Dialog.vue'
 import type { Product } from '@/types/api'
 import { useProductsStore } from '@/stores/products.store'
-import { useAdminProductsStore } from '@/stores/admin.products.store'
+import { addImage as apiAddImage, deleteImage as apiDeleteImage, fetchProductDetail } from '@/api/admin.api'
 
 const props = defineProps<{
   open: boolean
@@ -16,17 +16,18 @@ const emit = defineEmits<{
 }>()
 
 const productsStore = useProductsStore()
-const adminStore = useAdminProductsStore()
 
 const name = ref('')
 const description = ref('')
 const categoryId = ref<number | null>(null)
+const localImages = ref<{ id: number; url: string; position: number }[]>([])
 const newImageUrl = ref('')
 const imageError = ref('')
+const imageLoading = ref(false)
 const loading = ref(false)
 const serverError = ref('')
 
-watch(() => props.open, (val) => {
+watch(() => props.open, async (val) => {
   if (val) {
     name.value = props.product?.name ?? ''
     description.value = props.product?.description ?? ''
@@ -34,14 +35,23 @@ watch(() => props.open, (val) => {
     newImageUrl.value = ''
     imageError.value = ''
     serverError.value = ''
-    productsStore.loadCategories()
+    localImages.value = []
+
+    // Cargar imágenes del producto si existe
+    if (props.product) {
+      try {
+        const res = await fetchProductDetail(props.product.id)
+        localImages.value = res.data.images ?? []
+      } catch {
+        // silencioso — las imágenes son opcionales
+      }
+    }
   }
 })
 
-const isValid = computed(() => name.value.trim().length > 0)
-const title = computed(() => props.product ? 'Editar producto' : 'Nuevo producto')
+const isValid = () => name.value.trim().length > 0
 
-const images = computed(() => props.product?.images ?? [])
+const title = () => props.product ? 'Editar producto' : 'Nuevo producto'
 
 async function handleAddImage() {
   const url = newImageUrl.value.trim()
@@ -55,25 +65,31 @@ async function handleAddImage() {
     return
   }
   imageError.value = ''
+  imageLoading.value = true
   try {
-    await adminStore.addImage(props.product.id, url, images.value.length)
+    const res = await apiAddImage(props.product.id, url, localImages.value.length)
+    localImages.value.push(res.data)
     newImageUrl.value = ''
   } catch {
     imageError.value = 'Error al agregar la foto'
+  } finally {
+    imageLoading.value = false
   }
 }
 
 async function handleDeleteImage(imageId: number) {
   if (!props.product) return
+  imageError.value = ''
   try {
-    await adminStore.deleteImage(props.product.id, imageId)
+    await apiDeleteImage(props.product.id, imageId)
+    localImages.value = localImages.value.filter(img => img.id !== imageId)
   } catch {
     imageError.value = 'Error al eliminar la foto'
   }
 }
 
 async function handleSubmit() {
-  if (!isValid.value) return
+  if (!isValid()) return
   loading.value = true
   serverError.value = ''
   try {
@@ -94,7 +110,7 @@ async function handleSubmit() {
 
 <template>
   <Dialog :open="open" @update:open="$emit('update:open', $event)">
-    <h2 class="text-lg font-bold text-gray-900 mb-4">{{ title }}</h2>
+    <h2 class="text-lg font-bold text-gray-900 mb-4">{{ title() }}</h2>
 
     <form @submit.prevent="handleSubmit" class="space-y-4">
       <div>
@@ -135,10 +151,9 @@ async function handleSubmit() {
       <div>
         <label class="block text-sm font-semibold text-gray-700 mb-2">Fotos</label>
 
-        <!-- Miniaturas existentes -->
-        <div v-if="images.length > 0" class="flex gap-2 flex-wrap mb-3">
+        <div v-if="localImages.length > 0" class="flex gap-2 flex-wrap mb-3">
           <div
-            v-for="img in images"
+            v-for="img in localImages"
             :key="img.id"
             class="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200"
           >
@@ -147,16 +162,12 @@ async function handleSubmit() {
               type="button"
               @click="handleDeleteImage(img.id)"
               class="absolute top-0.5 right-0.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center hover:bg-red-600 leading-none"
-              title="Eliminar foto"
-            >
-              ×
-            </button>
+            >×</button>
           </div>
         </div>
         <p v-else-if="product" class="text-xs text-gray-400 mb-2">Sin fotos. Agregá la primera.</p>
-        <p v-else class="text-xs text-gray-400 mb-2">Guardá el producto primero para poder agregar fotos.</p>
+        <p v-else class="text-xs text-gray-400 mb-2">Guardá el producto primero para agregar fotos.</p>
 
-        <!-- Agregar nueva URL -->
         <div v-if="product" class="flex gap-2">
           <input
             v-model="newImageUrl"
@@ -168,9 +179,11 @@ async function handleSubmit() {
           <button
             type="button"
             @click="handleAddImage"
-            class="px-3 h-9 rounded-md bg-gray-100 border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors"
+            :disabled="imageLoading"
+            class="px-3 h-9 rounded-md bg-gray-100 border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors disabled:opacity-50"
           >
-            + Agregar
+            <span v-if="imageLoading">...</span>
+            <span v-else>+ Agregar</span>
           </button>
         </div>
         <p v-if="imageError" class="text-xs text-red-500 mt-1">{{ imageError }}</p>
@@ -188,7 +201,7 @@ async function handleSubmit() {
         </button>
         <button
           type="submit"
-          :disabled="loading || !isValid"
+          :disabled="loading || !isValid()"
           class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-[#E91E8C] text-white text-sm font-semibold shadow hover:opacity-90 transition-opacity disabled:opacity-50 disabled:pointer-events-none"
         >
           <svg v-if="loading" class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">

@@ -40,8 +40,18 @@ export async function createVariant(productId: number, dto: CreateVariantDTO): P
   return res.data
 }
 
-export async function addImage(productId: number, url: string, position?: number): Promise<void> {
-  await apiClient.post(`/products/${productId}/images`, { url, position })
+export async function addImage(
+  productId: number,
+  url: string,
+  position?: number,
+): Promise<{ data: { id: number; productId: number; url: string; position: number } }> {
+  const res = await apiClient.post(`/products/${productId}/images`, { url, position })
+  return res.data
+}
+
+export async function fetchProductDetail(id: number): Promise<{ data: { images: { id: number; url: string; position: number }[] } }> {
+  const res = await apiClient.get(`/products/${id}`)
+  return res.data
 }
 
 export async function deleteImage(productId: number, imageId: number): Promise<void> {
