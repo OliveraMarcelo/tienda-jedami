@@ -12,7 +12,12 @@ const ordersStore = useOrdersStore()
 const paymentsStore = usePaymentsStore()
 
 onMounted(() => {
-  ordersStore.loadOrder(Number(route.params.orderId))
+  const id = parseInt(String(route.params.orderId), 10)
+  if (isNaN(id) || id <= 0) {
+    router.replace('/pedidos')
+    return
+  }
+  ordersStore.loadOrder(id)
 })
 
 const order = computed(() => ordersStore.currentOrder)
@@ -73,7 +78,10 @@ const purchaseTypeLabel: Record<PurchaseType, string> = {
           <div class="px-5 py-3 bg-gray-50 border-b border-gray-100">
             <p class="text-sm font-semibold text-gray-600">Artículos</p>
           </div>
-          <table class="w-full text-sm">
+          <div v-if="!order.items?.length" class="px-5 py-6 text-sm text-gray-400 text-center">
+            Sin artículos en este pedido.
+          </div>
+          <table v-else class="w-full text-sm">
             <thead>
               <tr class="text-gray-500 text-xs border-b border-gray-100">
                 <th class="px-5 py-2 text-left font-medium">Variante</th>

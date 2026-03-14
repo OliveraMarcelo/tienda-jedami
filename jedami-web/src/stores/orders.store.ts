@@ -16,6 +16,7 @@ export const useOrdersStore = defineStore('orders', () => {
   const currentOrder = ref<Order | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
+  const totalOrders = ref(0)
 
   async function startWholesaleOrder(purchaseType: PurchaseType): Promise<Order> {
     loading.value = true
@@ -53,7 +54,7 @@ export const useOrdersStore = defineStore('orders', () => {
     try {
       const { orders: list, total } = await fetchOrders()
       orders.value = list
-      return total
+      totalOrders.value = total
     } catch (err: unknown) {
       const e = err as { response?: { data?: { detail?: string } } }
       error.value = e.response?.data?.detail ?? 'Error al cargar pedidos'
@@ -92,6 +93,7 @@ export const useOrdersStore = defineStore('orders', () => {
     currentOrder,
     loading,
     error,
+    totalOrders,
     startWholesaleOrder,
     placeRetailOrder,
     addItem,

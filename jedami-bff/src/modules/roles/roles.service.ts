@@ -24,9 +24,12 @@ export async function assignRoleToUser(userId: number, roleId: number): Promise<
     );
 
     if (role.name === 'wholesale' || role.name === 'retail') {
+      // Upsert: crea el perfil si no existe (ej. usuarios creados via seed)
+      // o actualiza customer_type si ya existe
       await client.query(
-        'UPDATE customers SET customer_type = $1 WHERE user_id = $2',
-        [role.name, userId],
+        `INSERT INTO customers (user_id, customer_type) VALUES ($1, $2)
+         ON CONFLICT (user_id) DO UPDATE SET customer_type = $2`,
+        [userId, role.name],
       );
     }
 

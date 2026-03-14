@@ -40,7 +40,10 @@ const hasOrders = computed(() => ordersStore.orders.length > 0)
       </div>
 
       <!-- Error -->
-      <div v-else-if="ordersStore.error" class="text-red-500 text-sm">{{ ordersStore.error }}</div>
+      <div v-else-if="ordersStore.error" class="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 flex items-center justify-between">
+        <span>{{ ordersStore.error }}</span>
+        <button @click="ordersStore.loadOrders()" class="text-red-600 font-semibold hover:underline">Reintentar</button>
+      </div>
 
       <!-- Estado vacío -->
       <div v-else-if="!hasOrders" class="text-center py-16">
@@ -93,15 +96,15 @@ const hasOrders = computed(() => ordersStore.orders.length > 0)
             class="mt-3 pt-3 border-t border-gray-100 flex justify-end"
           >
             <button
-              :disabled="paymentsStore.loading"
+              :disabled="paymentsStore.processingOrderId === order.id"
               @click.stop="paymentsStore.startCheckout(order.id)"
               class="inline-flex items-center gap-2 rounded-xl bg-[#009EE3] text-white px-4 py-2 text-sm font-semibold hover:opacity-90 transition-opacity shadow disabled:opacity-50"
             >
-              <svg v-if="paymentsStore.loading" class="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
+              <svg v-if="paymentsStore.processingOrderId === order.id" class="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
               </svg>
-              Pagar con Mercado Pago
+              {{ paymentsStore.processingOrderId === order.id ? 'Redirigiendo…' : 'Pagar con Mercado Pago' }}
             </button>
           </div>
         </div>

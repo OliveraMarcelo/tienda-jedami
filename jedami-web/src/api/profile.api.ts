@@ -13,6 +13,6 @@ export interface MeResponse {
 }
 
 export async function fetchMe(): Promise<MeResponse> {
-  const res = await apiClient.get<{ data: MeResponse }>('/me')
+  const res = await apiClient.get<{ data: MeResponse }>('/users/me')
   return res.data.data
 }
