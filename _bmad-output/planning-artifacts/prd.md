@@ -430,6 +430,110 @@ Cliente Mayorista autenticado
 
 ---
 
+### RF-13 — Fotos de Productos
+
+**Descripción:** Cada producto puede tener una o más imágenes que se muestran en el catálogo y en el detalle de producto.
+
+**Criterios de aceptación:**
+- [ ] Un Admin puede subir, reemplazar y eliminar imágenes de un producto
+- [ ] Cada producto puede tener múltiples imágenes (al menos 1 principal)
+- [ ] El catálogo (`GET /products`) incluye la URL de la imagen principal de cada producto
+- [ ] El detalle (`GET /products/:id`) incluye todas las imágenes del producto
+- [ ] Las imágenes se almacenan como URLs (almacenamiento externo: S3 compatible o local en dev)
+- [ ] El sistema acepta imágenes en formatos JPG/PNG/WEBP
+- [ ] Las imágenes son opcionales: productos sin imagen muestran un placeholder
+
+**Prioridad:** Alta — Fase 2
+
+---
+
+### RF-14 — Precios Mayoristas por Variante
+
+**Descripción:** Cada variante tiene un precio mayorista independiente del precio minorista, que se utiliza para mostrar precios y calcular totales en compras mayoristas.
+
+**Criterios de aceptación:**
+- [ ] La tabla `variants` incorpora el campo `wholesale_price` (NUMERIC, nullable)
+- [ ] El Admin puede definir `wholesale_price` al crear o editar una variante
+- [ ] `GET /products?mode=wholesale` retorna `wholesalePrice` en lugar de `retailPrice`
+- [ ] La compra mayorista (curva y cantidad) usa `wholesale_price` como `unit_price` en `order_items`
+- [ ] Si `wholesale_price` es null, el sistema usa `retail_price` como fallback
+- [ ] El catálogo muestra la tabla de precios mayoristas diferenciada en modo wholesale
+
+**Prioridad:** Alta — Fase 2
+
+---
+
+### RF-15 — Categorías de Productos
+
+**Descripción:** Los productos se organizan en categorías para facilitar la navegación del catálogo.
+
+**Criterios de aceptación:**
+- [ ] Un Admin puede crear, editar y eliminar categorías
+- [ ] Un producto pertenece a una categoría principal (relación N:1)
+- [ ] `GET /products?category=:id` filtra el catálogo por categoría
+- [ ] El catálogo incluye el campo `category` en cada producto
+- [ ] El Admin puede reasignar la categoría de un producto existente
+- [ ] Las categorías son opcionales: un producto puede no tener categoría asignada
+
+**Prioridad:** Media — Fase 2
+
+---
+
+### RF-16 — Panel de Administración Avanzado
+
+**Descripción:** El administrador dispone de un panel web con visualizaciones de negocio: ventas, pagos, gestión de productos y usuarios.
+
+**Criterios de aceptación:**
+
+**Dashboard:**
+- [ ] Muestra métricas: total de pedidos, monto total vendido, pedidos por estado (pending/paid/rejected)
+- [ ] Gráficos de ventas por período (diario/semanal/mensual)
+- [ ] Los datos del dashboard se calculan en el BFF y se cachean en Redis
+
+**Tabla de pagos:**
+- [ ] El Admin puede ver todos los pagos con: orderId, monto, estado MP, fecha, tipo de compra
+- [ ] Filtrable por estado y rango de fecha
+- [ ] `GET /admin/payments` paginado, requiere rol `admin`
+
+**Gestión de usuarios:**
+- [ ] El Admin puede ver el listado de usuarios con su rol y fecha de registro
+- [ ] El Admin puede buscar usuarios por email
+- [ ] El Admin puede asignar/revocar roles desde la interfaz
+
+**Prioridad:** Alta — Fase 2
+
+---
+
+### RF-17 — Branding Dinámico por Cliente
+
+**Descripción:** La tienda soporta configuración de marca personalizable (colores, logo, nombre) para operar como plataforma whitelabel.
+
+**Criterios de aceptación:**
+- [ ] El BFF expone `GET /config/branding` que retorna: color primario, color secundario, logo URL, nombre de la tienda
+- [ ] La configuración de branding se administra por variables de entorno o tabla de configuración en DB
+- [ ] El frontend web y mobile leen el branding al iniciar y aplican los colores dinámicamente
+- [ ] El cambio de branding no requiere redespliegue de la app (configuración hot-reload)
+
+**Prioridad:** Media — Fase 2
+
+---
+
+### RF-18 — App Flutter Desktop — Gestión de Stock
+
+**Descripción:** Una aplicación Flutter Desktop permite al operador gestionar el stock de productos sin acceso al panel web.
+
+**Criterios de aceptación:**
+- [ ] El operador puede iniciar sesión con sus credenciales (rol `admin`)
+- [ ] Visualiza la lista de productos con stock por variante en tiempo real
+- [ ] Puede ajustar el stock de cualquier variante manualmente (incrementar/decrementar)
+- [ ] Las operaciones de stock se registran con timestamp y usuario que las realizó
+- [ ] La app funciona en Linux Desktop y macOS
+- [ ] Comparte el mismo BFF que la web y mobile
+
+**Prioridad:** Media — Fase 2
+
+---
+
 ## 6. Requerimientos No Funcionales
 
 ### RNF-01 — Seguridad
@@ -612,7 +716,37 @@ El frontend (`jedami-web` — Vue 3 y `jedami-mobile` — Flutter) **se desarrol
 - Facturación electrónica
 - Notificaciones push / email
 - Integración con pasarelas de pago adicionales (solo Mercado Pago)
-- Panel de administración web
+
+> **Nota:** El Panel de Administración Web y la App Flutter Desktop fueron movidos al alcance en Fase 2 (ver RF-16, RF-18).
+
+### 7.5 Fase G — Catálogo y Admin Avanzado _(nueva — Fase 2)_
+
+| Incluye | RFs |
+|---|---|
+| Fotos de productos (imágenes múltiples por producto) | RF-13 |
+| Precios mayoristas por variante (`wholesale_price`) | RF-14 |
+| Categorías de productos | RF-15 |
+| Seed data realista (talles 1–6, stock 20–30 por variante) | — |
+
+**Objetivo:** El catálogo refleja fielmente el negocio real con imágenes, categorías y precios diferenciados.
+
+### 7.6 Fase H — Panel Admin y Branding _(nueva — Fase 2)_
+
+| Incluye | RFs |
+|---|---|
+| Dashboard de ventas con gráficos y métricas | RF-16 |
+| Tabla de pagos y gestión de usuarios en el admin | RF-16 |
+| Branding dinámico (whitelabel) | RF-17 |
+
+**Objetivo:** El admin tiene visibilidad completa del negocio y la tienda puede funcionar como plataforma para múltiples clientes.
+
+### 7.7 Fase I — App Desktop _(nueva — Fase 2)_
+
+| Incluye | RFs |
+|---|---|
+| Flutter Desktop app para gestión de stock | RF-18 |
+
+**Objetivo:** El operador puede gestionar stock desde una app nativa de escritorio sin necesidad del panel web.
 
 ---
 

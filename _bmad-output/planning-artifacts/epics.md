@@ -102,6 +102,18 @@ Un comprador minorista puede registrarse, comprar cualquier variante en cualquie
 El sistema soporta carga real de producción con caché Redis activo, rate limiting y sesiones optimizadas.
 **Incluye:** Redis cache activo, rate limiting, refresh tokens, bus de eventos tiempo real
 
+### Epic 6: Catálogo Mejorado — Fotos, Categorías y Precios Mayoristas
+El catálogo refleja fielmente el negocio con imágenes de productos, categorías para navegación y precios mayoristas diferenciados por variante.
+**FRs cubiertos:** RF-13, RF-14, RF-15
+
+### Epic 7: Panel de Administración Avanzado y Branding
+El administrador tiene visibilidad completa del negocio (dashboard de ventas, tabla de pagos, gestión de usuarios) y la tienda soporta branding dinámico para operar como plataforma whitelabel.
+**FRs cubiertos:** RF-16, RF-17
+
+### Epic 8: App Flutter Desktop — Gestión de Stock
+El operador puede gestionar el stock de productos desde una aplicación Flutter Desktop nativa, compartiendo el mismo BFF.
+**FRs cubiertos:** RF-18
+
 ---
 
 ## Epic 1: Gestión del Catálogo de Productos
@@ -982,3 +994,257 @@ para que pueda hacer seguimiento de mis compras minoristas.
 | **W3.1** Checkout + confirmación | BFF stories 3.1 + 3.2 done |
 | **W4.1** Compra minorista + gate | BFF story 4.1 done |
 | **W4.2** Mis pedidos minorista | BFF story 4.2 done |
+
+---
+
+## Epic 6: Catálogo Mejorado — Fotos, Categorías y Precios Mayoristas
+
+El catálogo refleja fielmente el negocio con imágenes de productos, categorías para navegación y precios mayoristas diferenciados por variante.
+
+### Story 6.1: Fotos de Productos — BFF
+
+Como administrador,
+quiero subir y gestionar imágenes para cada producto,
+para que el catálogo muestre fotos reales de la mercadería.
+
+**Acceptance Criteria:**
+
+**Given** un admin autenticado
+**When** hace `POST /products/:id/images` con una URL de imagen
+**Then** la imagen queda asociada al producto y se retorna 201
+
+**Given** un visitante consulta `GET /products`
+**When** el producto tiene al menos una imagen
+**Then** la respuesta incluye `imageUrl` con la URL de la imagen principal
+
+**Given** un admin hace `DELETE /products/:id/images/:imageId`
+**When** la imagen existe y pertenece al producto
+**Then** se elimina correctamente
+
+**Tasks:**
+- [ ] Migración: tabla `product_images (id, product_id, url, position, created_at)`
+- [ ] BFF: `POST /products/:id/images`, `DELETE /products/:id/images/:imageId`
+- [ ] Modificar queries de catálogo y detalle para incluir imagen principal
+
+---
+
+### Story 6.2: Seed Data Realista
+
+Como desarrollador,
+quiero datos de prueba realistas con talles 1–6 y stock 20–30 por variante,
+para que el sistema refleje el negocio real desde el inicio.
+
+**Acceptance Criteria:**
+
+**Given** la migración seed `005_seed_products.sql` se ejecuta
+**When** se consulta `GET /products`
+**Then** los productos tienen variantes con talles 1, 2, 3, 4, 5, 6 y stock entre 20–30 unidades por variante
+
+**Tasks:**
+- [ ] Actualizar `005_seed_products.sql`: talles 1–6 en lugar de S/M/L/XL; stock random 20–30 por variante
+- [ ] Incluir al menos 5 productos con categorías variadas (si RF-15 está disponible)
+
+---
+
+### Story 6.3: Precios Mayoristas por Variante — BFF
+
+Como administrador,
+quiero definir un precio mayorista independiente por variante,
+para que los mayoristas vean y compren a precios diferenciados.
+
+**Acceptance Criteria:**
+
+**Given** un admin crea o edita una variante
+**When** incluye `wholesalePrice` en el body
+**Then** el campo `wholesale_price` se persiste en la tabla `variants`
+
+**Given** `GET /products?mode=wholesale`
+**When** el catálogo retorna las variantes
+**Then** cada variante incluye `wholesalePrice` (o `retailPrice` si no tiene precio mayorista definido)
+
+**Given** un mayorista crea un pedido por curva
+**When** el sistema calcula el total
+**Then** usa `wholesale_price` (o `retail_price` como fallback) como `unit_price` en `order_items`
+
+**Tasks:**
+- [ ] Migración: `ALTER TABLE variants ADD COLUMN wholesale_price NUMERIC(10,2)`
+- [ ] Actualizar `createVariant` y `updateVariant` en BFF para aceptar `wholesalePrice`
+- [ ] Actualizar queries de catálogo para exponer `wholesalePrice`
+- [ ] Actualizar `addCurvaItems` y `addCantidadItems` para usar `wholesale_price` si está disponible
+
+---
+
+### Story 6.4: Categorías de Productos — BFF
+
+Como administrador,
+quiero organizar los productos en categorías,
+para que los compradores puedan filtrar el catálogo fácilmente.
+
+**Acceptance Criteria:**
+
+**Given** un admin autenticado
+**When** hace `POST /categories` con `{ name }`
+**Then** se crea la categoría y retorna 201
+
+**Given** un admin asigna una categoría a un producto
+**When** hace `PUT /products/:id` con `{ categoryId }`
+**Then** el producto queda asociado a esa categoría
+
+**Given** un visitante filtra el catálogo
+**When** hace `GET /products?categoryId=:id`
+**Then** solo retorna productos de esa categoría
+
+**Tasks:**
+- [ ] Migración: tabla `categories (id, name, slug, created_at)` y `category_id` en `products`
+- [ ] BFF: CRUD de categorías (`/categories`)
+- [ ] Actualizar query de catálogo para soportar filtro por `categoryId`
+
+---
+
+### Story 6.5: Web — Catálogo con Fotos, Precios Mayoristas y Filtros
+
+Como visitante o comprador,
+quiero ver fotos de productos, precios diferenciados y filtrar por categoría,
+para tener una experiencia de compra visual y organizada.
+
+**Depende de:** Stories 6.1, 6.3, 6.4 done
+
+**Tasks:**
+- [ ] ProductCard: mostrar imagen del producto (con placeholder si no tiene)
+- [ ] Modo wholesale: mostrar `wholesalePrice` en lugar de `retailPrice`
+- [ ] Filtro de categorías en CatalogView (pills/tabs horizontales)
+- [ ] ProductView: galería de imágenes si tiene múltiples
+
+---
+
+## Epic 7: Panel de Administración Avanzado y Branding
+
+### Story 7.1: Dashboard de Ventas — BFF
+
+Como administrador,
+quiero ver métricas de ventas agregadas,
+para tener visibilidad del negocio en tiempo real.
+
+**Acceptance Criteria:**
+
+**Given** un admin autenticado hace `GET /admin/dashboard`
+**When** el endpoint procesa la solicitud
+**Then** retorna: `{ totalOrders, totalRevenue, ordersByStatus: { pending, paid, rejected }, recentOrders: [...] }`
+
+**Tasks:**
+- [ ] Endpoint `GET /admin/dashboard` (requiere rol admin)
+- [ ] Queries de agregación sobre `orders` y `payments`
+- [ ] Caché Redis con TTL corto (60s) para el dashboard
+
+---
+
+### Story 7.2: Tabla de Pagos y Gestión de Usuarios — BFF
+
+Como administrador,
+quiero ver todos los pagos y gestionar usuarios desde el panel,
+para operar el negocio sin acceder a la base de datos.
+
+**Acceptance Criteria:**
+
+**Given** un admin hace `GET /admin/payments`
+**Then** retorna lista paginada de pagos con: orderId, monto, estado, fecha, tipo de compra
+
+**Given** un admin hace `GET /admin/users`
+**Then** retorna lista de usuarios con: email, roles, fecha de registro, customer_type
+
+**Tasks:**
+- [ ] `GET /admin/payments` paginado con filtros por estado y rango de fecha
+- [ ] `GET /admin/users` paginado con búsqueda por email
+
+---
+
+### Story 7.3: Web — Panel Admin con Dashboard y Tabla de Pagos
+
+**Depende de:** Stories 7.1, 7.2 done
+
+**Tasks:**
+- [ ] Vista `/admin/dashboard`: métricas resumidas + gráfico de ventas por semana (Chart.js o Recharts)
+- [ ] Vista `/admin/pagos`: tabla de pagos con filtros
+- [ ] Vista `/admin/usuarios`: tabla de usuarios con asignación de roles inline
+
+---
+
+### Story 7.4: Branding Dinámico — BFF y Frontend
+
+Como operador del negocio,
+quiero configurar los colores y logo de la tienda sin redesplegar la app,
+para operar la tienda bajo la marca del cliente.
+
+**Acceptance Criteria:**
+
+**Given** `GET /config/branding`
+**Then** retorna `{ primaryColor, secondaryColor, logoUrl, storeName }`
+
+**Given** la configuración está en variables de entorno
+**When** se actualiza el env y se reinicia el BFF
+**Then** el frontend obtiene el nuevo branding en el próximo arranque
+
+**Tasks:**
+- [ ] Endpoint `GET /config/branding` (público, sin autenticación)
+- [ ] Leer configuración de `ENV` (variables de entorno)
+- [ ] Frontend: leer branding al montar App.vue y aplicar CSS variables dinámicas
+
+---
+
+## Epic 8: App Flutter Desktop — Gestión de Stock
+
+### Story 8.1: Flutter Desktop — Setup y Login
+
+Como operador,
+quiero iniciar sesión en la app desktop con mis credenciales de administrador,
+para gestionar el stock de manera segura.
+
+**Depende de:** BFF story 1.2 done
+
+**Tasks:**
+- [ ] Configurar soporte Flutter Desktop (Linux/macOS) en `jedami-mobile`
+- [ ] Pantalla de login que reutiliza el mismo `authProvider`
+- [ ] Detectar plataforma: si es Desktop, mostrar layout de gestión de stock en lugar del panel móvil
+
+---
+
+### Story 8.2: Flutter Desktop — Gestión de Stock
+
+Como operador,
+quiero ver y ajustar el stock de cada variante,
+para mantener el inventario actualizado en tiempo real.
+
+**Depende de:** Story 8.1 done
+
+**Acceptance Criteria:**
+
+**Given** el operador está autenticado en la app desktop
+**When** navega a la vista de stock
+**Then** ve la lista de productos con sus variantes y el stock actual de cada una
+
+**Given** el operador modifica el stock de una variante
+**When** confirma el cambio
+**Then** el BFF actualiza el stock y la app muestra el valor actualizado
+
+**Tasks:**
+- [ ] Endpoint BFF: `PUT /admin/products/:productId/variants/:variantId/stock` (requiere rol admin)
+- [ ] Vista Flutter Desktop: tabla de productos → expandir variantes → input de stock editable
+- [ ] Registrar en log quién y cuándo hizo el ajuste
+
+---
+
+## Tabla de Dependencias — Épicas 6, 7, 8
+
+| Story | Se desbloquea cuando... |
+|---|---|
+| **6.1** Fotos BFF | Epic 1 done |
+| **6.2** Seed data | Epic 1 done |
+| **6.3** Precios mayoristas BFF | Epic 2 done |
+| **6.4** Categorías BFF | Epic 1 done |
+| **6.5** Web catálogo mejorado | Stories 6.1 + 6.3 + 6.4 done |
+| **7.1** Dashboard BFF | Épicas 1–4 done |
+| **7.2** Pagos y usuarios BFF | Épicas 1–4 done |
+| **7.3** Web admin avanzado | Stories 7.1 + 7.2 done |
+| **7.4** Branding | Epic 1 done |
+| **8.1** Desktop setup | Epic 1 done |
+| **8.2** Desktop stock mgmt | Story 8.1 + BFF endpoint done |

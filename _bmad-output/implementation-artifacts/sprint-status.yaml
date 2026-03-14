@@ -131,3 +131,49 @@ development_status:
   5-3-refresh-tokens: done
 
   epic-5-retrospective: optional
+
+  # ─────────────────────────────────────────────────────────
+  # EPIC 6: Catálogo Mejorado — Fotos, Categorías y Precios Mayoristas
+  # FRs: RF-13, RF-14, RF-15
+  # ─────────────────────────────────────────────────────────
+  epic-6: backlog
+
+  # BFF Track — jedami-bff
+  6-1-fotos-de-productos: backlog
+  6-2-seed-data-realista: backlog
+  6-3-precios-mayoristas-por-variante: backlog
+  6-4-categorias-de-productos: backlog
+
+  # WEB Track — jedami-web (después del BFF)
+  web-6-1-catalogo-con-fotos-precios-mayoristas-y-filtros: backlog
+
+  epic-6-retrospective: optional
+
+  # ─────────────────────────────────────────────────────────
+  # EPIC 7: Panel de Administración Avanzado y Branding
+  # FRs: RF-16, RF-17
+  # ─────────────────────────────────────────────────────────
+  epic-7: backlog
+
+  # BFF Track — jedami-bff
+  7-1-dashboard-de-ventas: backlog
+  7-2-tabla-de-pagos-y-gestion-de-usuarios: backlog
+  7-3-branding-dinamico: backlog
+
+  # WEB Track — jedami-web (después del BFF)
+  web-7-1-panel-admin-con-dashboard-y-pagos: backlog
+  web-7-2-branding-dinamico: backlog
+
+  epic-7-retrospective: optional
+
+  # ─────────────────────────────────────────────────────────
+  # EPIC 8: App Flutter Desktop — Gestión de Stock
+  # FRs: RF-18
+  # ─────────────────────────────────────────────────────────
+  epic-8: backlog
+
+  # DESKTOP Track — jedami-mobile (Flutter Desktop)
+  desktop-8-1-flutter-desktop-setup-y-login: backlog
+  desktop-8-2-flutter-desktop-gestion-de-stock: backlog
+
+  epic-8-retrospective: optional
