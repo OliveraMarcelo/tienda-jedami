@@ -79,8 +79,10 @@ export async function getProduct(req: Request, res: Response, next: NextFunction
 
 export async function listProducts(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const pageSize = Math.min(parseInt(req.query.pageSize as string) || 20, 100);
+    const rawPage = parseInt(req.query.page as string);
+    const rawPageSize = parseInt(req.query.pageSize as string);
+    const page = isNaN(rawPage) || rawPage < 1 ? 1 : rawPage;
+    const pageSize = Math.min(isNaN(rawPageSize) || rawPageSize < 1 ? 20 : rawPageSize, 100);
     const cacheKey = `catalog:page:${page}:size:${pageSize}`;
 
     const cached = await cacheGet(cacheKey);

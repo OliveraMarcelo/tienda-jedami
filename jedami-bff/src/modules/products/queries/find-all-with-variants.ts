@@ -1,3 +1,5 @@
+// Subquery interna pagina sobre products (no sobre filas del JOIN)
+// Esto evita que un producto quede partido entre páginas cuando tiene varias variantes
 export const FIND_ALL_WITH_VARIANTS = `
   SELECT
     p.id           AS product_id,
@@ -8,13 +10,12 @@ export const FIND_ALL_WITH_VARIANTS = `
     v.color        AS variant_color,
     v.retail_price AS variant_retail_price,
     s.quantity     AS stock_quantity
-  FROM products p
+  FROM (SELECT id, name, description FROM products ORDER BY id LIMIT $1 OFFSET $2) p
   LEFT JOIN variants v ON v.product_id = p.id
   LEFT JOIN stock s ON s.variant_id = v.id
   ORDER BY p.id, v.id
-  LIMIT $1 OFFSET $2
 `;
 
 export const COUNT_PRODUCTS = `
-  SELECT COUNT(DISTINCT p.id)::int AS total FROM products p
+  SELECT COUNT(*)::int AS total FROM products
 `;

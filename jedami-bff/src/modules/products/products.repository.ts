@@ -34,8 +34,8 @@ export type CatalogRow = {
   stock_quantity: number | null;
 };
 
-export const findAllWithVariants = async (limit: number, offset: number): Promise<CatalogRow[]> => {
-  const result = await pool.query(FIND_ALL_WITH_VARIANTS, [limit, offset]);
+export const findAllWithVariants = async (pageSize: number, offset: number): Promise<CatalogRow[]> => {
+  const result = await pool.query(FIND_ALL_WITH_VARIANTS, [pageSize, offset]);
   return result.rows;
 };
 
