@@ -34,6 +34,26 @@ export async function initiateCheckout(orderId: number, userId: number) {
     throw new AppError(422, 'Sin monto', 'https://jedami.com/errors/no-amount', 'El pedido no tiene monto para pagar');
   }
 
+  // Reusar pago pendiente si ya existe (evita duplicados por doble-click o reintentos)
+  const existingPayment = await paymentsRepository.findByOrderId(orderId);
+  if (existingPayment?.status === 'pending' && existingPayment.mp_preference_id) {
+    // Reconstruir la URL de checkout desde la preferencia existente
+    const preferenceApi = new Preference(mpClient);
+    try {
+      const existing = await preferenceApi.get({ preferenceId: existingPayment.mp_preference_id });
+      if (existing.init_point) {
+        return {
+          orderId,
+          checkoutUrl: existing.init_point,
+          paymentId: existingPayment.id,
+          preferenceId: existingPayment.mp_preference_id,
+        };
+      }
+    } catch {
+      // Si no se puede recuperar la preferencia (expiró, etc.), crear una nueva
+    }
+  }
+
   const preferenceApi = new Preference(mpClient);
   let prefResponse;
   try {
@@ -77,7 +97,14 @@ export async function initiateCheckout(orderId: number, userId: number) {
 // ─── Webhook ──────────────────────────────────────────────────────────────────
 
 function verifyWebhookSignature(rawBody: string, signatureHeader: string, requestId: string): boolean {
-  if (!ENV.MP_WEBHOOK_SECRET) return true; // sin secret configurado, saltear verificación en dev
+  if (!ENV.MP_WEBHOOK_SECRET) {
+    if (ENV.NODE_ENV === 'production') {
+      // En producción, fallar explícitamente si falta el secret — no aceptar webhooks sin verificar
+      logger.error('[PAYMENTS] MP_WEBHOOK_SECRET no configurado en producción');
+      return false;
+    }
+    return true; // en dev/test, saltear verificación
+  }
 
   try {
     // Formato: ts=<timestamp>,v1=<hash>

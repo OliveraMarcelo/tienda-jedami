@@ -27,14 +27,6 @@ export const findByOrderId = async (orderId: number): Promise<Payment | null> =>
   return result.rows[0] ?? null;
 };
 
-export const updateApproved = async (mpPaymentId: string, amount: number): Promise<void> => {
-  await pool.query(
-    `UPDATE payments SET status = 'approved', mp_payment_id = $1, amount = $2, paid_at = NOW()
-     WHERE mp_payment_id = $1`,
-    [mpPaymentId, amount],
-  );
-};
-
 export const updateStatus = async (mpPaymentId: string, status: 'approved' | 'rejected', amount?: number): Promise<void> => {
   await pool.query(
     `UPDATE payments

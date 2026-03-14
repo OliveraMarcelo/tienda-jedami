@@ -24,7 +24,12 @@ export function createApp() {
   // Rate limiting global
   app.use(generalRateLimit);
 
-  app.use(express.json());
+  // Guardamos el raw body antes de parsear — necesario para verificar firma del webhook de MP
+  app.use(express.json({
+    verify: (req: express.Request, _res: express.Response, buf: Buffer) => {
+      (req as express.Request & { rawBody: Buffer }).rawBody = buf;
+    },
+  }));
 
   // Documentación API
   app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
