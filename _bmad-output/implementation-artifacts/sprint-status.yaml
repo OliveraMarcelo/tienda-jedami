@@ -1,0 +1,133 @@
+# generated: 2026-03-11
+# project: tienda-jedami
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# TRACKS:
+# =======
+# Cada épica tiene stories de backend seguidas de sus correspondientes de frontend:
+#   - BFF track:    stories del backend jedami-bff  (se implementan primero)
+#   - WEB track:    stories del frontend jedami-web (se implementan DESPUÉS del BFF)
+#   - MOBILE track: stories de la app admin jedami-mobile (se implementan DESPUÉS del BFF)
+#
+# FLUJO SECUENCIAL POR FEATURE:
+#   1. Dev implementa la story BFF → API real disponible
+#   2. Story WEB/MOBILE pasa a ready-for-dev → Dev consume el API real
+#   No se usan mocks — el frontend siempre trabaja contra la API ya implementada
+#
+# Convención de keys:
+#   X-N-descripcion         → BFF story (jedami-bff)
+#   web-X-N-descripcion     → WEB story (jedami-web, depende del BFF correspondiente)
+#   mobile-X-N-descripcion  → MOBILE story (jedami-mobile, depende del BFF correspondiente)
+
+generated: 2026-03-11
+project: tienda-jedami
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  # ─────────────────────────────────────────────────────────
+  # EPIC 1: Gestión del Catálogo de Productos
+  # FRs: RF-01, RF-02, RF-03, RF-04, RF-05, RF-06, RF-07
+  # ─────────────────────────────────────────────────────────
+  epic-1: in-progress
+
+  # BFF Track — jedami-bff
+  1-1-infraestructura-base-del-proyecto: review
+  1-2-registro-y-autenticacion-de-administrador: review
+  1-3-gestion-de-roles-y-control-de-acceso: review
+  1-4-crud-de-productos-con-variantes: review
+  1-5-catalogo-publico-de-productos: review
+
+  # WEB Track — jedami-web (después del BFF)
+  web-1-1-setup-design-system: review           # depende de: 1-1-bff done
+  web-1-2-auth-pages: review                    # depende de: 1-2-bff done
+  web-1-3-catalogo-publico: review              # depende de: 1-4-bff + 1-5-bff done
+  web-1-4-admin-productos: review               # depende de: 1-3-bff + 1-4-bff done
+
+  # MOBILE Track — jedami-mobile (solo admin, después del BFF)
+  mobile-1-1-setup-flutter: review              # depende de: 1-1-bff done
+  mobile-1-2-admin-productos: review            # depende de: 1-4-bff done
+
+  epic-1-retrospective: optional
+
+  # ─────────────────────────────────────────────────────────
+  # EPIC 2: Compra Mayorista
+  # FRs: RF-08, RF-09, RF-10, RF-10.1, RF-10.2, RF-10.3, RF-11
+  # ─────────────────────────────────────────────────────────
+  epic-2: in-progress
+
+  # BFF Track — jedami-bff
+  2-1-registro-de-comprador-mayorista-y-perfil-customer: review
+  2-2-creacion-de-pedido-mayorista: review
+  2-3-compra-mayorista-por-curva: review
+  2-4-compra-mayorista-por-cantidad: review
+  2-5-consulta-de-pedidos-del-comprador-mayorista: review
+
+  # WEB Track — jedami-web (después del BFF)
+  web-2-1-registro-mayorista: review
+  web-2-2-checkout-mayorista-curva-cantidad: review
+  web-2-3-mis-pedidos-mayorista: review
+
+  epic-2-retrospective: optional
+
+  # ─────────────────────────────────────────────────────────
+  # EPIC 3: Pagos con Mercado Pago
+  # FRs: RF-12 (mayoristas)
+  # ─────────────────────────────────────────────────────────
+  epic-3: in-progress
+
+  # BFF Track — jedami-bff
+  3-1-checkout-de-pago-con-mercado-pago: review
+  3-2-procesamiento-del-webhook-de-mercado-pago: review
+
+  # WEB Track — jedami-web (después del BFF)
+  web-3-1-boton-pago-y-confirmacion: review
+
+  epic-3-retrospective: optional
+
+  # ─────────────────────────────────────────────────────────
+  # EPIC 4: Compra Minorista con Pago
+  # FRs: RF-08 (retail), RF-09 (retail), RF-11 (retail), RF-12 (retail)
+  # ─────────────────────────────────────────────────────────
+  epic-4: in-progress
+
+  # BFF Track — jedami-bff
+  4-1-compra-minorista-pedido-con-variante-y-validacion-de-stock: review
+  4-2-consulta-de-pedidos-del-comprador-minorista: review
+  4-3-pago-minorista-con-mercado-pago: review
+
+  # WEB Track — jedami-web (después del BFF)
+  web-4-1-compra-minorista-y-soft-gate: review
+  web-4-2-mis-pedidos-minorista: review
+
+  epic-4-retrospective: optional
+
+  # ─────────────────────────────────────────────────────────
+  # EPIC 5: Escalabilidad y Operación (diferida — Fase F)
+  # Activar cuando el sistema esté en producción
+  # ─────────────────────────────────────────────────────────
+  epic-5: in-progress
+
+  # BFF Track — jedami-bff
+  5-1-cache-de-catalogo-con-redis: review
+  5-2-rate-limiting: review
+  5-3-refresh-tokens: review
+
+  epic-5-retrospective: optional
