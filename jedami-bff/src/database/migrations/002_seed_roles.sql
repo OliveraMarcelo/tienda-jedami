@@ -1,9 +1,9 @@
 BEGIN;
 
 INSERT INTO roles (name)
-VALUES 
+VALUES
     ('admin'),
-    ('mayorista'),
-    ('minorista')
+    ('wholesale'),
+    ('retail')
     ON CONFLICT (name) DO NOTHING;
 COMMIT;

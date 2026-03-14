@@ -72,7 +72,7 @@ El sistema debe permitir:
 
 ### RF-07 – Visualización de productos
 
-El sistema debe permitir a los usuarios visualizar productos disponibles.
+El sistema debe permitir a cualquier visitante visualizar productos disponibles con los precios correspondientes al modo activo de la tienda (minorista o mayorista), sin requerir registro ni autenticación.
 
 ---
 
@@ -83,12 +83,16 @@ El sistema debe permitir a los usuarios generar pedidos de compra.
 ---
 ### 🔄 RF-09 – Soporte para modalidad mayorista y minorista (ajustado)
 
-El sistema debe soportar diferentes modalidades de venta según el tipo de cliente:
+El sistema debe soportar diferentes modalidades de venta:
 
 * Venta minorista
 * Venta mayorista
 
-La modalidad de venta define las reglas de compra, precios y validaciones aplicables.
+El **modo de visualización de precios** lo determina el contexto de la tienda, no el rol del usuario. Cualquier visitante puede ver precios en el modo que esté activo sin necesidad de registrarse.
+
+La **modalidad de compra** (quién puede comprar en modo mayorista) sí está restringida por el rol del usuario autenticado.
+
+El registro es requisito únicamente para generar pedidos.
 
 ---
 
@@ -238,9 +242,11 @@ La elección de tecnologías específicas para tiempo real será definida en eta
 
 ## 7. Glosario
 
-* **Usuario:** Persona que utiliza el sistema para comprar productos.
+* **Visitante:** Persona no registrada que puede navegar el catálogo y ver precios según el modo activo de la tienda.
+* **Usuario:** Persona registrada en el sistema que puede generar pedidos y comprar.
 * **Admin:** Usuario con permisos de administración.
 * **Rol:** Conjunto de permisos asignados a un usuario.
+* **Modo de la tienda:** Contexto activo (minorista o mayorista) que determina qué precios se muestran en el catálogo.
 
 ---
 

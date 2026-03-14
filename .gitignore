@@ -6,6 +6,7 @@ jedami-bff/.env
 # Frontend Web
 jedami-web/node_modules/
 jedami-web/dist/
+jedami-web/.env
 
 # Mobile
 jedami-mobile/.dart_tool/

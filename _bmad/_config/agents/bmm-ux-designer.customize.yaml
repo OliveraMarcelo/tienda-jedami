@@ -25,12 +25,13 @@ memories: []
 
 # Add custom menu items (appended to base menu)
 # Don't include * prefix or help/exit - auto-injected
-menu: []
-# Example:
-# menu:
-#   - trigger: my-workflow
-#     workflow: "{project-root}/custom/my.yaml"
-#     description: My custom workflow
+menu:
+  - trigger: "CW or fuzzy match on wireframes"
+    workflow: "{project-root}/_bmad/bmm/workflows/2-plan-workflows/create-wireframes/workflow.md"
+    description: "[CW] Crear Wireframes: Genera wireframes de baja fidelidad para todas las pantallas del proyecto con anotaciones de interacción y guía para Pencil Project"
+  - trigger: "CD or fuzzy match on pencil design or diseño final or prototipo"
+    workflow: "{project-root}/_bmad/bmm/workflows/2-plan-workflows/create-pencil-design/workflow.md"
+    description: "[CD] Diseño Final con Pencil: Convierte las especificaciones UX en prototipos HTML navegables usando la librería UI de tu elección (Bootstrap, Tailwind, Material, shadcn/ui), con guía para Pencil Project"
 
 # Add custom prompts (for action="#id" handlers)
 prompts: []

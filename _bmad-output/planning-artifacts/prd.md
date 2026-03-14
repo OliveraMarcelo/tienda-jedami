@@ -14,7 +14,7 @@ author: Marceloo
 **Autor:** Marceloo
 **Fecha:** 2026-03-09
 **Versión:** 1.0
-**Estado:** Fase 1 – Definición
+**Estado:** Definición — Fases A–F priorizadas por valor de negocio
 
 ---
 
@@ -58,17 +58,20 @@ Una API backend unificada que:
 
 | Término | Definición |
 |---|---|
+| **Visitante** | Persona no registrada que puede navegar el catálogo y ver precios según el modo activo de la tienda |
 | **Usuario** | Persona registrada en el sistema que puede comprar |
 | **Admin** | Usuario con permisos de administración del sistema |
 | **Cliente Minorista** | Usuario que compra en modalidad minorista (por unidad) |
 | **Cliente Mayorista** | Usuario que compra en modalidad mayorista (volumen) |
 | **Rol** | Conjunto de permisos asignados a un usuario |
+| **Modo de la tienda** | Contexto activo de la tienda (minorista o mayorista) que determina qué precios se muestran, independientemente de si el visitante está registrado |
 | **Producto** | Artículo disponible para la venta |
-| **Variante** | Versión de un producto (ej: talle S, M, L, XL) |
+| **Customer** | Perfil comercial de un comprador, separado de la cuenta de autenticación (`User`). Tiene `customer_type` (retail/wholesale) y se asocia a los pedidos |
+| **Variante** | Versión de un producto con combinación específica de **talle y color** (ej: Remera Oversize – Negro – M). Cada variante tiene su propio precio (`retail_price`) y stock independiente |
 | **Curva** | Modalidad de compra mayorista: una unidad de cada talle disponible del producto |
 | **Compra por cantidad** | Modalidad de compra mayorista: cantidad total de unidades sin distribución por talle forzada |
 | **Pedido** | Registro de una compra realizada por un usuario |
-| **Stock** | Cantidad de unidades disponibles de un producto o variante |
+| **Stock** | Cantidad de unidades disponibles de una variante. El stock es 1-1 con la variante (`variant_id` es PK en la tabla `stock`) |
 | **Pago** | Transacción financiera asociada a un pedido |
 | **Webhook** | Notificación HTTP enviada por Mercado Pago al sistema sobre el resultado de un pago |
 
@@ -77,9 +80,11 @@ Una API backend unificada que:
 | ID | Regla |
 |---|---|
 | RN-01 | Un usuario puede tener uno o más roles asignados simultáneamente |
-| RN-02 | Solo usuarios con rol Mayorista pueden comprar en modalidad mayorista |
-| RN-03 | La compra por curva requiere stock suficiente en **cada talle** disponible del producto |
-| RN-04 | La compra por cantidad requiere stock total suficiente del producto |
+| RN-02 | Solo usuarios con rol Mayorista pueden **comprar** en modalidad mayorista |
+| RN-08 | La visualización de precios (minorista o mayorista) no requiere registro; el modo lo define el contexto de la tienda |
+| RN-09 | El registro de usuario es requisito solo para generar pedidos, no para navegar el catálogo |
+| RN-03 | La compra por curva requiere stock suficiente en **cada variante (talle + color)** disponible del producto |
+| RN-04 | La compra por cantidad requiere stock total suficiente sumando todas las variantes del producto |
 | RN-05 | Un pedido solo se considera pagado cuando Mercado Pago notifica estado exitoso |
 | RN-06 | El módulo de lógica mayorista debe estar encapsulado e independiente del core |
 | RN-07 | El sistema debe permitir agregar nuevos medios de pago sin modificar la lógica de pedidos |
@@ -98,12 +103,18 @@ Una API backend unificada que:
   - Gestionar usuarios y asignar roles
   - Visualizar estado de pedidos
 
+#### Visitante
+- **Descripción:** Persona no registrada que navega el catálogo
+- **Motivación:** Ver precios y productos antes de decidir si comprar
+- **Necesidades:**
+  - Ver catálogo con precios según el modo activo de la tienda (minorista o mayorista)
+  - No requiere registro para navegar
+
 #### Cliente Minorista
 - **Descripción:** Comprador individual, compra en pequeñas cantidades
 - **Motivación:** Acceder al catálogo y comprar de manera simple y segura
 - **Necesidades:**
-  - Registrarse e iniciar sesión
-  - Ver productos disponibles
+  - Registrarse e iniciar sesión (solo para comprar)
   - Generar pedidos y pagar con Mercado Pago
 
 #### Cliente Mayorista
@@ -117,6 +128,16 @@ Una API backend unificada que:
 ---
 
 ## 4. Journeys del Usuario
+
+### Journey 0: Navegación sin Registro (Visitante)
+
+```
+Visitante accede a la tienda
+  → El modo de la tienda está activo (ej: modo minorista o mayorista)
+  → GET /products (visualiza catálogo con precios del modo activo)
+  → No requiere autenticación
+  → Si intenta generar un pedido → el sistema solicita registro/login
+```
 
 ### Journey 1: Registro e Inicio de Sesión
 
@@ -159,11 +180,11 @@ Cliente Mayorista autenticado
 
 ```
 Cliente Mayorista autenticado
-  → GET /products (visualiza catálogo)
-  → Selecciona producto + define cantidad total de unidades
-  → POST /orders con tipo = "cantidad", quantity = N
-  → Sistema valida: ¿hay stock total suficiente?
-  → Si OK: crea pedido (distribución de talles libre o posterior)
+  → GET /products (visualiza catálogo con variantes y stock)
+  → Selecciona producto + define cantidad total de unidades (sin elegir variante)
+  → POST /orders/:orderId/items con { productId, quantity: N }
+  → Sistema valida: SUM(stock de todas las variantes del producto) >= N
+  → Si OK: crea order_items; descuenta stock proporcionalmente entre variantes
   → Continúa flujo de pago (igual que Journey 2)
 ```
 
@@ -249,8 +270,10 @@ Cliente Mayorista autenticado
 **Criterios de aceptación:**
 - [ ] `POST /products` — crea un producto (requiere rol `admin`)
 - [ ] `PUT /products/:id` — modifica un producto (requiere rol `admin`)
-- [ ] `GET /products/:id` — consulta un producto específico
-- [ ] Un producto puede tener variantes (ej: talles S, M, L, XL) con stock individual por variante
+- [ ] `GET /products/:id` — consulta un producto con todas sus variantes
+- [ ] Un producto puede tener múltiples variantes; cada variante combina **talle + color** y tiene su propio `retail_price` y stock independiente
+- [ ] Al crear/modificar variantes se especifican `size`, `color` y `retail_price`
+- [ ] El stock se gestiona por variante (`variant_id` es PK de la tabla `stock`)
 - [ ] Retorna 404 si el producto no existe
 - [ ] Retorna 403 si el usuario no es admin e intenta crear/modificar
 
@@ -260,12 +283,14 @@ Cliente Mayorista autenticado
 
 ### RF-07 — Visualización de Productos
 
-**Descripción:** Los usuarios autenticados pueden visualizar el catálogo de productos disponibles.
+**Descripción:** Cualquier visitante puede visualizar el catálogo de productos con los precios del modo activo de la tienda, sin necesidad de registrarse.
 
 **Criterios de aceptación:**
-- [ ] `GET /products` retorna lista de productos disponibles
-- [ ] Incluye nombre, descripción, precio y variantes (talles + stock)
-- [ ] Disponible para todos los usuarios autenticados
+- [ ] `GET /products` retorna lista de productos disponibles **sin requerir autenticación**
+- [ ] Cada producto incluye: nombre, descripción, y sus variantes (talle + color + `retail_price` + stock)
+- [ ] El precio devuelto es `retail_price` de cada variante (precio de venta minorista base)
+- [ ] El query param `mode=retail|wholesale` indica el contexto de la tienda; en Fase 1 se retorna `retail_price` en ambos modos (el precio mayorista es una extensión futura)
+- [ ] Si no se especifica modo, el sistema retorna el precio minorista por defecto
 - [ ] Soporta paginación básica
 
 **Prioridad:** Alta — MVP
@@ -277,8 +302,9 @@ Cliente Mayorista autenticado
 **Descripción:** Los usuarios pueden generar pedidos de compra.
 
 **Criterios de aceptación:**
-- [ ] `POST /orders` crea un pedido asociado al usuario autenticado
-- [ ] El pedido registra: usuario, productos, cantidades, modalidad (minorista/mayorista), estado inicial `pending`
+- [ ] `POST /orders` crea un pedido asociado al usuario autenticado (y su `Customer` asociado)
+- [ ] El pedido registra: `customer_id`, variantes seleccionadas (no el producto directamente), cantidades, modalidad (minorista/mayorista), estado inicial `pending`
+- [ ] Cada ítem del pedido (`order_items`) registra `variant_id`, `quantity` y `unit_price` (precio histórico al momento de la compra — copia de `retail_price` en ese instante)
 - [ ] El sistema valida stock antes de confirmar el pedido
 - [ ] Retorna 201 con el pedido creado
 - [ ] Retorna 422 si no hay stock suficiente
@@ -289,13 +315,15 @@ Cliente Mayorista autenticado
 
 ### RF-09 — Modalidades de Venta (Minorista / Mayorista)
 
-**Descripción:** El sistema diferencia las reglas de compra según la modalidad del cliente.
+**Descripción:** El sistema diferencia la visualización de precios y las reglas de compra según la modalidad activa.
 
 **Criterios de aceptación:**
+- [ ] El **modo de visualización** (minorista/mayorista) lo determina el contexto de la tienda, no el rol del usuario
+- [ ] Cualquier visitante puede ver precios en ambos modos sin registrarse
+- [ ] La **modalidad de compra** (quién puede comprar en modo mayorista) sí la determina el rol del usuario autenticado
 - [ ] La modalidad minorista permite comprar cualquier cantidad de cualquier producto
 - [ ] La modalidad mayorista aplica reglas específicas (ver RF-10.x)
-- [ ] La modalidad se determina por el rol del usuario autenticado
-- [ ] Las reglas de validación (precio, mínimos, stock) difieren según modalidad
+- [ ] Las reglas de validación (precio, mínimos, stock) difieren según modalidad de compra
 
 **Prioridad:** Alta — MVP
 
@@ -332,13 +360,15 @@ Cliente Mayorista autenticado
 
 ### RF-10.2 — Compra Mayorista por Cantidad
 
-**Descripción:** Permite al mayorista comprar una cantidad total de unidades de un producto, sin distribución forzada por talle.
+**Descripción:** Permite al mayorista comprar una cantidad total de unidades de un producto, sin distribución forzada por variante. El sistema valida el stock sumando todas las variantes del producto y descuenta proporcionalmente.
 
 **Criterios de aceptación:**
-- [ ] El pedido se genera con `tipo = "cantidad"` y `quantity = N`
-- [ ] El sistema valida: `stock_total_producto >= N`
-- [ ] La distribución de talles puede ser libre o definida por el usuario (a determinar en implementación)
-- [ ] Retorna 422 si no hay stock total suficiente
+- [ ] El pedido se genera con `tipo = "cantidad"`, `productId` y `quantity = N`
+- [ ] El sistema valida: `SUM(stock.quantity de todas las variantes del producto) >= N`
+- [ ] La distribución entre variantes la realiza el sistema automáticamente (de mayor a menor stock disponible)
+- [ ] El `unit_price` registrado en `order_items` es el promedio ponderado de `retail_price` de las variantes disponibles (copia histórica)
+- [ ] Retorna 422 si el stock total del producto es insuficiente, con desglose por variante
+- [ ] Retorna 404 si el `productId` no existe
 
 **Prioridad:** Alta — MVP
 
@@ -479,21 +509,105 @@ Cliente Mayorista autenticado
 
 ## 7. Alcance del Producto
 
-### 7.1 Dentro del Alcance — Fase 1
+> **Criterio de priorización:** El valor central del producto es la **gestión del catálogo con variantes** y la **compra mayorista en ambas modalidades**. El resto de funcionalidades se construye alrededor de ese núcleo.
 
-- API REST completa con autenticación JWT
-- Gestión de usuarios y roles (RBAC)
-- Gestión de productos con variantes
-- Sistema de pedidos con modalidades minorista y mayorista
-- Compra mayorista por curva y por cantidad
-- Validación de stock (por talle y total)
-- Integración completa con Mercado Pago (checkout + webhook)
-- Infraestructura preparada para tiempo real (desacoplada)
-- PostgreSQL como base de datos
+### 7.1 Fases de Entrega
 
-### 7.2 Fuera del Alcance — Fase 1
+Las épicas y stories deben generarse **en este orden de prioridad**:
 
-- Frontend / interfaz de usuario
+---
+
+#### Fase A — Fundaciones Técnicas _(prerequisito, sin valor de negocio propio)_
+
+| Incluye | RFs |
+|---|---|
+| Setup de base de datos, migraciones SQL iniciales (users, roles, products, variants, stock, orders, order_items, customers) | — |
+| Pool `pg`, estructura de módulos, Docker Compose (BFF + PostgreSQL) | — |
+| Middleware de error RFC 7807, logger pino, Swagger base | — |
+
+**Objetivo:** Infraestructura lista para empezar a entregar valor.
+
+---
+
+#### Fase B — Catálogo de Productos con Variantes _(valor más alto — núcleo del negocio)_
+
+| Incluye | RFs |
+|---|---|
+| CRUD de productos (admin) | RF-06 |
+| Gestión de variantes: talle + color + `retail_price` | RF-06 |
+| Gestión de stock por variante | RF-11 (parcial) |
+| Visualización pública del catálogo con variantes y precio | RF-07 |
+| Auth de admin mínima (JWT) para proteger el CRUD | RF-01, RF-02, RF-03, RF-04, RF-05 |
+
+**Objetivo:** Admin puede cargar productos con variantes; el catálogo es consultable.
+
+---
+
+#### Fase C — Compra Mayorista _(valor más alto — diferenciador del negocio)_
+
+| Incluye | RFs |
+|---|---|
+| Registro de compradores mayoristas (Customer) | RF-01, RF-04 |
+| Creación de pedidos mayoristas | RF-08, RF-09 |
+| Compra por curva (1 unidad de cada variante) | RF-10, RF-10.1, RF-10.3 |
+| Compra por cantidad (total libre, sin distribución forzada) | RF-10.2, RF-10.3 |
+| Validación de stock atómica por variante | RF-11 |
+| Descuento de stock en transacción | RF-11 |
+
+**Objetivo:** Un mayorista puede generar pedidos en cualquiera de las dos modalidades.
+
+---
+
+#### Fase D — Pago con Mercado Pago
+
+| Incluye | RFs |
+|---|---|
+| Generación de checkout en Mercado Pago para pedidos mayoristas | RF-12 |
+| Webhook: actualización de estado de pedido | RF-12 |
+| Registro del pago (monto, estado, ID externo) | RF-12 |
+
+**Objetivo:** El flujo de compra mayorista es end-to-end (pedido → pago → confirmación).
+
+---
+
+#### Fase E — Compra Minorista
+
+| Incluye | RFs |
+|---|---|
+| Registro de clientes minoristas | RF-01, RF-04 |
+| Pedidos minoristas (cualquier variante, cualquier cantidad) | RF-08, RF-09 |
+| Pago minorista con Mercado Pago | RF-12 |
+
+**Objetivo:** El flujo minorista completo queda operativo.
+
+---
+
+#### Fase F — Operación y Escalabilidad _(diferida)_
+
+| Incluye | Notas |
+|---|---|
+| Rate limiting | `express-rate-limit` |
+| Caché Redis para catálogo | Activar cliente `ioredis` |
+| Refresh tokens | Si la sesión de 24h resulta insuficiente |
+| Infraestructura para tiempo real | Bus de eventos interno (WebSocket / SSE) |
+
+---
+
+### 7.3 Desarrollo Paralelo: Backend y Frontend
+
+El frontend (`jedami-web` — Vue 3 y `jedami-mobile` — Flutter) **se desarrolla en paralelo al backend a medida que cada épica del BFF queda lista**. El criterio de sincronía es:
+
+| Épica Backend | Frontend puede arrancar |
+|---|---|
+| Épica 1 completa (catálogo + auth) | jedami-web: vistas de catálogo, login, registro; jedami-mobile: ídem |
+| Épica 2 completa (compra mayorista) | jedami-web y mobile: flujo de pedido mayorista (curva + cantidad) |
+| Épica 3 completa (pagos MP) | jedami-web y mobile: checkout y confirmación de pago |
+| Épica 4 completa (compra minorista) | jedami-web y mobile: flujo de compra minorista completo |
+
+**Requisito:** Las épicas de frontend deben tener su propio documento UX antes de comenzar. El usuario creará el UX Design (`/bmad-bmm-create-ux-design`) que servirá de base para las épicas de jedami-web y jedami-mobile.
+
+### 7.4 Fuera del Alcance Permanente (Fase 1–E)
+
 - Gestión de envíos y logística
 - Facturación electrónica
 - Notificaciones push / email
@@ -517,7 +631,10 @@ Cliente Mayorista autenticado
 
 | Suposición | Impacto si es incorrecta |
 |---|---|
-| Un producto puede tener variantes (talles) desde el inicio | Cambio en el modelo de datos de productos |
+| Un producto puede tener variantes (talle + color) desde el inicio | Cambio en el modelo de datos de productos |
+| El precio vive a nivel de variante (`retail_price`), no de producto | Cambio en las queries de catálogo y pedidos |
+| `customers` es una entidad separada de `users` (perfil comercial vs cuenta auth) | Requiere diseño de relación users ↔ customers |
+| `order_items.unit_price` almacena el precio histórico al momento de la compra | Cambio en lógica de creación de pedidos |
 | Mercado Pago soporta los flujos mayoristas definidos | Posible ajuste en la implementación del checkout |
 | El frontend es responsabilidad de un equipo/proyecto separado | Sin impacto en este PRD |
 

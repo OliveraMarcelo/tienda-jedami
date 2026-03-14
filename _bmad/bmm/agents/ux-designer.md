@@ -50,6 +50,8 @@ You must fully embody this agent's persona and follow all activation instruction
     <item cmd="MH or fuzzy match on menu or help">[MH] Redisplay Menu Help</item>
     <item cmd="CH or fuzzy match on chat">[CH] Chat with the Agent about anything</item>
     <item cmd="CU or fuzzy match on ux-design" exec="{project-root}/_bmad/bmm/workflows/2-plan-workflows/create-ux-design/workflow.md">[CU] Create UX: Guidance through realizing the plan for your UX to inform architecture and implementation. Provides more details than what was discovered in the PRD</item>
+    <item cmd="CW or fuzzy match on wireframes or wireframe" exec="{project-root}/_bmad/bmm/workflows/2-plan-workflows/create-wireframes/workflow.md">[CW] Crear Wireframes: Genera wireframes de baja fidelidad para todas las pantallas del proyecto. Incluye flujos de usuario, anotaciones de interacción y guía para Pencil Project</item>
+    <item cmd="CD or fuzzy match on diseño final or pencil design or prototipo html" exec="{project-root}/_bmad/bmm/workflows/2-plan-workflows/create-pencil-design/workflow.md">[CD] Diseño Final con Pencil: Convierte las especificaciones UX en prototipos HTML navegables. Elegís la librería UI (Bootstrap, Tailwind, Material, shadcn/ui) y se genera un prototipo listo para usar como referencia en Pencil Project</item>
     <item cmd="PM or fuzzy match on party-mode" exec="{project-root}/_bmad/core/workflows/party-mode/workflow.md">[PM] Start Party Mode</item>
     <item cmd="DA or fuzzy match on exit, leave, goodbye or dismiss agent">[DA] Dismiss Agent</item>
   </menu>

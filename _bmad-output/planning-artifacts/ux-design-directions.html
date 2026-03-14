@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JEDAMI — Design Directions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Nunito', sans-serif; background: #0f0f0f; color: #fff; }
+
+  /* NAV */
+  .nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: #0f0f0f; border-bottom: 1px solid #222; display: flex; gap: 8px; padding: 12px 24px; overflow-x: auto; }
+  .nav-btn { padding: 6px 16px; border-radius: 20px; border: 1px solid #444; background: transparent; color: #aaa; cursor: pointer; font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 600; white-space: nowrap; transition: all .2s; }
+  .nav-btn.active, .nav-btn:hover { background: #E91E8C; border-color: #E91E8C; color: #fff; }
+  .title-bar { padding: 72px 24px 16px; text-align: center; }
+  .title-bar h1 { font-size: 28px; font-weight: 800; }
+  .title-bar p { color: #888; font-size: 14px; margin-top: 4px; }
+
+  /* MOCKUP CONTAINER */
+  .mockup { display: none; padding: 24px; max-width: 1200px; margin: 0 auto; }
+  .mockup.active { display: block; }
+  .label { display: inline-block; background: #222; color: #E91E8C; border: 1px solid #E91E8C33; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; margin-bottom: 16px; }
+  .desc { color: #aaa; font-size: 14px; margin-bottom: 24px; max-width: 700px; line-height: 1.6; }
+
+  /* BROWSER FRAME */
+  .browser { background: #1a1a1a; border-radius: 12px; overflow: hidden; border: 1px solid #333; }
+  .browser-bar { background: #2a2a2a; padding: 10px 16px; display: flex; align-items: center; gap: 8px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot.r { background: #FF5F57; }
+  .dot.y { background: #FEBC2E; }
+  .dot.g { background: #28C840; }
+  .url { background: #1a1a1a; border-radius: 6px; padding: 4px 12px; font-size: 12px; color: #666; flex: 1; }
+  .browser-content { padding: 0; }
+
+  /* === DIRECTION 1: Playful Rainbow === */
+  .d1-header { background: linear-gradient(135deg, #E91E8C, #FF9800); padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; }
+  .d1-logo { font-size: 22px; font-weight: 800; color: white; letter-spacing: 2px; }
+  .d1-mode { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+  .d1-nav-tabs { background: #FFF5FB; display: flex; gap: 0; border-bottom: 2px solid #E91E8C22; }
+  .d1-tab { padding: 10px 20px; font-size: 13px; font-weight: 600; color: #999; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+  .d1-tab.act { color: #E91E8C; border-bottom-color: #E91E8C; }
+  .d1-body { background: #FFF5FB; padding: 20px; }
+  .d1-filters { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+  .d1-pill { padding: 6px 14px; border-radius: 20px; border: 1.5px solid #E91E8C; background: white; color: #E91E8C; font-size: 12px; font-weight: 700; cursor: pointer; }
+  .d1-pill.act { background: #E91E8C; color: white; }
+  .d1-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .d1-card { background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 2px 8px #E91E8C11; }
+  .d1-img { aspect-ratio: 3/4; background: linear-gradient(135deg, #FFE0F0, #E0F7FA); display: flex; align-items: center; justify-content: center; font-size: 32px; position: relative; }
+  .d1-badge { position: absolute; top: 8px; left: 8px; background: #4CAF50; color: white; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+  .d1-badge.low { background: #FF9800; }
+  .d1-badge.out { background: #F44336; }
+  .d1-card-body { padding: 10px 12px; }
+  .d1-pname { font-size: 13px; font-weight: 700; color: #222; }
+  .d1-price { font-size: 16px; font-weight: 800; color: #E91E8C; margin: 4px 0; }
+  .d1-swatches { display: flex; gap: 4px; flex-wrap: wrap; }
+  .d1-sw { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #ddd; }
+
+  /* === DIRECTION 2: Clean Professional === */
+  .d2-header { background: #fff; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; }
+  .d2-logo { font-size: 20px; font-weight: 800; color: #1565C0; letter-spacing: 3px; }
+  .d2-mode-retail { background: #FFF3E0; border: 1px solid #FF9800; color: #E65100; padding: 4px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; }
+  .d2-mode-wholesale { background: #E3F2FD; border: 1px solid #1565C0; color: #1565C0; padding: 4px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; }
+  .d2-body { background: #F8FAFC; padding: 20px; }
+  .d2-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .d2-count { font-size: 13px; color: #666; }
+  .d2-sort { font-size: 12px; color: #1565C0; font-weight: 600; }
+  .d2-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .d2-card { background: white; border-radius: 8px; overflow: hidden; border: 1px solid #eee; }
+  .d2-img { aspect-ratio: 3/4; background: linear-gradient(160deg, #E3F2FD, #E8F5E9); display: flex; align-items: center; justify-content: center; font-size: 30px; position: relative; }
+  .d2-stock-dot { position: absolute; top: 8px; right: 8px; width: 10px; height: 10px; border-radius: 50%; background: #4CAF50; border: 2px solid white; }
+  .d2-stock-dot.low { background: #FF9800; }
+  .d2-stock-dot.out { background: #F44336; }
+  .d2-card-body { padding: 10px; }
+  .d2-pname { font-size: 12px; font-weight: 600; color: #444; }
+  .d2-price { font-size: 15px; font-weight: 800; color: #1565C0; }
+  .d2-price-label { font-size: 10px; color: #999; }
+
+  /* === DIRECTION 3: Dark Premium === */
+  .d3-header { background: #0D1B2A; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; }
+  .d3-logo { font-size: 20px; font-weight: 800; color: #E91E8C; letter-spacing: 4px; }
+  .d3-mode { background: #E91E8C22; border: 1px solid #E91E8C55; color: #E91E8C; padding: 4px 14px; border-radius: 4px; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+  .d3-body { background: #0D1B2A; padding: 20px; }
+  .d3-heading { font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #666; margin-bottom: 16px; }
+  .d3-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .d3-card { background: #162232; border-radius: 10px; overflow: hidden; border: 1px solid #1e3448; transition: border-color .2s; }
+  .d3-img { aspect-ratio: 3/4; background: linear-gradient(135deg, #1e3448, #0d2235); display: flex; align-items: center; justify-content: center; font-size: 30px; position: relative; }
+  .d3-badge { position: absolute; bottom: 8px; left: 8px; right: 8px; background: #00BCD422; border: 1px solid #00BCD4; color: #00BCD4; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; text-align: center; }
+  .d3-badge.out { background: #F4433622; border-color: #F44336; color: #F44336; }
+  .d3-card-body { padding: 10px 12px; }
+  .d3-pname { font-size: 12px; font-weight: 600; color: #aaa; }
+  .d3-price { font-size: 16px; font-weight: 800; color: #E91E8C; }
+  .d3-swatches { display: flex; gap: 4px; margin-top: 6px; }
+  .d3-sw { width: 14px; height: 14px; border-radius: 50%; }
+
+  /* === DIRECTION 4: Soft Pastel === */
+  .d4-header { background: #FFF8F0; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #FFE0B2; }
+  .d4-logo { font-size: 20px; font-weight: 800; background: linear-gradient(90deg, #E91E8C, #FF9800); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .d4-mode-pill { display: flex; background: #FFE0B2; border-radius: 20px; padding: 3px; gap: 2px; }
+  .d4-mode-opt { padding: 4px 12px; border-radius: 16px; font-size: 11px; font-weight: 700; color: #BF360C; cursor: pointer; }
+  .d4-mode-opt.act { background: white; color: #E91E8C; box-shadow: 0 1px 4px #00000015; }
+  .d4-body { background: #FFF8F0; padding: 20px; }
+  .d4-section { font-size: 18px; font-weight: 800; color: #333; margin-bottom: 16px; }
+  .d4-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .d4-card { background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 16px #FF9800111; }
+  .d4-img { aspect-ratio: 3/4; background: linear-gradient(135deg, #FFF3E0, #FCE4EC); display: flex; align-items: center; justify-content: center; font-size: 32px; position: relative; overflow: hidden; }
+  .d4-ribbon { position: absolute; top: 12px; right: -18px; background: #E91E8C; color: white; font-size: 9px; font-weight: 700; padding: 3px 24px; transform: rotate(45deg); }
+  .d4-card-body { padding: 12px; }
+  .d4-pname { font-size: 13px; font-weight: 700; color: #333; }
+  .d4-price { font-size: 17px; font-weight: 800; color: #E91E8C; }
+  .d4-sizes { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
+  .d4-sz { font-size: 10px; font-weight: 700; border: 1px solid #ddd; border-radius: 4px; padding: 1px 6px; color: #666; }
+  .d4-sz.out { background: #eee; color: #bbb; text-decoration: line-through; }
+
+  /* PRODUCT DETAIL */
+  .detail-split { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 20px; }
+  .detail-gallery { background: linear-gradient(135deg, #FFE0F0, #E0F7FA); border-radius: 12px; aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 80px; }
+  .detail-info { display: flex; flex-direction: column; gap: 12px; }
+  .detail-title { font-size: 20px; font-weight: 800; color: #222; }
+  .detail-price { font-size: 28px; font-weight: 800; color: #E91E8C; }
+  .detail-price-label { font-size: 12px; color: #999; }
+  .detail-section-title { font-size: 12px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+  .color-selector { display: flex; gap: 8px; flex-wrap: wrap; }
+  .color-opt { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; transition: transform .2s; border: 3px solid transparent; }
+  .color-opt.sel { border-color: #333; transform: scale(1.15); }
+  .size-selector { display: flex; gap: 8px; flex-wrap: wrap; }
+  .size-opt { padding: 6px 14px; border-radius: 8px; border: 2px solid #ddd; font-size: 13px; font-weight: 700; cursor: pointer; color: #666; }
+  .size-opt.sel { border-color: #E91E8C; color: #E91E8C; }
+  .size-opt.out { background: #f5f5f5; color: #bbb; text-decoration: line-through; cursor: not-allowed; }
+  .stock-matrix { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .stock-matrix th { background: #f5f5f5; padding: 6px 8px; font-weight: 700; color: #666; text-align: center; border: 1px solid #eee; }
+  .stock-matrix td { padding: 6px 8px; text-align: center; border: 1px solid #eee; color: #333; }
+  .stock-matrix td.ok { color: #4CAF50; font-weight: 700; }
+  .stock-matrix td.low { color: #FF9800; font-weight: 700; }
+  .stock-matrix td.no { color: #F44336; }
+  .btn-primary { background: #E91E8C; color: white; border: none; border-radius: 12px; padding: 14px; font-family: 'Nunito',sans-serif; font-size: 15px; font-weight: 800; cursor: pointer; width: 100%; }
+  .btn-secondary { background: white; color: #E91E8C; border: 2px solid #E91E8C; border-radius: 12px; padding: 12px; font-family: 'Nunito',sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; width: 100%; }
+
+  /* CURVA CALCULATOR */
+  .curva-box { background: #FFF5FB; border: 2px solid #E91E8C22; border-radius: 12px; padding: 16px; }
+  .curva-title { font-size: 14px; font-weight: 800; color: #E91E8C; margin-bottom: 12px; }
+  .curva-input-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .curva-label { font-size: 13px; font-weight: 600; color: #555; }
+  .curva-input { width: 60px; border: 2px solid #E91E8C; border-radius: 8px; padding: 6px 10px; font-family: 'Nunito',sans-serif; font-size: 16px; font-weight: 800; color: #E91E8C; text-align: center; }
+  .curva-result { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; margin-bottom: 12px; }
+  .curva-item { background: white; border-radius: 8px; padding: 8px; text-align: center; border: 1px solid #eee; }
+  .curva-sz { font-size: 11px; color: #888; font-weight: 600; }
+  .curva-qty { font-size: 18px; font-weight: 800; color: #333; }
+  .curva-total-row { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #eee; padding-top: 10px; }
+  .curva-total-label { font-size: 13px; color: #666; font-weight: 600; }
+  .curva-total-price { font-size: 20px; font-weight: 800; color: #E91E8C; }
+
+  /* MODE SWITCH DEMO */
+  .mode-demo { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 20px; }
+  .mode-panel { border-radius: 12px; overflow: hidden; border: 2px solid transparent; }
+  .mode-panel.retail { border-color: #E91E8C44; }
+  .mode-panel.wholesale { border-color: #1565C044; }
+  .mode-header-r { background: linear-gradient(135deg, #E91E8C, #FF4081); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; }
+  .mode-header-w { background: linear-gradient(135deg, #1565C0, #0D47A1); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; }
+  .mode-logo { font-size: 16px; font-weight: 800; color: white; letter-spacing: 3px; }
+  .mode-badge-r { background: rgba(255,255,255,0.2); color: white; padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: 700; border: 1px solid rgba(255,255,255,0.4); }
+  .mode-badge-w { background: rgba(255,255,255,0.15); color: white; padding: 3px 10px; border-radius: 12px; font-size: 10px; font-weight: 700; border: 1px solid rgba(255,255,255,0.3); letter-spacing: 1px; }
+  .mode-card-r { background: #FFF5FB; padding: 12px; }
+  .mode-card-w { background: #E3F2FD; padding: 12px; }
+  .mode-item-img { aspect-ratio: 3/4; border-radius: 10px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; font-size: 36px; }
+  .mode-item-img.r { background: linear-gradient(135deg, #FCE4EC, #F8BBD9); }
+  .mode-item-img.w { background: linear-gradient(135deg, #BBDEFB, #E3F2FD); }
+  .mode-pname { font-size: 12px; font-weight: 700; color: #333; }
+  .mode-price-r { font-size: 16px; font-weight: 800; color: #E91E8C; }
+  .mode-price-w { font-size: 16px; font-weight: 800; color: #1565C0; }
+  .mode-cta-r { background: #E91E8C; color: white; border: none; border-radius: 8px; padding: 8px; font-family: 'Nunito',sans-serif; font-size: 12px; font-weight: 700; cursor: pointer; width: 100%; margin-top: 8px; }
+  .mode-cta-w { background: #1565C0; color: white; border: none; border-radius: 8px; padding: 8px; font-family: 'Nunito',sans-serif; font-size: 12px; font-weight: 700; cursor: pointer; width: 100%; margin-top: 8px; }
+  .mode-label { font-size: 11px; color: #888; font-weight: 600; margin-top: 4px; }
+  .mode-label.w { color: #1565C0; font-weight: 700; }
+
+  /* REGISTER GATE */
+  .gate-demo { position: relative; }
+  .gate-overlay { background: rgba(0,0,0,0.5); padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-height: 300px; }
+  .gate-bg { background: #FFF5FB; padding: 20px; display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; filter: blur(2px); }
+  .gate-bg-card { background: white; border-radius: 12px; aspect-ratio: 3/4; display: flex; align-items: center; justify-content: center; font-size: 28px; }
+  .gate-sheet { background: white; border-radius: 20px 20px 0 0; padding: 24px; width: 100%; max-width: 400px; }
+  .gate-handle { width: 40px; height: 4px; background: #eee; border-radius: 2px; margin: 0 auto 16px; }
+  .gate-sheet-title { font-size: 18px; font-weight: 800; color: #222; text-align: center; margin-bottom: 6px; }
+  .gate-sheet-sub { font-size: 13px; color: #888; text-align: center; margin-bottom: 20px; }
+  .gate-btn-primary { background: #E91E8C; color: white; border: none; border-radius: 12px; padding: 14px; font-family: 'Nunito',sans-serif; font-size: 15px; font-weight: 800; cursor: pointer; width: 100%; margin-bottom: 10px; }
+  .gate-btn-secondary { background: white; color: #E91E8C; border: 2px solid #E91E8C; border-radius: 12px; padding: 12px; font-family: 'Nunito',sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; width: 100%; }
+  .gate-or { text-align: center; font-size: 12px; color: #bbb; margin: 8px 0; }
+
+  /* SECTION TITLES */
+  .section-title { font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #555; margin: 24px 0 12px; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <button class="nav-btn active" onclick="show('d1')">1 · Playful Rainbow</button>
+  <button class="nav-btn" onclick="show('d2')">2 · Clean Professional</button>
+  <button class="nav-btn" onclick="show('d3')">3 · Dark Premium</button>
+  <button class="nav-btn" onclick="show('d4')">4 · Soft Pastel</button>
+  <button class="nav-btn" onclick="show('mode')">5 · Mode Switch Demo</button>
+  <button class="nav-btn" onclick="show('detail')">6 · Product Detail</button>
+  <button class="nav-btn" onclick="show('curva')">7 · Curva Calculator</button>
+  <button class="nav-btn" onclick="show('gate')">8 · Registration Gate</button>
+</nav>
+
+<div class="title-bar">
+  <h1>JEDAMI — Design Directions</h1>
+  <p>Explorá las 8 variantes visuales. Elegí una base o combiná elementos.</p>
+</div>
+
+<!-- D1: PLAYFUL RAINBOW -->
+<div class="mockup active" id="d1">
+  <span class="label">Dirección 1</span>
+  <h2 style="font-size:22px;font-weight:800;margin-bottom:8px;">Playful Rainbow</h2>
+  <p class="desc">Paleta cálida basada en el logo. Fondo rosado claro, acentos magenta. Energético, familiar, ideal para retail. Pills de filtro y badges de stock visibles.</p>
+  <div class="browser">
+    <div class="browser-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><div class="url">jedami.com.ar</div></div>
+    <div class="browser-content">
+      <div class="d1-header">
+        <div class="d1-logo">JEDAMI</div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <div class="d1-mode">🛍️ Modo Minorista</div>
+          <div style="font-size:20px;cursor:pointer;">🛒</div>
+        </div>
+      </div>
+      <div class="d1-nav-tabs">
+        <div class="d1-tab act">Novedades</div>
+        <div class="d1-tab">Bebés</div>
+        <div class="d1-tab">Niñas</div>
+        <div class="d1-tab">Niños</div>
+        <div class="d1-tab">Ofertas</div>
+      </div>
+      <div class="d1-body">
+        <div class="d1-filters">
+          <div class="d1-pill act">Todo</div>
+          <div class="d1-pill">Talle 2</div>
+          <div class="d1-pill">Talle 3</div>
+          <div class="d1-pill">Talle 4</div>
+          <div class="d1-pill">Rosa</div>
+          <div class="d1-pill">Azul</div>
+        </div>
+        <div class="d1-grid">
+          <div class="d1-card">
+            <div class="d1-img">👗<div class="d1-badge">Disponible</div></div>
+            <div class="d1-card-body">
+              <div class="d1-pname">Vestido Floral Primavera</div>
+              <div class="d1-price">$4.200</div>
+              <div class="d1-swatches">
+                <div class="d1-sw" style="background:#E91E8C;"></div>
+                <div class="d1-sw" style="background:#00BCD4;"></div>
+                <div class="d1-sw" style="background:#FFEB3B;"></div>
+              </div>
+            </div>
+          </div>
+          <div class="d1-card">
+            <div class="d1-img">👕<div class="d1-badge low">Últimas uds</div></div>
+            <div class="d1-card-body">
+              <div class="d1-pname">Remera Arcoiris</div>
+              <div class="d1-price">$2.800</div>
+              <div class="d1-swatches">
+                <div class="d1-sw" style="background:#E91E8C;"></div>
+                <div class="d1-sw" style="background:#4CAF50;"></div>
+              </div>
+            </div>
+          </div>
+          <div class="d1-card">
+            <div class="d1-img">🧥<div class="d1-badge">Disponible</div></div>
+            <div class="d1-card-body">
+              <div class="d1-pname">Campera Suave</div>
+              <div class="d1-price">$7.500</div>
+              <div class="d1-swatches">
+                <div class="d1-sw" style="background:#1565C0;"></div>
+                <div class="d1-sw" style="background:#FF9800;"></div>
+                <div class="d1-sw" style="background:#E91E8C;"></div>
+              </div>
+            </div>
+          </div>
+          <div class="d1-card">
+            <div class="d1-img">👶<div class="d1-badge out">Sin stock</div></div>
+            <div class="d1-card-body">
+              <div class="d1-pname">Body Estampado</div>
+              <div class="d1-price" style="color:#bbb;">$3.100</div>
+              <div class="d1-swatches">
+                <div class="d1-sw" style="background:#ddd;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- D2: CLEAN PROFESSIONAL -->
+<div class="mockup" id="d2">
+  <span class="label">Dirección 2</span>
+  <h2 style="font-size:22px;font-weight:800;margin-bottom:8px;">Clean Professional</h2>
+  <p class="desc">Fondo blanco roto, acento azul corporativo. Modo mayorista como contexto primario. Muy legible, fácil de escanear en compras en volumen. Indicadores de stock discretos.</p>
+  <div class="browser">
+    <div class="browser-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><div class="url">jedami.com.ar/mayorista</div></div>
+    <div class="browser-content">
+      <div class="d2-header">
+        <div class="d2-logo">JEDAMI</div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <div class="d2-mode-wholesale">🏭 Modo Mayorista</div>
+          <div style="font-size:18px;color:#666;cursor:pointer;">📋</div>
+        </div>
+      </div>
+      <div class="d2-body">
+        <div class="d2-toolbar">
+          <span class="d2-count">48 productos</span>
+          <span class="d2-sort">Ordenar: Más nuevo ▼</span>
+        </div>
+        <div class="d2-grid">
+          <div class="d2-card">
+            <div class="d2-img">👗<div class="d2-stock-dot"></div></div>
+            <div class="d2-card-body">
+              <div class="d2-pname">Vestido Floral Primavera</div>
+              <div class="d2-price-label">Precio mayorista</div>
+              <div class="d2-price">$2.940</div>
+            </div>
+          </div>
+          <div class="d2-card">
+            <div class="d2-img">👕<div class="d2-stock-dot low"></div></div>
+            <div class="d2-card-body">
+              <div class="d2-pname">Remera Arcoiris</div>
+              <div class="d2-price-label">Precio mayorista</div>
+              <div class="d2-price">$1.960</div>
+            </div>
+          </div>
+          <div class="d2-card">
+            <div class="d2-img">🧥<div class="d2-stock-dot"></div></div>
+            <div class="d2-card-body">
+              <div class="d2-pname">Campera Suave</div>
+              <div class="d2-price-label">Precio mayorista</div>
+              <div class="d2-price">$5.250</div>
+            </div>
+          </div>
+          <div class="d2-card">
+            <div class="d2-img">👶<div class="d2-stock-dot out"></div></div>
+            <div class="d2-card-body">
+              <div class="d2-pname">Body Estampado</div>
+              <div class="d2-price-label" style="color:#F44336;">Sin stock</div>
+              <div class="d2-price" style="color:#bbb;">$2.170</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- D3: DARK PREMIUM -->
+<div class="mockup" id="d3">
+  <span class="label">Dirección 3</span>
+  <h2 style="font-size:22px;font-weight:800;margin-bottom:8px;">Dark Premium</h2>
+  <p class="desc">Fondo oscuro navy con acento magenta. Transmite exclusividad y modernidad. Interesante para modo mayorista. Contraste alto, imágenes de producto destacan.</p>
+  <div class="browser">
+    <div class="browser-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><div class="url">jedami.com.ar</div></div>
+    <div class="browser-content">
+      <div class="d3-header">
+        <div class="d3-logo">JEDAMI</div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <div class="d3-mode">MAYORISTA</div>
+          <div style="font-size:18px;cursor:pointer;">📋</div>
+        </div>
+      </div>
+      <div class="d3-body">
+        <div class="d3-heading">Nuevos ingresos</div>
+        <div class="d3-grid">
+          <div class="d3-card">
+            <div class="d3-img">👗<div class="d3-badge">Stock disponible</div></div>
+            <div class="d3-card-body">
+              <div class="d3-pname">Vestido Floral</div>
+              <div class="d3-price">$2.940</div>
+              <div class="d3-swatches">
+                <div class="d3-sw" style="background:#E91E8C;"></div>
+                <div class="d3-sw" style="background:#00BCD4;"></div>
+                <div class="d3-sw" style="background:#FFEB3B;"></div>
+              </div>
+            </div>
+          </div>
+          <div class="d3-card">
+            <div class="d3-img">👕<div class="d3-badge" style="background:#FF980022;border-color:#FF9800;color:#FF9800;">Stock bajo</div></div>
+            <div class="d3-card-body">
+              <div class="d3-pname">Remera Arcoiris</div>
+              <div class="d3-price">$1.960</div>
+              <div class="d3-swatches">
+                <div class="d3-sw" style="background:#E91E8C;"></div>
+                <div class="d3-sw" style="background:#4CAF50;"></div>
+              </div>
+            </div>
+          </div>
+          <div class="d3-card">
+            <div class="d3-img">🧥<div class="d3-badge">Stock disponible</div></div>
+            <div class="d3-card-body">
+              <div class="d3-pname">Campera Suave</div>
+              <div class="d3-price">$5.250</div>
+              <div class="d3-swatches">
+                <div class="d3-sw" style="background:#1565C0;"></div>
+                <div class="d3-sw" style="background:#E91E8C;"></div>
+              </div>
+            </div>
+          </div>
+          <div class="d3-card">
+            <div class="d3-img">👶<div class="d3-badge out">Sin stock</div></div>
+            <div class="d3-card-body">
+              <div class="d3-pname">Body Estampado</div>
+              <div class="d3-price" style="color:#555;">$2.170</div>
+              <div class="d3-swatches">
+                <div class="d3-sw" style="background:#444;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- D4: SOFT PASTEL -->
+<div class="mockup" id="d4">
+  <span class="label">Dirección 4</span>
+  <h2 style="font-size:22px;font-weight:800;margin-bottom:8px;">Soft Pastel</h2>
+  <p class="desc">Fondo crema cálido, degradado magenta-naranja en el logo. Ribbons de novedad. El más cercano al estilo de Colección Abril. Cálido, aspiracional, premium suave.</p>
+  <div class="browser">
+    <div class="browser-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><div class="url">jedami.com.ar/lo-nuevo</div></div>
+    <div class="browser-content">
+      <div class="d4-header">
+        <div class="d4-logo">JEDAMI</div>
+        <div class="d4-mode-pill">
+          <div class="d4-mode-opt act">Minorista</div>
+          <div class="d4-mode-opt">Mayorista</div>
+        </div>
+      </div>
+      <div class="d4-body">
+        <div class="d4-section">✨ Lo nuevo</div>
+        <div class="d4-grid">
+          <div class="d4-card">
+            <div class="d4-img">👗<div class="d4-ribbon">NUEVO</div></div>
+            <div class="d4-card-body">
+              <div class="d4-pname">Vestido Floral Primavera</div>
+              <div class="d4-price">$4.200</div>
+              <div class="d4-sizes">
+                <div class="d4-sz">T2</div><div class="d4-sz">T3</div><div class="d4-sz">T4</div><div class="d4-sz out">T5</div>
+              </div>
+            </div>
+          </div>
+          <div class="d4-card">
+            <div class="d4-img">👕<div class="d4-ribbon">NUEVO</div></div>
+            <div class="d4-card-body">
+              <div class="d4-pname">Remera Arcoiris</div>
+              <div class="d4-price">$2.800</div>
+              <div class="d4-sizes">
+                <div class="d4-sz">T2</div><div class="d4-sz out">T3</div><div class="d4-sz">T4</div>
+              </div>
+            </div>
+          </div>
+          <div class="d4-card">
+            <div class="d4-img">🧥</div>
+            <div class="d4-card-body">
+              <div class="d4-pname">Campera Suave</div>
+              <div class="d4-price">$7.500</div>
+              <div class="d4-sizes">
+                <div class="d4-sz">T2</div><div class="d4-sz">T3</div><div class="d4-sz">T4</div><div class="d4-sz">T5</div>
+              </div>
+            </div>
+          </div>
+          <div class="d4-card">
+            <div class="d4-img">👶</div>
+            <div class="d4-card-body">
+              <div class="d4-pname">Body Estampado</div>
+              <div class="d4-price" style="color:#bbb;">Sin stock</div>
+              <div class="d4-sizes">
+                <div class="d4-sz out">T2</div><div class="d4-sz out">T3</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODE SWITCH DEMO -->
+<div class="mockup" id="mode">
+  <span class="label">Dirección 5</span>
+  <h2 style="font-size:22px;font-weight:800;margin-bottom:8px;">Mode Switch — Retail vs Wholesale</h2>
+  <p class="desc">Comparación lado a lado del mismo producto en ambos modos. El header cambia de color, el precio cambia de label, el CTA cambia de texto. El usuario nunca tiene dudas de en qué contexto está.</p>
+  <div class="browser">
+    <div class="browser-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><div class="url">jedami.com.ar — modo comparativo</div></div>
+    <div class="mode-demo">
+      <div class="mode-panel retail">
+        <div class="mode-header-r">
+          <div class="mode-logo">JEDAMI</div>
+          <div class="mode-badge-r">🛍️ MINORISTA</div>
+        </div>
+        <div class="mode-card-r">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div>
+              <div class="mode-item-img r">👗</div>
+              <div class="mode-pname">Vestido Floral</div>
+              <div class="mode-label">Precio</div>
+              <div class="mode-price-r">$4.200</div>
+              <button class="mode-cta-r">Comprar</button>
+            </div>
+            <div>
+              <div class="mode-item-img r">👕</div>
+              <div class="mode-pname">Remera Arcoiris</div>
+              <div class="mode-label">Precio</div>
+              <div class="mode-price-r">$2.800</div>
+              <button class="mode-cta-r">Comprar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="mode-panel wholesale">
+        <div class="mode-header-w">
+          <div class="mode-logo">JEDAMI</div>
+          <div class="mode-badge-w">🏭 MAYORISTA</div>
+        </div>
+        <div class="mode-card-w">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div>
+              <div class="mode-item-img w">👗</div>
+              <div class="mode-pname">Vestido Floral</div>
+              <div class="mode-label w">Precio mayorista</div>
+              <div class="mode-price-w">$2.940</div>
+              <button class="mode-cta-w">Agregar al pedido</button>
+            </div>
+            <div>
+              <div class="mode-item-img w">👕</div>
+              <div class="mode-pname">Remera Arcoiris</div>
+              <div class="mode-label w">Precio mayorista</div>
+              <div class="mode-price-w">$1.960</div>
+              <button class="mode-cta-w">Agregar al pedido</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PRODUCT DETAIL -->
+<div class="mockup" id="detail">
+  <span class="label">Dirección 6</span>
+  <h2 style="font-size:22px;font-weight:800;margin-bottom:8px;">Product Detail — Selector de Variantes</h2>
+  <p class="desc">Galería + selector de color + selector de talle + matriz de stock. El stock es verdad visible: la tabla muestra disponibilidad por combinación antes de agregar al carrito.</p>
+  <div class="browser">
+    <div class="browser-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><div class="url">jedami.com.ar/producto/vestido-floral-primavera</div></div>
+    <div class="detail-split">
+      <div class="detail-gallery">👗</div>
+      <div class="detail-info">
+        <div>
+          <div class="detail-title">Vestido Floral Primavera</div>
+          <div class="detail-price-label">Precio minorista</div>
+          <div class="detail-price">$4.200</div>
+        </div>
+        <div>
+          <div class="detail-section-title" style="margin-bottom:8px;">Color</div>
+          <div class="color-selector">
+            <div class="color-opt sel" style="background:#E91E8C;" title="Rosa"></div>
+            <div class="color-opt" style="background:#00BCD4;" title="Turquesa"></div>
+            <div class="color-opt" style="background:#FFEB3B;" title="Amarillo"></div>
+            <div class="color-opt" style="background:#1565C0;" title="Azul marino"></div>
+          </div>
+        </div>
+        <div>
+          <div class="detail-section-title" style="margin-bottom:8px;">Talle</div>
+          <div class="size-selector">
+            <div class="size-opt">T2</div>
+            <div class="size-opt sel">T3</div>
+            <div class="size-opt">T4</div>
+            <div class="size-opt out">T5</div>
+            <div class="size-opt">T6</div>
+          </div>
+        </div>
+        <div>
+          <div class="detail-section-title" style="margin-bottom:8px;">Stock por combinación</div>
+          <table class="stock-matrix">
+            <tr><th></th><th>Rosa</th><th>Turquesa</th><th>Amarillo</th><th>Azul</th></tr>
+            <tr><td><b>T2</b></td><td class="ok">12</td><td class="ok">8</td><td class="low">3</td><td class="ok">15</td></tr>
+            <tr><td><b>T3</b></td><td class="ok">9</td><td class="ok">11</td><td class="ok">7</td><td class="low">2</td></tr>
+            <tr><td><b>T4</b></td><td class="low">2</td><td class="no">0</td><td class="ok">6</td><td class="ok">10</td></tr>
+            <tr><td><b>T5</b></td><td class="no">0</td><td class="no">0</td><td class="no">0</td><td class="no">0</td></tr>
+          </table>
+        </div>
+        <button class="btn-primary">Comprar — T3 Rosa</button>
+        <button class="btn-secondary">Ver más fotos</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CURVA CALCULATOR -->
+<div class="mockup" id="curva">
+  <span class="label">Dirección 7</span>
+  <h2 style="font-size:22px;font-weight:800;margin-bottom:8px;">Curva Calculator — Momento de deleite mayorista</h2>
+  <p class="desc">El mayorista ingresa cuántas curvas quiere. El sistema calcula en tiempo real: 1 unidad por variante por curva. El resumen visual aparece antes de confirmar.</p>
+  <div class="browser">
+    <div class="browser-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><div class="url">jedami.com.ar/producto/vestido-floral — modo mayorista</div></div>
+    <div style="padding:20px;background:#FFF5FB;display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+      <div>
+        <div class="detail-gallery">👗</div>
+        <div style="margin-top:12px;">
+          <div class="detail-title" style="font-size:16px;">Vestido Floral Primavera</div>
+          <div class="detail-price-label">Precio mayorista por unidad</div>
+          <div class="detail-price" style="color:#1565C0;">$2.940</div>
+        </div>
+      </div>
+      <div>
+        <div class="curva-box">
+          <div class="curva-title">🌈 Comprar por curva</div>
+          <div class="curva-input-row">
+            <div class="curva-label">Cantidad de curvas:</div>
+            <input class="curva-input" type="number" value="3" min="1" id="curvas-n" oninput="updateCurva(this.value)">
+          </div>
+          <div class="detail-section-title" style="margin-bottom:8px;">Unidades por talle (1 × curva)</div>
+          <div class="curva-result" id="curva-result">
+            <div class="curva-item"><div class="curva-sz">Talle 2</div><div class="curva-qty" id="t2">3</div></div>
+            <div class="curva-item"><div class="curva-sz">Talle 3</div><div class="curva-qty" id="t3">3</div></div>
+            <div class="curva-item"><div class="curva-sz">Talle 4</div><div class="curva-qty" id="t4">3</div></div>
+            <div class="curva-item"><div class="curva-sz">Talle 5</div><div class="curva-qty" id="t5" style="color:#F44336;">— sin stock</div></div>
+            <div class="curva-item"><div class="curva-sz">Talle 6</div><div class="curva-qty" id="t6">3</div></div>
+          </div>
+          <div class="curva-total-row">
+            <div>
+              <div class="curva-total-label">Total unidades</div>
+              <div style="font-size:18px;font-weight:800;color:#333;" id="total-uds">12 uds</div>
+            </div>
+            <div style="text-align:right;">
+              <div class="curva-total-label">Total</div>
+              <div class="curva-total-price" id="total-price">$35.280</div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px;">
+          <button class="btn-primary" style="flex:1;">Agregar al pedido</button>
+          <button class="btn-secondary" style="flex:1;">Ver pedido</button>
+        </div>
+        <div style="margin-top:8px;font-size:11px;color:#aaa;text-align:center;">Talle 5 excluido por falta de stock. Los demás talles tienen stock suficiente.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- REGISTRATION GATE -->
+<div class="mockup" id="gate">
+  <span class="label">Dirección 8</span>
+  <h2 style="font-size:22px;font-weight:800;margin-bottom:8px;">Soft Registration Gate — Bottom Sheet</h2>
+  <p class="desc">El catálogo es visible sin registro. Cuando el visitante intenta comprar, aparece un bottom sheet contextual. No es un muro — es una invitación en el momento correcto.</p>
+  <div class="browser">
+    <div class="browser-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><div class="url">jedami.com.ar — invitación contextual</div></div>
+    <div class="gate-demo">
+      <div class="gate-overlay">
+        <div class="gate-bg" style="position:absolute;top:0;left:0;right:0;bottom:0;padding:16px;">
+          <div class="gate-bg-card">👗</div>
+          <div class="gate-bg-card">👕</div>
+          <div class="gate-bg-card">🧥</div>
+        </div>
+        <div style="position:relative;width:100%;max-width:420px;">
+          <div class="gate-sheet">
+            <div class="gate-handle"></div>
+            <div style="text-align:center;font-size:32px;margin-bottom:8px;">🛍️</div>
+            <div class="gate-sheet-title">¡Creá tu cuenta para comprar!</div>
+            <div class="gate-sheet-sub">Explorás el catálogo sin registrarte.<br>Para hacer tu primer pedido, necesitamos saber quién sos.</div>
+            <button class="gate-btn-primary">Crear cuenta gratis</button>
+            <div class="gate-or">o</div>
+            <button class="gate-btn-secondary">Ya tengo cuenta — Iniciar sesión</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function show(id) {
+    document.querySelectorAll('.mockup').forEach(m => m.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    event.target.classList.add('active');
+  }
+  function updateCurva(n) {
+    n = parseInt(n) || 1;
+    document.getElementById('t2').textContent = n;
+    document.getElementById('t3').textContent = n;
+    document.getElementById('t4').textContent = n;
+    document.getElementById('t5').textContent = '— sin stock';
+    document.getElementById('t5').style.color = '#F44336';
+    document.getElementById('t6').textContent = n;
+    document.getElementById('total-uds').textContent = (n * 4) + ' uds';
+    document.getElementById('total-price').textContent = '$' + (n * 4 * 2940).toLocaleString('es-AR');
+  }
+</script>
+</body>
+</html>

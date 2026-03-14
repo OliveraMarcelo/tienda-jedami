@@ -11,6 +11,6 @@ project_knowledge: "{project-root}/docs"
 
 # Core Configuration Values
 user_name: Marceloo
-communication_language: English
-document_output_language: English
+communication_language: Spanish
+document_output_language: Spanish
 output_folder: _bmad-output
