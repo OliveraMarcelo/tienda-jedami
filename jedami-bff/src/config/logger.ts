@@ -1,9 +1,10 @@
 import pino from 'pino';
+import { ENV } from './env.js';
 
 export const logger = pino({
-  level: process.env.LOG_LEVEL ?? 'info',
+  level: ENV.LOG_LEVEL,
   transport:
-    process.env.NODE_ENV !== 'production'
+    ENV.NODE_ENV !== 'production'
       ? { target: 'pino-pretty', options: { colorize: true } }
       : undefined,
 });

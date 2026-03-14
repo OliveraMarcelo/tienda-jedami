@@ -8,7 +8,11 @@ export const pool = new Pool({
 
 export async function connectDB(): Promise<void> {
   // Testear la conexión antes de continuar
-  await pool.query('SELECT 1');
+  try {
+    await pool.query('SELECT 1');
+  } catch (err) {
+    throw new Error(`No se pudo conectar a PostgreSQL: ${(err as Error).message}`, { cause: err });
+  }
   logger.info('[DATABASE] Conexión a PostgreSQL establecida');
 
   // Aplicar migraciones pendientes

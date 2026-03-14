@@ -1,23 +1,20 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../config/logger.js';
-
-export interface AppError extends Error {
-  status?: number;
-  type?: string;
-}
+import { AppError } from '../types/app-error.js';
 
 export function errorMiddleware(
-  err: AppError,
+  err: Error,
   req: Request,
   res: Response,
-  _next: NextFunction
+  _next: NextFunction,
 ): void {
-  const status = err.status ?? 500;
+  const isAppError = err instanceof AppError;
+  const status = isAppError ? err.status : 500;
+  const title = isAppError ? err.title : 'Error interno del servidor';
+  const type = isAppError ? err.type : `https://jedami.com/errors/${status}`;
+  const detail = err.message;
+
   logger.error({ err, path: req.path }, 'Unhandled error');
-  res.status(status).json({
-    type: err.type ?? `https://jedami.com/errors/${status}`,
-    title: err.message ?? 'Error interno del servidor',
-    status,
-    detail: err.message,
-  });
+
+  res.status(status).json({ type, title, status, detail });
 }

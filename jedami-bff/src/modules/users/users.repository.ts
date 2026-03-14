@@ -20,7 +20,7 @@ export const findByEmailWithRoles = async (email: string): Promise<User | null> 
     email: first.email,
     password_hash: first.password_hash,
     created_at: first.created_at,
-    roles: result.rows.map((r: any) => r.role_name).filter(Boolean),
+    roles: result.rows.map((r: { role_name: string | null }) => r.role_name).filter((n): n is string => n !== null),
   };
 };
 

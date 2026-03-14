@@ -16,6 +16,7 @@ export const ENV = {
   JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET ?? '',
   JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN ?? '7d',
   NODE_ENV: process.env.NODE_ENV ?? 'development',
+  LOG_LEVEL: process.env.LOG_LEVEL ?? 'info',
   CORS_ORIGIN: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
   FRONTEND_URL: process.env.FRONTEND_URL ?? 'http://localhost:5173',
   MP_PUBLIC_KEY: process.env.MP_PUBLIC_KEY as string,
