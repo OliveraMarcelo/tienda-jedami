@@ -4,17 +4,20 @@ import type { Product, Variant } from '@/types/api'
 interface CreateProductDTO {
   name: string
   description?: string
+  categoryId?: number | null
 }
 
 interface UpdateProductDTO {
   name?: string
   description?: string
+  categoryId?: number | null
 }
 
 interface CreateVariantDTO {
   size: string
   color: string
   retailPrice: number
+  wholesalePrice?: number | null
   initialStock: number
 }
 
@@ -35,4 +38,12 @@ export async function updateProduct(id: number, dto: UpdateProductDTO): Promise<
 export async function createVariant(productId: number, dto: CreateVariantDTO): Promise<{ data: VariantWithProductId }> {
   const res = await apiClient.post<{ data: VariantWithProductId }>(`/products/${productId}/variants`, dto)
   return res.data
+}
+
+export async function addImage(productId: number, url: string, position?: number): Promise<void> {
+  await apiClient.post(`/products/${productId}/images`, { url, position })
+}
+
+export async function deleteImage(productId: number, imageId: number): Promise<void> {
+  await apiClient.delete(`/products/${productId}/images/${imageId}`)
 }

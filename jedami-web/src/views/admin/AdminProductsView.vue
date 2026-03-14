@@ -39,13 +39,13 @@ function openAddVariant(productId: number) {
   showVariantDialog.value = true
 }
 
-async function handleProductSaved(data: { name: string; description: string }) {
+async function handleProductSaved(data: { name: string; description: string; categoryId: number | null }) {
   actionError.value = null
   try {
     if (editingProduct.value) {
       await adminStore.updateProduct(editingProduct.value.id, data)
     } else {
-      await adminStore.createProduct(data.name, data.description || undefined)
+      await adminStore.createProduct(data.name, data.description || undefined, data.categoryId)
     }
     showProductDialog.value = false
   } catch (err: unknown) {
@@ -54,7 +54,7 @@ async function handleProductSaved(data: { name: string; description: string }) {
   }
 }
 
-async function handleVariantSaved(data: { size: string; color: string; retailPrice: number; initialStock: number }) {
+async function handleVariantSaved(data: { size: string; color: string; retailPrice: number; wholesalePrice: number | null; initialStock: number }) {
   actionError.value = null
   try {
     await adminStore.createVariant(variantProductId.value, data)

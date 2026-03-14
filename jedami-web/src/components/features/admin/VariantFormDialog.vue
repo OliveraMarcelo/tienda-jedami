@@ -9,12 +9,13 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  'saved': [data: { size: string; color: string; retailPrice: number; initialStock: number }]
+  'saved': [data: { size: string; color: string; retailPrice: number; wholesalePrice: number | null; initialStock: number }]
 }>()
 
 const size = ref('')
 const color = ref('')
 const retailPrice = ref<number | ''>('')
+const wholesalePrice = ref<number | ''>('')
 const initialStock = ref<number | ''>('')
 const loading = ref(false)
 const serverError = ref('')
@@ -24,6 +25,7 @@ watch(() => props.open, (val) => {
     size.value = ''
     color.value = ''
     retailPrice.value = ''
+    wholesalePrice.value = ''
     initialStock.value = ''
     serverError.value = ''
   }
@@ -45,6 +47,7 @@ async function handleSubmit() {
       size: size.value.trim(),
       color: color.value.trim(),
       retailPrice: Number(retailPrice.value),
+      wholesalePrice: wholesalePrice.value !== '' ? Number(wholesalePrice.value) : null,
       initialStock: Number(initialStock.value),
     })
     emit('update:open', false)
@@ -85,7 +88,7 @@ async function handleSubmit() {
 
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-1">Precio (ARS) *</label>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Precio minorista (ARS) *</label>
           <input
             v-model="retailPrice"
             type="number"
@@ -96,16 +99,28 @@ async function handleSubmit() {
           />
         </div>
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-1">Stock inicial *</label>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Precio mayorista (ARS)</label>
           <input
-            v-model="initialStock"
+            v-model="wholesalePrice"
             type="number"
             min="0"
-            step="1"
-            placeholder="0"
+            step="0.01"
+            placeholder="Opcional"
             class="flex h-9 w-full rounded-md border border-gray-300 px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#E91E8C]"
           />
         </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-1">Stock inicial *</label>
+        <input
+          v-model="initialStock"
+          type="number"
+          min="0"
+          step="1"
+          placeholder="0"
+          class="flex h-9 w-full rounded-md border border-gray-300 px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#E91E8C]"
+        />
       </div>
 
       <p v-if="serverError" class="text-sm text-red-500">{{ serverError }}</p>

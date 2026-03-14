@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { createProduct as apiCreate, updateProduct as apiUpdate, createVariant as apiCreateVariant } from '@/api/admin.api'
+import { createProduct as apiCreate, updateProduct as apiUpdate, createVariant as apiCreateVariant, addImage as apiAddImage, deleteImage as apiDeleteImage } from '@/api/admin.api'
 import { fetchProducts } from '@/api/products.api'
 import type { Product, Variant } from '@/types/api'
 
@@ -25,14 +25,14 @@ export const useAdminProductsStore = defineStore('adminProducts', () => {
     }
   }
 
-  async function createProduct(name: string, description?: string) {
-    const res = await apiCreate({ name, description })
+  async function createProduct(name: string, description?: string, categoryId?: number | null) {
+    const res = await apiCreate({ name, description, categoryId })
     products.value.push({ ...res.data, variants: [] })
     totalProducts.value++
     return res.data
   }
 
-  async function updateProduct(id: number, dto: { name?: string; description?: string }) {
+  async function updateProduct(id: number, dto: { name?: string; description?: string; categoryId?: number | null }) {
     const res = await apiUpdate(id, dto)
     const idx = products.value.findIndex(p => p.id === id)
     if (idx !== -1) {
@@ -41,7 +41,7 @@ export const useAdminProductsStore = defineStore('adminProducts', () => {
     return res.data
   }
 
-  async function createVariant(productId: number, dto: { size: string; color: string; retailPrice: number; initialStock: number }) {
+  async function createVariant(productId: number, dto: { size: string; color: string; retailPrice: number; wholesalePrice?: number | null; initialStock: number }) {
     const res = await apiCreateVariant(productId, dto)
     const product = products.value.find(p => p.id === productId)
     if (product) {
@@ -58,5 +58,18 @@ export const useAdminProductsStore = defineStore('adminProducts', () => {
     return res.data
   }
 
-  return { products, loading, error, totalProducts, fetchAll, createProduct, updateProduct, createVariant }
+  async function addImage(productId: number, url: string, position?: number) {
+    await apiAddImage(productId, url, position)
+    await fetchAll()
+  }
+
+  async function deleteImage(productId: number, imageId: number) {
+    await apiDeleteImage(productId, imageId)
+    const product = products.value.find(p => p.id === productId)
+    if (product?.images) {
+      product.images = product.images.filter(img => img.id !== imageId)
+    }
+  }
+
+  return { products, loading, error, totalProducts, fetchAll, createProduct, updateProduct, createVariant, addImage, deleteImage }
 })
