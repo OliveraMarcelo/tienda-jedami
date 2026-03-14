@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
 import VariantSelector from '@/components/features/catalog/VariantSelector.vue'
@@ -64,6 +64,11 @@ const selectedVariant = computed(() =>
 const canBuy = computed(() =>
   !!selectedVariant.value && selectedVariant.value.stock.quantity > 0
 )
+
+// Resetear cantidad al cambiar variante para que nunca exceda el stock disponible
+watch(selectedVariant, () => {
+  retailQuantity.value = 1
+})
 
 const priceLabel = computed(() =>
   authStore.mode === 'wholesale' ? 'Precio mayorista' : 'Precio'

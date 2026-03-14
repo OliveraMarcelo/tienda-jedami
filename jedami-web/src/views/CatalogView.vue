@@ -40,7 +40,20 @@ function loadMore() {
     </div>
 
     <div
-      v-if="!productsStore.loading && productsStore.products.length === 0"
+      v-if="productsStore.error"
+      class="text-center py-16"
+    >
+      <p class="text-red-500 font-semibold mb-2">{{ productsStore.error }}</p>
+      <button
+        @click="productsStore.fetchCatalog(true)"
+        class="text-sm text-[#E91E8C] hover:underline font-semibold"
+      >
+        Reintentar
+      </button>
+    </div>
+
+    <div
+      v-else-if="!productsStore.loading && productsStore.products.length === 0"
       class="text-center py-16 text-gray-400"
     >
       No hay productos disponibles.

@@ -2,6 +2,41 @@
 import { computed } from 'vue'
 import type { Variant } from '@/types/api'
 
+// Mapeo de nombres de colores en español a valores CSS válidos
+// Los colores en DB son strings libres — este mapa provee fallbacks visuales
+const COLOR_MAP: Record<string, string> = {
+  blanco: '#FFFFFF',
+  negro: '#000000',
+  gris: '#9E9E9E',
+  rojo: '#F44336',
+  azul: '#1565C0',
+  celeste: '#00BCD4',
+  verde: '#4CAF50',
+  amarillo: '#FFEB3B',
+  naranja: '#FF9800',
+  rosa: '#E91E8C',
+  violeta: '#9C27B0',
+  lila: '#CE93D8',
+  bordó: '#7B1FA2',
+  beige: '#F5F5DC',
+  marron: '#795548',
+  marrón: '#795548',
+  turquesa: '#00BCD4',
+  fucsia: '#E91E8C',
+  crema: '#FFFDE7',
+}
+
+function resolveColor(name: string): string {
+  const normalized = name.toLowerCase().trim()
+  return COLOR_MAP[normalized] ?? '#BDBDBD' // gris neutro como fallback
+}
+
+function needsDarkBorder(cssColor: string): boolean {
+  // Los colores muy claros necesitan borde visible
+  const light = ['#FFFFFF', '#FFFDE7', '#F5F5DC', '#FFEB3B', '#CREMA', '#FFFF']
+  return light.some(c => cssColor.toUpperCase().startsWith(c.toUpperCase()))
+}
+
 const props = defineProps<{
   variants: Variant[]
   selectedColor: string | null
@@ -44,11 +79,12 @@ function selectColor(color: string) {
           :key="color"
           @click="selectColor(color)"
           :aria-label="`Color ${color}`"
+          :title="color"
           :class="[
             'w-8 h-8 rounded-full border-2 transition-all',
-            selectedColor === color ? 'border-[#E91E8C] scale-110 shadow' : 'border-gray-300 hover:border-gray-400'
+            selectedColor === color ? 'border-[#E91E8C] scale-110 shadow' : needsDarkBorder(resolveColor(color)) ? 'border-gray-400' : 'border-gray-300 hover:border-gray-400'
           ]"
-          :style="{ backgroundColor: color }"
+          :style="{ backgroundColor: resolveColor(color) }"
         />
       </div>
     </div>
