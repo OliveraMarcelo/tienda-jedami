@@ -69,7 +69,7 @@ export async function createProduct(dto: CreateProductDTO) {
   if (!dto.name?.trim()) {
     throw new AppError(400, 'Nombre requerido', 'https://jedami.com/errors/validation', 'El campo name es obligatorio');
   }
-  const product = await productsRepository.createProduct(dto.name.trim(), dto.description);
+  const product = await productsRepository.createProduct(dto.name.trim(), dto.description, dto.categoryId);
   return { id: product.id, name: product.name, description: product.description, categoryId: product.category_id ?? null };
 }
 

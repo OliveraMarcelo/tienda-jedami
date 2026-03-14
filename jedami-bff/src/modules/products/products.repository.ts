@@ -10,8 +10,8 @@ import { FIND_PRODUCT_BY_ID_WITH_VARIANTS } from './queries/find-by-id-with-vari
 import { FIND_IMAGES_BY_PRODUCT } from './queries/find-images-by-product.js';
 import { UPDATE_VARIANT, FIND_VARIANT_BY_ID } from './queries/update-variant.js';
 
-export const createProduct = async (name: string, description?: string): Promise<Product> => {
-  const result = await pool.query(CREATE_PRODUCT, [name, description ?? null]);
+export const createProduct = async (name: string, description?: string, categoryId?: number | null): Promise<Product> => {
+  const result = await pool.query(CREATE_PRODUCT, [name, description ?? null, categoryId ?? null]);
   return result.rows[0];
 };
 
