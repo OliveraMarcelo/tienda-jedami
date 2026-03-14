@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import '../models/product.dart';
-import '../../auth/providers/auth_provider.dart';
 import '../../../core/api/client.dart';
 
 class ProductsState {

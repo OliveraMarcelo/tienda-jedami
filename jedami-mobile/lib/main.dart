@@ -17,7 +17,11 @@ void main() async {
         authProvider.overrideWith(
           (ref) {
             final notifier = AuthNotifier(dio, prefs);
-            dio.interceptors.add(AuthInterceptor(ref));
+            // Guardia: evita agregar el interceptor más de una vez
+            // si el provider fuera recreado (ej. invalidate en tests)
+            if (!dio.interceptors.any((i) => i is AuthInterceptor)) {
+              dio.interceptors.add(AuthInterceptor(ref));
+            }
             return notifier;
           },
         ),

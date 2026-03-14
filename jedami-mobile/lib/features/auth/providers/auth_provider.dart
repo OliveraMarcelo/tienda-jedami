@@ -1,7 +1,10 @@
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
 import '../../../core/constants.dart';
+
+const _kRefreshTokenKey = 'refresh_token';
 
 class AuthState {
   final String? token;
@@ -9,9 +12,12 @@ class AuthState {
 
   const AuthState({this.token, this.isAuthenticated = false});
 
-  AuthState copyWith({String? token, bool? isAuthenticated}) {
+  // Sentinel para permitir limpiar token a null explícitamente con copyWith
+  static const _undefined = Object();
+
+  AuthState copyWith({Object? token = _undefined, bool? isAuthenticated}) {
     return AuthState(
-      token: token ?? this.token,
+      token: identical(token, _undefined) ? this.token : token as String?,
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
     );
   }
@@ -27,9 +33,31 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   void _restoreToken() {
     final token = _prefs.getString(kAuthTokenKey);
-    if (token != null) {
-      state = AuthState(token: token, isAuthenticated: true);
+    if (token == null) return;
+
+    // Validar expiración del JWT antes de restaurar la sesión
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) {
+        _prefs.remove(kAuthTokenKey);
+        _prefs.remove(_kRefreshTokenKey);
+        return;
+      }
+      final normalized = base64Url.normalize(parts[1]);
+      final payload = jsonDecode(utf8.decode(base64Url.decode(normalized))) as Map<String, dynamic>;
+      final exp = payload['exp'] as int?;
+      if (exp == null ||
+          DateTime.fromMillisecondsSinceEpoch(exp * 1000).isBefore(DateTime.now())) {
+        _prefs.remove(kAuthTokenKey);
+        _prefs.remove(_kRefreshTokenKey);
+        return;
+      }
+    } catch (_) {
+      _prefs.remove(kAuthTokenKey);
+      return;
     }
+
+    state = AuthState(token: token, isAuthenticated: true);
   }
 
   Future<void> login(String email, String password) async {
@@ -37,13 +65,19 @@ class AuthNotifier extends StateNotifier<AuthState> {
       '/auth/login',
       data: {'email': email, 'password': password},
     );
-    final token = response.data['data']['token'] as String;
+    final data = response.data?['data'] as Map<String, dynamic>?;
+    final token = data?['token'] as String?;
+    if (token == null) throw Exception('Respuesta del servidor inválida');
+    final refreshToken = data?['refreshToken'] as String?;
+
     await _prefs.setString(kAuthTokenKey, token);
+    if (refreshToken != null) await _prefs.setString(_kRefreshTokenKey, refreshToken);
     state = AuthState(token: token, isAuthenticated: true);
   }
 
   Future<void> logout() async {
     await _prefs.remove(kAuthTokenKey);
+    await _prefs.remove(_kRefreshTokenKey);
     state = const AuthState();
   }
 }
