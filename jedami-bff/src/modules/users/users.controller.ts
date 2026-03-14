@@ -21,13 +21,17 @@ export const listUsers = async (_req: Request, res: Response, next: NextFunction
 
 export const me = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const user = req.user as JwtUserPayload;
-    const customer = await customersRepository.findByUserId(user.id);
+    const jwtUser = req.user as JwtUserPayload;
+    // Leer roles y customer desde DB para reflejar cambios post-login
+    const [dbUser, customer] = await Promise.all([
+      usersRepository.findByIdWithRoles(jwtUser.id),
+      customersRepository.findByUserId(jwtUser.id),
+    ]);
     res.json({
       data: {
-        id: user.id,
-        email: user.email,
-        roles: user.roles,
+        id: jwtUser.id,
+        email: jwtUser.email,
+        roles: dbUser?.roles ?? [],
         customer: customer
           ? { id: customer.id, customerType: customer.customer_type }
           : null,

@@ -35,8 +35,12 @@ async function getOrderAndVerifyOwnership(orderId: number, customerId: number) {
   return order;
 }
 
-async function getVariantsWithStock(productId: number): Promise<VariantWithStock[]> {
-  const result = await pool.query(
+// Leer variantes dentro de una transacción existente para prevenir race conditions
+async function getVariantsWithStockInTx(
+  client: import('pg').PoolClient,
+  productId: number,
+): Promise<VariantWithStock[]> {
+  const result = await client.query(
     `SELECT v.id, v.size, v.color, v.retail_price, COALESCE(s.quantity, 0) AS stock_quantity
      FROM variants v
      LEFT JOIN stock s ON s.variant_id = v.id
@@ -58,30 +62,20 @@ export async function createRetailOrder(
   }
 
   const customer = await getCustomerOrFail(userId);
-
-  // Verificar stock para todas las variantes
   const variantIds = items.map(i => i.variantId);
-  const stockRes = await pool.query(
-    `SELECT v.id, v.retail_price, COALESCE(s.quantity, 0) AS stock_quantity
-     FROM variants v
-     LEFT JOIN stock s ON s.variant_id = v.id
-     WHERE v.id = ANY($1)`,
+
+  // Fetch prices outside TX (read-only, prices don't change concurrently)
+  const priceRes = await pool.query(
+    `SELECT v.id, v.retail_price FROM variants v WHERE v.id = ANY($1)`,
     [variantIds],
   );
-  const stockMap = new Map<number, { retailPrice: number; stock: number }>(
-    stockRes.rows.map((r: { id: number; retail_price: string; stock_quantity: number }) => [
-      r.id,
-      { retailPrice: Number(r.retail_price), stock: r.stock_quantity },
-    ]),
+  const priceMap = new Map<number, number>(
+    priceRes.rows.map((r: { id: number; retail_price: string }) => [r.id, Number(r.retail_price)]),
   );
 
   for (const item of items) {
-    const variant = stockMap.get(item.variantId);
-    if (!variant) {
+    if (!priceMap.has(item.variantId)) {
       throw new AppError(404, 'Variante no encontrada', 'https://jedami.com/errors/not-found', `No existe variante con id ${item.variantId}`);
-    }
-    if (variant.stock < item.quantity) {
-      throw new AppError(422, 'Stock insuficiente', 'https://jedami.com/errors/insufficient-stock', `Stock disponible para variante ${item.variantId}: ${variant.stock}`);
     }
   }
 
@@ -100,11 +94,21 @@ export async function createRetailOrder(
     const insertedItems: { id: number; variantId: number; quantity: number; unitPrice: number }[] = [];
 
     for (const item of items) {
-      const variant = stockMap.get(item.variantId)!;
+      const retailPrice = priceMap.get(item.variantId)!;
+
+      // Deducción atómica: falla si stock insuficiente (previene race condition)
+      const stockRes = await client.query(
+        'UPDATE stock SET quantity = quantity - $1 WHERE variant_id = $2 AND quantity >= $1 RETURNING quantity',
+        [item.quantity, item.variantId],
+      );
+      if (stockRes.rowCount === 0) {
+        throw new AppError(422, 'Stock insuficiente', 'https://jedami.com/errors/insufficient-stock', `Stock insuficiente para variante ${item.variantId}`);
+      }
+
       const itemRes = await client.query(
         `INSERT INTO order_items (order_id, variant_id, quantity, unit_price)
          VALUES ($1, $2, $3, $4) RETURNING id, variant_id, quantity, unit_price`,
-        [order.id, item.variantId, item.quantity, variant.retailPrice],
+        [order.id, item.variantId, item.quantity, retailPrice],
       );
       const inserted = itemRes.rows[0];
       insertedItems.push({
@@ -113,12 +117,7 @@ export async function createRetailOrder(
         quantity: inserted.quantity,
         unitPrice: Number(inserted.unit_price),
       });
-      totalAmount += item.quantity * variant.retailPrice;
-
-      await client.query(
-        'UPDATE stock SET quantity = quantity - $1 WHERE variant_id = $2',
-        [item.quantity, item.variantId],
-      );
+      totalAmount += item.quantity * retailPrice;
     }
 
     await client.query(
@@ -178,27 +177,37 @@ export async function addCurvaItems(orderId: number, productId: number, curves: 
     throw new AppError(400, 'Tipo de pedido incorrecto', 'https://jedami.com/errors/validation', 'Este pedido no es de tipo curva');
   }
 
-  const variants = await getVariantsWithStock(productId);
-  if (variants.length === 0) {
-    throw new AppError(422, 'Sin variantes', 'https://jedami.com/errors/no-variants', 'El producto no tiene variantes disponibles');
-  }
-
-  const insufficient = variants.filter(v => v.stock_quantity < curves);
-  if (insufficient.length > 0) {
-    const detail = insufficient
-      .map(v => `${v.size} ${v.color} (stock disponible: ${v.stock_quantity})`)
-      .join(', ');
-    throw new AppError(422, 'Stock insuficiente', 'https://jedami.com/errors/insufficient-stock', `Variantes sin stock suficiente para ${curves} curvas: ${detail}`);
-  }
-
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+
+    // Leer variantes dentro de la TX para consistencia
+    const variants = await getVariantsWithStockInTx(client, productId);
+    if (variants.length === 0) {
+      throw new AppError(422, 'Sin variantes', 'https://jedami.com/errors/no-variants', 'El producto no tiene variantes disponibles');
+    }
+
+    const insufficient = variants.filter(v => v.stock_quantity < curves);
+    if (insufficient.length > 0) {
+      const detail = insufficient
+        .map(v => `${v.size} ${v.color} (stock disponible: ${v.stock_quantity})`)
+        .join(', ');
+      throw new AppError(422, 'Stock insuficiente', 'https://jedami.com/errors/insufficient-stock', `Variantes sin stock suficiente para ${curves} curvas: ${detail}`);
+    }
 
     const items: { id: number; variantId: number; quantity: number; unitPrice: number }[] = [];
     let itemsTotal = 0;
 
     for (const variant of variants) {
+      // Deducción atómica dentro de la TX (previene race condition)
+      const stockRes = await client.query(
+        'UPDATE stock SET quantity = quantity - $1 WHERE variant_id = $2 AND quantity >= $1 RETURNING quantity',
+        [curves, variant.id],
+      );
+      if (stockRes.rowCount === 0) {
+        throw new AppError(422, 'Stock insuficiente', 'https://jedami.com/errors/insufficient-stock', `Stock insuficiente para variante ${variant.size} ${variant.color}`);
+      }
+
       const res = await client.query(
         'INSERT INTO order_items (order_id, variant_id, quantity, unit_price) VALUES ($1, $2, $3, $4) RETURNING id, variant_id, quantity, unit_price',
         [orderId, variant.id, curves, variant.retail_price],
@@ -206,11 +215,6 @@ export async function addCurvaItems(orderId: number, productId: number, curves: 
       const item = res.rows[0];
       items.push({ id: item.id, variantId: item.variant_id, quantity: item.quantity, unitPrice: Number(item.unit_price) });
       itemsTotal += curves * Number(variant.retail_price);
-
-      await client.query(
-        'UPDATE stock SET quantity = quantity - $1 WHERE variant_id = $2',
-        [curves, variant.id],
-      );
     }
 
     const updatedOrderRes = await client.query(
@@ -252,35 +256,35 @@ export async function addCantidadItems(orderId: number, productId: number, quant
     throw new AppError(404, 'Producto no encontrado', 'https://jedami.com/errors/product-not-found', `No existe producto con id ${productId}`);
   }
 
-  const variants = await getVariantsWithStock(productId);
-  const totalStock = variants.reduce((sum, v) => sum + v.stock_quantity, 0);
-
-  if (totalStock < quantity) {
-    const detail = variants.map(v => `${v.size} ${v.color}: ${v.stock_quantity}`).join(', ');
-    throw new AppError(422, 'Stock insuficiente', 'https://jedami.com/errors/insufficient-stock', `Stock total disponible: ${totalStock}. Detalle por variante: ${detail}`);
-  }
-
-  // Weighted average unit price
-  const unitPrice = totalStock > 0
-    ? variants.reduce((sum, v) => sum + Number(v.retail_price) * v.stock_quantity, 0) / totalStock
-    : 0;
-
-  // Greedy proportional deduction (highest stock first)
-  const sortedVariants = [...variants].sort((a, b) => b.stock_quantity - a.stock_quantity);
-  let remaining = quantity;
-  const deductions: { variantId: number; amount: number }[] = [];
-  for (const variant of sortedVariants) {
-    if (remaining <= 0) break;
-    const deduct = Math.min(variant.stock_quantity, remaining);
-    if (deduct > 0) {
-      deductions.push({ variantId: variant.id, amount: deduct });
-      remaining -= deduct;
-    }
-  }
-
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+
+    // Leer variantes dentro de la TX para consistencia
+    const variants = await getVariantsWithStockInTx(client, productId);
+    const totalStock = variants.reduce((sum, v) => sum + v.stock_quantity, 0);
+
+    if (totalStock < quantity) {
+      const detail = variants.map(v => `${v.size} ${v.color}: ${v.stock_quantity}`).join(', ');
+      throw new AppError(422, 'Stock insuficiente', 'https://jedami.com/errors/insufficient-stock', `Stock total disponible: ${totalStock}. Detalle por variante: ${detail}`);
+    }
+
+    // Greedy: deducir del variant con más stock primero
+    const sortedVariants = [...variants].sort((a, b) => b.stock_quantity - a.stock_quantity);
+    let remaining = quantity;
+    const deductions: { variantId: number; amount: number; retailPrice: number }[] = [];
+    for (const variant of sortedVariants) {
+      if (remaining <= 0) break;
+      const deduct = Math.min(variant.stock_quantity, remaining);
+      if (deduct > 0) {
+        deductions.push({ variantId: variant.id, amount: deduct, retailPrice: Number(variant.retail_price) });
+        remaining -= deduct;
+      }
+    }
+
+    // Precio real basado en las deducciones concretas (no promedio ponderado)
+    const totalAddition = deductions.reduce((sum, d) => sum + d.amount * d.retailPrice, 0);
+    const unitPrice = quantity > 0 ? totalAddition / quantity : 0;
 
     const res = await client.query(
       'INSERT INTO order_items (order_id, product_id, quantity, unit_price) VALUES ($1, $2, $3, $4) RETURNING id, product_id, quantity, unit_price',
@@ -289,13 +293,16 @@ export async function addCantidadItems(orderId: number, productId: number, quant
     const item = res.rows[0];
 
     for (const d of deductions) {
-      await client.query(
-        'UPDATE stock SET quantity = quantity - $1 WHERE variant_id = $2',
+      // Deducción atómica dentro de la TX (previene race condition)
+      const stockRes = await client.query(
+        'UPDATE stock SET quantity = quantity - $1 WHERE variant_id = $2 AND quantity >= $1 RETURNING quantity',
         [d.amount, d.variantId],
       );
+      if (stockRes.rowCount === 0) {
+        throw new AppError(422, 'Stock insuficiente', 'https://jedami.com/errors/insufficient-stock', `Stock insuficiente para variante ${d.variantId} durante el procesamiento`);
+      }
     }
 
-    const totalAddition = quantity * unitPrice;
     const updatedOrderRes = await client.query(
       'UPDATE orders SET total_amount = total_amount + $1 WHERE id = $2 RETURNING total_amount',
       [totalAddition, orderId],

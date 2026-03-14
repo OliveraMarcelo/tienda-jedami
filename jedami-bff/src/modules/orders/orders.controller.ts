@@ -1,8 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
 import { JwtUserPayload } from '../auth/jwt-payload.js';
+import { AppError } from '../../types/app-error.js';
 import * as ordersService from './orders.service.js';
 
-export async function createOrder(req: Request, res: Response, next: NextFunction) {
+function parseOrderId(raw: string): number {
+  const id = parseInt(raw, 10);
+  if (isNaN(id) || id <= 0) throw new AppError(400, 'ID inválido', 'https://jedami.com/errors/validation', 'El id del pedido debe ser un entero positivo');
+  return id;
+}
+
+export async function createOrder(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const user = req.user as JwtUserPayload;
 
@@ -22,10 +29,10 @@ export async function createOrder(req: Request, res: Response, next: NextFunctio
   }
 }
 
-export async function addItems(req: Request, res: Response, next: NextFunction) {
+export async function addItems(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const user = req.user as JwtUserPayload;
-    const orderId = Number(req.params.orderId);
+    const orderId = parseOrderId(req.params.orderId);
     const result = await ordersService.addItems(orderId, req.body, user.id);
     res.status(200).json({ data: result });
   } catch (err) {
@@ -33,7 +40,7 @@ export async function addItems(req: Request, res: Response, next: NextFunction) 
   }
 }
 
-export async function getMyOrders(req: Request, res: Response, next: NextFunction) {
+export async function getMyOrders(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const user = req.user as JwtUserPayload;
     const orders = await ordersService.getMyOrders(user.id);
@@ -43,10 +50,10 @@ export async function getMyOrders(req: Request, res: Response, next: NextFunctio
   }
 }
 
-export async function getOrderById(req: Request, res: Response, next: NextFunction) {
+export async function getOrderById(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const user = req.user as JwtUserPayload;
-    const orderId = Number(req.params.orderId);
+    const orderId = parseOrderId(req.params.orderId);
     const order = await ordersService.getOrderById(orderId, user.id);
     res.status(200).json({ data: order });
   } catch (err) {

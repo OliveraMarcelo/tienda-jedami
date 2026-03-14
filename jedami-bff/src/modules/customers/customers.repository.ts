@@ -1,4 +1,5 @@
 import { pool } from '../../config/database.js';
+import { AppError } from '../../types/app-error.js';
 
 export interface Customer {
   id: number;
@@ -23,8 +24,11 @@ export const findByUserId = async (userId: number): Promise<Customer | null> => 
 };
 
 export const updateCustomerType = async (userId: number, customerType: 'retail' | 'wholesale'): Promise<void> => {
-  await pool.query(
+  const result = await pool.query(
     'UPDATE customers SET customer_type = $1 WHERE user_id = $2',
     [customerType, userId],
   );
+  if (result.rowCount === 0) {
+    throw new AppError(404, 'Perfil de comprador no encontrado', 'https://jedami.com/errors/not-found', `El usuario ${userId} no tiene perfil de comprador`);
+  }
 };
