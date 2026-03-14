@@ -44,11 +44,13 @@ class Product {
             .toList(),
       );
 
-  Product copyWith({String? name, String? description, List<Variant>? variants}) {
+  static const _undefined = Object();
+
+  Product copyWith({String? name, Object? description = _undefined, List<Variant>? variants}) {
     return Product(
       id: id,
       name: name ?? this.name,
-      description: description ?? this.description,
+      description: identical(description, _undefined) ? this.description : description as String?,
       variants: variants ?? this.variants,
     );
   }

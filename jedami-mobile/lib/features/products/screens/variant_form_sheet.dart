@@ -63,12 +63,20 @@ class _VariantFormSheetState extends ConsumerState<VariantFormSheet> {
     }
   }
 
-  String? _validatePositiveNumber(String? v, {bool isInt = false}) {
+  String? _validatePrice(String? v) {
+    if (v == null || v.trim().isEmpty) return 'Campo requerido';
+    final n = num.tryParse(v);
+    if (n == null) return 'Debe ser un número';
+    if (n <= 0) return 'Debe ser mayor a 0';
+    return null;
+  }
+
+  String? _validateStock(String? v) {
     if (v == null || v.trim().isEmpty) return 'Campo requerido';
     final n = num.tryParse(v);
     if (n == null) return 'Debe ser un número';
     if (n < 0) return 'Debe ser ≥ 0';
-    if (isInt && n != n.toInt()) return 'Debe ser un entero';
+    if (n != n.toInt()) return 'Debe ser un entero';
     return null;
   }
 
@@ -139,7 +147,7 @@ class _VariantFormSheetState extends ConsumerState<VariantFormSheet> {
                       labelText: 'Precio (ARS) *',
                       prefixText: '\$ ',
                     ),
-                    validator: (v) => _validatePositiveNumber(v),
+                    validator: _validatePrice,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -150,7 +158,7 @@ class _VariantFormSheetState extends ConsumerState<VariantFormSheet> {
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(labelText: 'Stock inicial *'),
                     onFieldSubmitted: (_) => _save(),
-                    validator: (v) => _validatePositiveNumber(v, isInt: true),
+                    validator: _validateStock,
                   ),
                 ),
               ],

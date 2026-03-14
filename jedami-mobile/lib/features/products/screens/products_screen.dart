@@ -121,7 +121,29 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
 
     return RefreshIndicator(
       onRefresh: () => ref.read(productsProvider.notifier).fetchProducts(),
-      child: ListView.separated(
+      child: Column(
+        children: [
+          if (state.totalProducts > 100)
+            Material(
+              color: Colors.amber.shade50,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, size: 16, color: Colors.orange),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Se muestran los primeros 100 de ${state.totalProducts} productos.',
+                        style: const TextStyle(fontSize: 12, color: Colors.orange),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          Expanded(
+            child: ListView.separated(
         padding: const EdgeInsets.symmetric(vertical: 8),
         itemCount: state.products.length,
         separatorBuilder: (_, __) => const Divider(height: 1),
@@ -154,6 +176,9 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
             ),
           );
         },
+            ),
+          ),
+        ],
       ),
     );
   }

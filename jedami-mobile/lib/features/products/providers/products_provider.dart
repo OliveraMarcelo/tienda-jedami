@@ -7,22 +7,28 @@ class ProductsState {
   final List<Product> products;
   final bool loading;
   final String? error;
+  final int totalProducts;
 
   const ProductsState({
     this.products = const [],
     this.loading = false,
     this.error,
+    this.totalProducts = 0,
   });
+
+  static const _undefined = Object();
 
   ProductsState copyWith({
     List<Product>? products,
     bool? loading,
-    String? error,
+    Object? error = _undefined,
+    int? totalProducts,
   }) {
     return ProductsState(
       products: products ?? this.products,
       loading: loading ?? this.loading,
-      error: error,
+      error: identical(error, _undefined) ? this.error : error as String?,
+      totalProducts: totalProducts ?? this.totalProducts,
     );
   }
 }
@@ -39,10 +45,15 @@ class ProductsNotifier extends StateNotifier<ProductsState> {
       final list = (res.data['data'] as List<dynamic>)
           .map((e) => Product.fromJson(e as Map<String, dynamic>))
           .toList();
-      state = state.copyWith(products: list, loading: false);
+      final total = (res.data['meta']?['total'] as int?) ?? list.length;
+      state = state.copyWith(products: list, loading: false, totalProducts: total);
     } on DioException catch (e) {
       final msg = e.response?.data?['detail'] as String? ?? 'Error al cargar productos';
-      state = state.copyWith(loading: false, error: msg);
+      state = state.copyWith(error: msg);
+    } catch (_) {
+      state = state.copyWith(error: 'Error inesperado al cargar productos');
+    } finally {
+      if (state.loading) state = state.copyWith(loading: false);
     }
   }
 
