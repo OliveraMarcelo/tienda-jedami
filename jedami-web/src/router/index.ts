@@ -54,8 +54,16 @@ const router = createRouter({
   ],
 })
 
+const GUEST_ONLY_ROUTES = ['login', 'registro']
+
 router.beforeEach((to) => {
   const authStore = useAuthStore()
+
+  // Redirigir usuario autenticado fuera de rutas de invitado
+  if (authStore.isAuthenticated && to.name && GUEST_ONLY_ROUTES.includes(to.name as string)) {
+    return { name: authStore.isAdmin ? 'admin' : 'catalogo' }
+  }
+
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     return { name: 'login' }
   }
