@@ -85,7 +85,15 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function register(email: string, password: string) {
     await registerApi(email, password)
-    await login(email, password)
+    // Si el registro fue exitoso pero el login falla, marcamos el error para que
+    // el componente pueda distinguirlo de un error de registro (ej: email duplicado)
+    try {
+      await login(email, password)
+    } catch (loginErr) {
+      const err = loginErr as Record<string, unknown>
+      err.__registerOk = true
+      throw err
+    }
   }
 
   async function logout() {

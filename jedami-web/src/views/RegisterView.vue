@@ -9,7 +9,6 @@ const authStore = useAuthStore()
 const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
-const customerType = ref<'retail' | 'wholesale'>('retail')
 const passwordVisible = ref(false)
 const loading = ref(false)
 const serverError = ref('')
@@ -55,8 +54,13 @@ async function handleSubmit() {
   try {
     await authStore.register(email.value, password.value)
   } catch (err: unknown) {
-    const e = err as { response?: { data?: { detail?: string } } }
-    serverError.value = e.response?.data?.detail ?? 'Error inesperado. Intente nuevamente.'
+    const e = err as { response?: { data?: { detail?: string } }; __registerOk?: boolean }
+    if (e.__registerOk) {
+      // Cuenta creada pero el login falló — redirigir al login con mensaje
+      serverError.value = 'Cuenta creada. Por favor iniciá sesión.'
+    } else {
+      serverError.value = (e.response?.data?.detail) ?? 'Error inesperado. Intente nuevamente.'
+    }
   } finally {
     loading.value = false
   }
@@ -68,42 +72,14 @@ async function handleSubmit() {
     <div class="min-h-[60vh] flex items-center justify-center">
       <div class="w-full max-w-md">
         <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
-          <h1 class="text-2xl font-bold text-gray-900 mb-6">Crear cuenta</h1>
+          <h1 class="text-2xl font-bold text-gray-900 mb-2">Crear cuenta</h1>
+          <p class="text-sm text-gray-500 mb-6">
+            Las cuentas nuevas son minoristas.
+            <span class="text-blue-600">¿Sos mayorista?</span>
+            Registrate y contactá al administrador para activar tu acceso mayorista.
+          </p>
 
           <form @submit.prevent="handleSubmit" novalidate>
-            <div class="mb-4">
-              <label class="block text-sm font-semibold text-gray-700 mb-1">Tipo de cuenta</label>
-              <div class="flex gap-2">
-                <button
-                  type="button"
-                  @click="customerType = 'retail'"
-                  :class="[
-                    'flex-1 py-2 rounded-lg border text-sm font-semibold transition-colors',
-                    customerType === 'retail'
-                      ? 'bg-[#E91E8C] text-white border-[#E91E8C]'
-                      : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
-                  ]"
-                >
-                  🛍️ Soy minorista
-                </button>
-                <button
-                  type="button"
-                  @click="customerType = 'wholesale'"
-                  :class="[
-                    'flex-1 py-2 rounded-lg border text-sm font-semibold transition-colors',
-                    customerType === 'wholesale'
-                      ? 'bg-[#1565C0] text-white border-[#1565C0]'
-                      : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
-                  ]"
-                >
-                  🏭 Soy mayorista
-                </button>
-              </div>
-              <p v-if="customerType === 'wholesale'" class="mt-1.5 text-xs text-blue-600">
-                Tu cuenta se activará como mayorista cuando un administrador asigne tu rol.
-              </p>
-            </div>
-
             <div class="mb-4">
               <label class="block text-sm font-semibold text-gray-700 mb-1">Email</label>
               <input
