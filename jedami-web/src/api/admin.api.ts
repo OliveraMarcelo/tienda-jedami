@@ -62,3 +62,19 @@ export async function fetchProductDetail(id: number): Promise<{ data: { images: 
 export async function deleteImage(productId: number, imageId: number): Promise<void> {
   await apiClient.delete(`/products/${productId}/images/${imageId}`)
 }
+
+export async function deleteProduct(id: number): Promise<void> {
+  await apiClient.delete(`/products/${id}`)
+}
+
+export async function deleteVariant(productId: number, variantId: number): Promise<void> {
+  await apiClient.delete(`/products/${productId}/variants/${variantId}`)
+}
+
+export async function updateStock(productId: number, variantId: number, quantity: number): Promise<void> {
+  await apiClient.patch(`/products/${productId}/variants/${variantId}/stock`, { quantity })
+}
+
+export async function updateVariant(productId: number, variantId: number, dto: { retailPrice?: number; wholesalePrice?: number | null }): Promise<void> {
+  await apiClient.put(`/products/${productId}/variants/${variantId}`, dto)
+}

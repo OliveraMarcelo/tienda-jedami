@@ -8,6 +8,9 @@ import {
   listProducts,
   uploadImageHandler,
   deleteImageHandler,
+  deleteProductHandler,
+  deleteVariantHandler,
+  updateStockHandler,
 } from '../modules/products/products.controller.js';
 import { authMiddleware } from '../middlewares/auth.middleware.js';
 import { requireRole } from '../middlewares/role.middleware.js';
@@ -25,5 +28,8 @@ router.post('/:id/variants', authMiddleware, requireRole(['admin']), createVaria
 router.put('/:id/variants/:variantId', authMiddleware, requireRole(['admin']), updateVariantHandler);
 router.post('/:id/images/upload', authMiddleware, requireRole(['admin']), uploadImageHandler);
 router.delete('/:id/images/:imageId', authMiddleware, requireRole(['admin']), deleteImageHandler);
+router.delete('/:id', authMiddleware, requireRole(['admin']), deleteProductHandler);
+router.delete('/:id/variants/:variantId', authMiddleware, requireRole(['admin']), deleteVariantHandler);
+router.patch('/:id/variants/:variantId/stock', authMiddleware, requireRole(['admin']), updateStockHandler);
 
 export default router;

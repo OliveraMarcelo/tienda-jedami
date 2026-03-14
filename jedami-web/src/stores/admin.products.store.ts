@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { createProduct as apiCreate, updateProduct as apiUpdate, createVariant as apiCreateVariant, deleteImage as apiDeleteImage } from '@/api/admin.api'
+import { createProduct as apiCreate, updateProduct as apiUpdate, createVariant as apiCreateVariant, deleteImage as apiDeleteImage, deleteProduct as apiDeleteProduct, deleteVariant as apiDeleteVariant, updateStock as apiUpdateStock, updateVariant as apiUpdateVariant } from '@/api/admin.api'
 import { fetchProducts } from '@/api/products.api'
 import type { Product, Variant } from '@/types/api'
 
@@ -66,5 +66,31 @@ export const useAdminProductsStore = defineStore('adminProducts', () => {
     }
   }
 
-  return { products, loading, error, totalProducts, fetchAll, createProduct, updateProduct, createVariant, deleteImage }
+  async function deleteProduct(id: number) {
+    await apiDeleteProduct(id)
+    products.value = products.value.filter(p => p.id !== id)
+    totalProducts.value--
+  }
+
+  async function deleteVariant(productId: number, variantId: number) {
+    await apiDeleteVariant(productId, variantId)
+    const product = products.value.find(p => p.id === productId)
+    if (product) product.variants = product.variants.filter(v => v.id !== variantId)
+  }
+
+  async function updateVariantPrices(productId: number, variantId: number, dto: { retailPrice?: number; wholesalePrice?: number | null }) {
+    await apiUpdateVariant(productId, variantId, dto)
+    await fetchAll()
+  }
+
+  async function updateVariantStock(productId: number, variantId: number, quantity: number) {
+    await apiUpdateStock(productId, variantId, quantity)
+    const product = products.value.find(p => p.id === productId)
+    if (product) {
+      const variant = product.variants.find(v => v.id === variantId)
+      if (variant) variant.stock.quantity = quantity
+    }
+  }
+
+  return { products, loading, error, totalProducts, fetchAll, createProduct, updateProduct, createVariant, deleteImage, deleteProduct, deleteVariant, updateVariantPrices, updateVariantStock }
 })

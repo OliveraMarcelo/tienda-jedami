@@ -107,6 +107,26 @@ export const updateVariant = async (
   return result.rows[0] ?? null;
 };
 
+export const deleteProduct = async (id: number): Promise<boolean> => {
+  const result = await pool.query('DELETE FROM products WHERE id = $1', [id]);
+  return (result.rowCount ?? 0) > 0;
+};
+
+export const deleteVariant = async (variantId: number, productId: number): Promise<boolean> => {
+  const result = await pool.query(
+    'DELETE FROM variants WHERE id = $1 AND product_id = $2',
+    [variantId, productId],
+  );
+  return (result.rowCount ?? 0) > 0;
+};
+
+export const updateStock = async (variantId: number, quantity: number): Promise<void> => {
+  await pool.query(
+    'UPDATE stock SET quantity = $1 WHERE variant_id = $2',
+    [quantity, variantId],
+  );
+};
+
 export const createVariantWithStock = async (
   productId: number,
   size: string,

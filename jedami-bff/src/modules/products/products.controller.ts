@@ -154,6 +154,39 @@ export function uploadImageHandler(req: Request, res: Response, next: NextFuncti
   });
 }
 
+export async function deleteProductHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) { next(new AppError(400, 'ID inválido', 'https://jedami.com/errors/validation', 'El id debe ser un entero positivo')); return; }
+    await productsService.deleteProduct(id);
+    await cacheDel(CATALOG_KEY, PRODUCT_KEY(id));
+    res.status(204).send();
+  } catch (err) { next(err); }
+}
+
+export async function deleteVariantHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const productId = parseId(req.params.id);
+    const variantId = parseId(req.params.variantId);
+    if (!productId || !variantId) { next(new AppError(400, 'ID inválido', 'https://jedami.com/errors/validation', 'Los ids deben ser enteros positivos')); return; }
+    await productsService.deleteVariant(productId, variantId);
+    await cacheDel(CATALOG_KEY, PRODUCT_KEY(productId));
+    res.status(204).send();
+  } catch (err) { next(err); }
+}
+
+export async function updateStockHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const productId = parseId(req.params.id);
+    const variantId = parseId(req.params.variantId);
+    if (!productId || !variantId) { next(new AppError(400, 'ID inválido', 'https://jedami.com/errors/validation', 'Los ids deben ser enteros positivos')); return; }
+    const { quantity } = req.body;
+    await productsService.updateStock(productId, variantId, quantity);
+    await cacheDel(CATALOG_KEY, PRODUCT_KEY(productId));
+    res.status(200).json({ data: { variantId, quantity } });
+  } catch (err) { next(err); }
+}
+
 export async function deleteImageHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const productId = parseId(req.params.id);

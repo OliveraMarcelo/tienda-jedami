@@ -226,6 +226,32 @@ export async function getCatalog(page: number, pageSize: number, categoryId?: nu
   return { products: groupRowsIntoProducts(rows), total };
 }
 
+export async function deleteProduct(id: number) {
+  const deleted = await productsRepository.deleteProduct(id);
+  if (!deleted) {
+    throw new AppError(404, 'Producto no encontrado', 'https://jedami.com/errors/product-not-found', `No existe producto con id ${id}`);
+  }
+}
+
+export async function deleteVariant(productId: number, variantId: number) {
+  const deleted = await productsRepository.deleteVariant(variantId, productId);
+  if (!deleted) {
+    throw new AppError(404, 'Variante no encontrada', 'https://jedami.com/errors/not-found', `No existe variante ${variantId} en producto ${productId}`);
+  }
+}
+
+export async function updateStock(productId: number, variantId: number, quantity: number) {
+  if (!Number.isInteger(quantity) || quantity < 0) {
+    throw new AppError(400, 'Cantidad inválida', 'https://jedami.com/errors/validation', 'quantity debe ser un entero >= 0');
+  }
+  // Verificar que la variante pertenece al producto
+  const variant = await productsRepository.findVariantById(variantId);
+  if (!variant || variant.product_id !== productId) {
+    throw new AppError(404, 'Variante no encontrada', 'https://jedami.com/errors/not-found', `No existe variante ${variantId} en producto ${productId}`);
+  }
+  await productsRepository.updateStock(variantId, quantity);
+}
+
 export async function getProductWithVariants(id: number): Promise<ProductDetailResponse> {
   const [rows, images] = await Promise.all([
     productsRepository.findByIdWithVariants(id),
@@ -237,6 +263,7 @@ export async function getProductWithVariants(id: number): Promise<ProductDetailR
   const product = groupRowsIntoProducts(rows)[0];
   return {
     ...product,
+    imageUrl: images.length > 0 ? (images[0].url ?? null) : null,
     images: images.map(i => ({ id: i.id, url: i.url, position: i.position })),
   };
 }
