@@ -1,10 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../../types/app-error.js';
 import * as rolesRepository from './roles.repository.js';
-import * as usersRepository from '../users/users.repository.js';
-import * as customersRepository from '../customers/customers.repository.js';
+import * as rolesService from './roles.service.js';
 
-export async function listRoles(_req: Request, res: Response, next: NextFunction) {
+export async function listRoles(_req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const roles = await rolesRepository.findAll();
     res.status(200).json({ data: roles });
@@ -13,35 +12,18 @@ export async function listRoles(_req: Request, res: Response, next: NextFunction
   }
 }
 
-export async function assignRole(req: Request, res: Response, next: NextFunction) {
+export async function assignRole(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const userId = Number(req.params.userId);
-    const { roleId } = req.body;
+    const userId = parseInt(req.params.userId, 10);
+    const roleId = parseInt(String(req.body.roleId), 10);
 
-    if (!userId || !roleId) {
-      return next(new AppError(400, 'Datos incompletos', 'https://jedami.com/errors/validation', 'userId y roleId son obligatorios'));
+    if (isNaN(userId) || userId <= 0 || isNaN(roleId) || roleId <= 0) {
+      next(new AppError(400, 'Datos inválidos', 'https://jedami.com/errors/validation', 'userId y roleId deben ser enteros positivos'));
+      return;
     }
 
-    const user = await usersRepository.findById(userId);
-    if (!user) {
-      return next(new AppError(404, 'Usuario no encontrado', 'https://jedami.com/errors/user-not-found', `No existe usuario con id ${userId}`));
-    }
-
-    const role = await rolesRepository.findById(Number(roleId));
-    if (!role) {
-      return next(new AppError(404, 'Rol no encontrado', 'https://jedami.com/errors/role-not-found', `No existe rol con id ${roleId}`));
-    }
-
-    await usersRepository.assignRole(userId, Number(roleId));
-
-    // Si se asigna el rol wholesale, actualizar customer_type
-    if (role.name === 'wholesale') {
-      await customersRepository.updateCustomerType(userId, 'wholesale');
-    } else if (role.name === 'retail') {
-      await customersRepository.updateCustomerType(userId, 'retail');
-    }
-
-    res.status(200).json({ data: { userId, roleId: Number(roleId) } });
+    const result = await rolesService.assignRoleToUser(userId, roleId);
+    res.status(200).json({ data: result });
   } catch (err) {
     next(err);
   }
