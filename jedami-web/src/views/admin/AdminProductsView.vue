@@ -1,25 +1,21 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
 import ProductFormDialog from '@/components/features/admin/ProductFormDialog.vue'
 import VariantFormDialog from '@/components/features/admin/VariantFormDialog.vue'
 import { useAdminProductsStore } from '@/stores/admin.products.store'
-import { useAuthStore } from '@/stores/auth.store'
 import type { Product } from '@/types/api'
 
-const router = useRouter()
-const authStore = useAuthStore()
+// La protección de ruta admin está en el router guard (requiresRole: 'admin')
+// No se duplica aquí para evitar conflicto con la navegación asíncrona
+
 const adminStore = useAdminProductsStore()
 
 const showProductDialog = ref(false)
 const editingProduct = ref<Product | undefined>(undefined)
 const showVariantDialog = ref(false)
 const variantProductId = ref<number>(0)
-
-if (!authStore.isAdmin) {
-  router.push('/catalogo')
-}
+const actionError = ref<string | null>(null)
 
 onMounted(() => {
   adminStore.fetchAll()
@@ -27,29 +23,46 @@ onMounted(() => {
 
 function openNewProduct() {
   editingProduct.value = undefined
+  actionError.value = null
   showProductDialog.value = true
 }
 
 function openEditProduct(product: Product) {
   editingProduct.value = product
+  actionError.value = null
   showProductDialog.value = true
 }
 
 function openAddVariant(productId: number) {
   variantProductId.value = productId
+  actionError.value = null
   showVariantDialog.value = true
 }
 
 async function handleProductSaved(data: { name: string; description: string }) {
-  if (editingProduct.value) {
-    await adminStore.updateProduct(editingProduct.value.id, data)
-  } else {
-    await adminStore.createProduct(data.name, data.description || undefined)
+  actionError.value = null
+  try {
+    if (editingProduct.value) {
+      await adminStore.updateProduct(editingProduct.value.id, data)
+    } else {
+      await adminStore.createProduct(data.name, data.description || undefined)
+    }
+    showProductDialog.value = false
+  } catch (err: unknown) {
+    const e = err as { response?: { data?: { detail?: string } } }
+    actionError.value = e.response?.data?.detail ?? 'Error al guardar el producto.'
   }
 }
 
 async function handleVariantSaved(data: { size: string; color: string; retailPrice: number; initialStock: number }) {
-  await adminStore.createVariant(variantProductId.value, data)
+  actionError.value = null
+  try {
+    await adminStore.createVariant(variantProductId.value, data)
+    showVariantDialog.value = false
+  } catch (err: unknown) {
+    const e = err as { response?: { data?: { detail?: string } } }
+    actionError.value = e.response?.data?.detail ?? 'Error al guardar la variante.'
+  }
 }
 </script>
 
@@ -65,15 +78,34 @@ async function handleVariantSaved(data: { size: string; color: string; retailPri
       </button>
     </div>
 
+    <!-- Error de carga -->
+    <div v-if="adminStore.error" class="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 flex items-center justify-between">
+      <span>{{ adminStore.error }}</span>
+      <button @click="adminStore.fetchAll()" class="text-red-600 font-semibold hover:underline">Reintentar</button>
+    </div>
+
+    <!-- Advertencia de truncado -->
+    <div
+      v-if="adminStore.totalProducts > 100"
+      class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-xl text-sm text-yellow-800"
+    >
+      Se muestran los primeros 100 de {{ adminStore.totalProducts }} productos.
+    </div>
+
+    <!-- Error de acción -->
+    <div v-if="actionError" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+      {{ actionError }}
+    </div>
+
     <div v-if="adminStore.loading" class="space-y-2">
       <div v-for="n in 5" :key="n" class="h-12 bg-gray-200 rounded-xl animate-pulse" />
     </div>
 
-    <div v-else-if="adminStore.products.length === 0" class="text-center py-16 text-gray-400">
+    <div v-else-if="!adminStore.error && adminStore.products.length === 0" class="text-center py-16 text-gray-400">
       No hay productos. Creá el primero.
     </div>
 
-    <div v-else class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+    <div v-else-if="adminStore.products.length > 0" class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
       <table class="w-full text-sm">
         <thead class="bg-gray-50 border-b border-gray-200">
           <tr>

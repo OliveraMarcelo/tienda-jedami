@@ -7,12 +7,19 @@ import type { Product, Variant } from '@/types/api'
 export const useAdminProductsStore = defineStore('adminProducts', () => {
   const products = ref<Product[]>([])
   const loading = ref(false)
+  const error = ref<string | null>(null)
+  const totalProducts = ref(0)
 
   async function fetchAll() {
     loading.value = true
+    error.value = null
     try {
       const res = await fetchProducts(1, 100)
       products.value = res.data
+      totalProducts.value = res.meta.total
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } } }
+      error.value = e.response?.data?.detail ?? 'Error al cargar los productos.'
     } finally {
       loading.value = false
     }
@@ -21,6 +28,7 @@ export const useAdminProductsStore = defineStore('adminProducts', () => {
   async function createProduct(name: string, description?: string) {
     const res = await apiCreate({ name, description })
     products.value.push({ ...res.data, variants: [] })
+    totalProducts.value++
     return res.data
   }
 
@@ -49,5 +57,5 @@ export const useAdminProductsStore = defineStore('adminProducts', () => {
     return res.data
   }
 
-  return { products, loading, fetchAll, createProduct, updateProduct, createVariant }
+  return { products, loading, error, totalProducts, fetchAll, createProduct, updateProduct, createVariant }
 })
