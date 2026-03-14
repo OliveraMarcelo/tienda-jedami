@@ -88,12 +88,15 @@ export async function createVariant(productId: number, dto: CreateVariantDTO) {
   };
 }
 
-export async function updateProduct(id: number, dto: { name?: string; description?: string }) {
+export async function updateProduct(id: number, dto: { name?: string; description?: string | null }) {
   const existing = await productsRepository.findById(id);
   if (!existing) {
     throw new AppError(404, 'Producto no encontrado', 'https://jedami.com/errors/product-not-found', `No existe producto con id ${id}`);
   }
-  const updated = await productsRepository.updateProduct(id, dto);
+  // Si description no viene en el body (undefined), conservar el valor actual.
+  // Si viene explícitamente como null o string vacío, limpiarlo.
+  const description = dto.description === undefined ? existing.description : (dto.description ?? null);
+  const updated = await productsRepository.updateProduct(id, { name: dto.name, description });
   return { id: updated!.id, name: updated!.name, description: updated!.description };
 }
 

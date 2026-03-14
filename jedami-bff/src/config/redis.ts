@@ -55,16 +55,20 @@ export async function cacheSet(key: string, value: string, ttlSeconds: number): 
 export async function cacheDel(...keys: string[]): Promise<void> {
   if (!redisClient) return;
   try {
-    const pattern = keys.find(k => k.includes('*'));
-    if (pattern) {
-      const matchedKeys = await redisClient.keys(pattern);
-      if (matchedKeys.length > 0) {
-        await redisClient.del(...matchedKeys);
-      }
-    } else {
-      await redisClient.del(...keys);
+    const exactKeys = keys.filter(k => !k.includes('*'));
+    const wildcardKeys = keys.filter(k => k.includes('*'));
+
+    const expandedWildcardKeys: string[] = [];
+    for (const pattern of wildcardKeys) {
+      const matched = await redisClient.keys(pattern);
+      expandedWildcardKeys.push(...matched);
+    }
+
+    const allKeys = [...exactKeys, ...expandedWildcardKeys];
+    if (allKeys.length > 0) {
+      await redisClient.del(...allKeys);
     }
   } catch {
-    // silencioso
+    // silencioso — Redis es opcional
   }
 }

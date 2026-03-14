@@ -18,7 +18,7 @@ export const findById = async (id: number): Promise<Product | null> => {
   return result.rows[0] ?? null;
 };
 
-export const updateProduct = async (id: number, data: { name?: string; description?: string }): Promise<Product | null> => {
+export const updateProduct = async (id: number, data: { name?: string; description?: string | null }): Promise<Product | null> => {
   const result = await pool.query(UPDATE_PRODUCT, [id, data.name ?? null, data.description ?? null]);
   return result.rows[0] ?? null;
 };
