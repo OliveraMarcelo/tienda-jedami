@@ -9,6 +9,7 @@ const productsStore = useProductsStore()
 const authStore = useAuthStore()
 
 onMounted(() => {
+  productsStore.loadCategories()
   if (productsStore.products.length === 0) {
     productsStore.fetchCatalog(true)
   }
@@ -22,6 +23,34 @@ function loadMore() {
 <template>
   <AppLayout>
     <h1 class="text-2xl font-bold text-gray-900 mb-6">Catálogo</h1>
+
+    <!-- Filtro de categorías -->
+    <div v-if="productsStore.categories.length > 0" class="flex gap-2 flex-wrap mb-6">
+      <button
+        @click="productsStore.filterByCategory(null)"
+        :class="[
+          'px-4 py-1.5 rounded-full text-sm font-semibold transition-colors border',
+          productsStore.selectedCategoryId === null
+            ? 'bg-[#E91E8C] text-white border-[#E91E8C]'
+            : 'bg-white text-gray-700 border-gray-300 hover:border-[#E91E8C] hover:text-[#E91E8C]',
+        ]"
+      >
+        Todas
+      </button>
+      <button
+        v-for="cat in productsStore.categories"
+        :key="cat.id"
+        @click="productsStore.filterByCategory(cat.id)"
+        :class="[
+          'px-4 py-1.5 rounded-full text-sm font-semibold transition-colors border',
+          productsStore.selectedCategoryId === cat.id
+            ? 'bg-[#E91E8C] text-white border-[#E91E8C]'
+            : 'bg-white text-gray-700 border-gray-300 hover:border-[#E91E8C] hover:text-[#E91E8C]',
+        ]"
+      >
+        {{ cat.name }}
+      </button>
+    </div>
 
     <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
       <ProductCard

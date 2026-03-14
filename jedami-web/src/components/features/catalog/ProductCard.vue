@@ -16,6 +16,12 @@ const uniqueColors = computed(() =>
 
 const minPrice = computed(() => {
   if (!props.product.variants.length) return null
+  if (props.mode === 'wholesale') {
+    // Mostrar el menor precio mayorista disponible (o retail como fallback)
+    return Math.min(
+      ...props.product.variants.map(v => v.wholesalePrice ?? v.retailPrice)
+    )
+  }
   return Math.min(...props.product.variants.map(v => v.retailPrice))
 })
 
@@ -38,17 +44,37 @@ const stockBadge = computed(() => {
       @mouseleave="hovered = false"
     >
       <div class="relative aspect-[3/4] bg-gray-100 overflow-hidden">
+        <!-- Imagen real del producto -->
+        <img
+          v-if="product.imageUrl"
+          :src="product.imageUrl"
+          :alt="product.name"
+          class="absolute inset-0 w-full h-full object-cover transition-transform duration-200"
+          :class="hovered ? 'scale-105' : 'scale-100'"
+          loading="lazy"
+        />
+        <!-- Placeholder si no hay imagen -->
         <div
+          v-else
           class="absolute inset-0 flex items-center justify-center text-gray-300 text-4xl transition-transform duration-200"
           :class="hovered ? 'scale-105' : 'scale-100'"
         >
           🧸
         </div>
+
         <span
           v-if="stockBadge"
           :class="['absolute top-2 left-2 text-white text-xs font-semibold px-2 py-0.5 rounded-full', stockBadge.bg]"
         >
           {{ stockBadge.text }}
+        </span>
+
+        <!-- Badge de categoría -->
+        <span
+          v-if="product.categoryName"
+          class="absolute bottom-2 right-2 bg-white/80 backdrop-blur-sm text-gray-700 text-xs font-medium px-2 py-0.5 rounded-full border border-gray-200"
+        >
+          {{ product.categoryName }}
         </span>
       </div>
 

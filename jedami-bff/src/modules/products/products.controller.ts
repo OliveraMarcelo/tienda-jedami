@@ -5,6 +5,7 @@ import { cacheGet, cacheSet, cacheDel } from '../../config/redis.js';
 import { ENV } from '../../config/env.js';
 
 const CATALOG_KEY = 'catalog:*';
+const PRODUCT_KEY = (id: number) => `product:${id}`;
 
 function parseId(raw: string): number | null {
   const id = parseInt(raw, 10);
@@ -13,8 +14,8 @@ function parseId(raw: string): number | null {
 
 export async function createProduct(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { name, description } = req.body;
-    const product = await productsService.createProduct({ name, description });
+    const { name, description, categoryId } = req.body;
+    const product = await productsService.createProduct({ name, description, categoryId: categoryId ?? null });
     await cacheDel(CATALOG_KEY);
     res.status(201).json({ data: product });
   } catch (err) {
@@ -29,10 +30,29 @@ export async function createVariant(req: Request, res: Response, next: NextFunct
       next(new AppError(400, 'ID inválido', 'https://jedami.com/errors/validation', 'El id del producto debe ser un entero positivo'));
       return;
     }
-    const { size, color, retailPrice, initialStock } = req.body;
-    const variant = await productsService.createVariant(productId, { size, color, retailPrice, initialStock });
-    await cacheDel(CATALOG_KEY, `product:${productId}`);
+    const { size, color, retailPrice, initialStock, wholesalePrice } = req.body;
+    const variant = await productsService.createVariant(productId, {
+      size, color, retailPrice, initialStock, wholesalePrice: wholesalePrice ?? null,
+    });
+    await cacheDel(CATALOG_KEY, PRODUCT_KEY(productId));
     res.status(201).json({ data: variant });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function updateVariantHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const productId = parseId(req.params.id);
+    const variantId = parseId(req.params.variantId);
+    if (!productId || !variantId) {
+      next(new AppError(400, 'ID inválido', 'https://jedami.com/errors/validation', 'Los ids deben ser enteros positivos'));
+      return;
+    }
+    const { retailPrice, wholesalePrice } = req.body;
+    const variant = await productsService.updateVariant(productId, variantId, { retailPrice, wholesalePrice });
+    await cacheDel(CATALOG_KEY, PRODUCT_KEY(productId));
+    res.status(200).json({ data: variant });
   } catch (err) {
     next(err);
   }
@@ -45,9 +65,9 @@ export async function updateProduct(req: Request, res: Response, next: NextFunct
       next(new AppError(400, 'ID inválido', 'https://jedami.com/errors/validation', 'El id del producto debe ser un entero positivo'));
       return;
     }
-    const { name, description } = req.body;
-    const product = await productsService.updateProduct(id, { name, description });
-    await cacheDel(CATALOG_KEY, `product:${id}`);
+    const { name, description, categoryId } = req.body;
+    const product = await productsService.updateProduct(id, { name, description, categoryId });
+    await cacheDel(CATALOG_KEY, PRODUCT_KEY(id));
     res.status(200).json({ data: product });
   } catch (err) {
     next(err);
@@ -61,7 +81,7 @@ export async function getProduct(req: Request, res: Response, next: NextFunction
       next(new AppError(400, 'ID inválido', 'https://jedami.com/errors/validation', 'El id del producto debe ser un entero positivo'));
       return;
     }
-    const cacheKey = `product:${id}`;
+    const cacheKey = PRODUCT_KEY(id);
     const cached = await cacheGet(cacheKey);
     if (cached) {
       res.status(200).json(JSON.parse(cached));
@@ -83,18 +103,55 @@ export async function listProducts(req: Request, res: Response, next: NextFuncti
     const rawPageSize = parseInt(req.query.pageSize as string);
     const page = isNaN(rawPage) || rawPage < 1 ? 1 : rawPage;
     const pageSize = Math.min(isNaN(rawPageSize) || rawPageSize < 1 ? 20 : rawPageSize, 100);
-    const cacheKey = `catalog:page:${page}:size:${pageSize}`;
 
+    const rawCategoryId = req.query.categoryId as string | undefined;
+    const categoryId = rawCategoryId != null && rawCategoryId !== ''
+      ? (parseInt(rawCategoryId, 10) || null)
+      : null;
+
+    const cacheKey = `catalog:page:${page}:size:${pageSize}:cat:${categoryId ?? 'all'}`;
     const cached = await cacheGet(cacheKey);
     if (cached) {
       res.status(200).json(JSON.parse(cached));
       return;
     }
 
-    const { products, total } = await productsService.getCatalog(page, pageSize);
-    const body = { data: products, meta: { page, pageSize, total } };
+    const { products, total } = await productsService.getCatalog(page, pageSize, categoryId);
+    const body = { data: products, meta: { page, pageSize, total, categoryId } };
     await cacheSet(cacheKey, JSON.stringify(body), ENV.CACHE_TTL);
     res.status(200).json(body);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function addImageHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const productId = parseId(req.params.id);
+    if (!productId) {
+      next(new AppError(400, 'ID inválido', 'https://jedami.com/errors/validation', 'El id del producto debe ser un entero positivo'));
+      return;
+    }
+    const { url, position } = req.body;
+    const image = await productsService.addImage(productId, url, position);
+    await cacheDel(CATALOG_KEY, PRODUCT_KEY(productId));
+    res.status(201).json({ data: image });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function deleteImageHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const productId = parseId(req.params.id);
+    const imageId = parseId(req.params.imageId);
+    if (!productId || !imageId) {
+      next(new AppError(400, 'ID inválido', 'https://jedami.com/errors/validation', 'Los ids deben ser enteros positivos'));
+      return;
+    }
+    await productsService.deleteImage(productId, imageId);
+    await cacheDel(CATALOG_KEY, PRODUCT_KEY(productId));
+    res.status(204).send();
   } catch (err) {
     next(err);
   }

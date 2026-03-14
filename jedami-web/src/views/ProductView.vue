@@ -20,6 +20,7 @@ const ordersStore = useOrdersStore()
 const selectedColor = ref<string | null>(null)
 const selectedSize = ref<string | null>(null)
 const notFound = ref(false)
+const activeImageIndex = ref(0)
 
 // Wholesale
 const wholesaleTab = ref<'curva' | 'cantidad'>('curva')
@@ -179,8 +180,40 @@ async function handleCantidadConfirm() {
       </RouterLink>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-4">
-        <div class="aspect-square bg-gray-100 rounded-2xl flex items-center justify-center text-6xl text-gray-300">
-          🧸
+        <!-- Galería de imágenes -->
+        <div>
+          <div class="aspect-square bg-gray-100 rounded-2xl overflow-hidden flex items-center justify-center text-6xl text-gray-300">
+            <img
+              v-if="product.images && product.images.length > 0"
+              :src="product.images![activeImageIndex]?.url ?? product.images![0]!.url"
+              :alt="product.name"
+              class="w-full h-full object-cover"
+            />
+            <img
+              v-else-if="product.imageUrl"
+              :src="product.imageUrl"
+              :alt="product.name"
+              class="w-full h-full object-cover"
+            />
+            <span v-else>🧸</span>
+          </div>
+          <!-- Miniaturas -->
+          <div
+            v-if="product.images && product.images.length > 1"
+            class="flex gap-2 mt-3 overflow-x-auto pb-1"
+          >
+            <button
+              v-for="(img, idx) in product.images"
+              :key="img.id"
+              @click="activeImageIndex = idx"
+              :class="[
+                'flex-none w-16 h-16 rounded-lg overflow-hidden border-2 transition-colors',
+                activeImageIndex === idx ? 'border-[#E91E8C]' : 'border-transparent hover:border-gray-300',
+              ]"
+            >
+              <img :src="img.url" :alt="`Imagen ${idx + 1}`" class="w-full h-full object-cover" />
+            </button>
+          </div>
         </div>
 
         <div class="space-y-5">

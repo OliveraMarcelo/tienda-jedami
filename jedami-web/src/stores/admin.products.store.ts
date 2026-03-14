@@ -50,6 +50,7 @@ export const useAdminProductsStore = defineStore('adminProducts', () => {
         size: res.data.size,
         color: res.data.color,
         retailPrice: res.data.retailPrice,
+        wholesalePrice: res.data.wholesalePrice ?? null,
         stock: res.data.stock,
       }
       product.variants.push(variant)

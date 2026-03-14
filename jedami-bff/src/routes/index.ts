@@ -3,6 +3,7 @@ import authRoutes from './auth.routes.js';
 import rolesRoutes from './roles.routes.js';
 import usersRoutes from './users.routes.js';
 import productsRoutes from './products.routes.js';
+import categoriesRoutes from './categories.routes.js';
 import ordersRoutes from './orders.routes.js';
 import paymentsRoutes from './payments.routes.js';
 import { authMiddleware } from '../middlewares/auth.middleware.js';
@@ -30,6 +31,9 @@ router.post('/users/:userId/roles', authMiddleware, requireRole(['admin']), assi
 
 // Productos — rutas mixtas (público para GET, admin para mutaciones)
 router.use('/products', productsRoutes);
+
+// Categorías — público para GET, admin para mutaciones
+router.use('/categories', categoriesRoutes);
 
 // Pedidos — requiere auth + wholesale
 router.use('/orders', ordersRoutes);

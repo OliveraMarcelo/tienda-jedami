@@ -1,11 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { fetchProducts, fetchProduct } from '@/api/products.api'
-import type { Product } from '@/types/api'
+import { fetchProducts, fetchProduct, fetchCategories } from '@/api/products.api'
+import type { Product, Category } from '@/types/api'
 
 export const useProductsStore = defineStore('products', () => {
   const products = ref<Product[]>([])
   const currentProduct = ref<Product | null>(null)
+  const categories = ref<Category[]>([])
+  const selectedCategoryId = ref<number | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
   const page = ref(1)
@@ -20,7 +22,7 @@ export const useProductsStore = defineStore('products', () => {
     loading.value = true
     error.value = null
     try {
-      const res = await fetchProducts(page.value, pageSize)
+      const res = await fetchProducts(page.value, pageSize, selectedCategoryId.value)
       products.value = [...products.value, ...res.data]
       total.value = res.meta.total
       page.value++
@@ -29,6 +31,20 @@ export const useProductsStore = defineStore('products', () => {
       error.value = e.response?.data?.detail ?? 'Error al cargar el catálogo. Intente nuevamente.'
     } finally {
       loading.value = false
+    }
+  }
+
+  async function filterByCategory(categoryId: number | null) {
+    selectedCategoryId.value = categoryId
+    await fetchCatalog(true)
+  }
+
+  async function loadCategories() {
+    try {
+      const res = await fetchCategories()
+      categories.value = res.data
+    } catch {
+      // Silencioso — las categorías son opcionales para la navegación
     }
   }
 
@@ -43,5 +59,19 @@ export const useProductsStore = defineStore('products', () => {
     }
   }
 
-  return { products, currentProduct, loading, error, page, total, pageSize, fetchCatalog, loadProduct }
+  return {
+    products,
+    currentProduct,
+    categories,
+    selectedCategoryId,
+    loading,
+    error,
+    page,
+    total,
+    pageSize,
+    fetchCatalog,
+    filterByCategory,
+    loadCategories,
+    loadProduct,
+  }
 })

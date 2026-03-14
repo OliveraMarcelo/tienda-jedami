@@ -136,16 +136,16 @@ development_status:
   # EPIC 6: Catálogo Mejorado — Fotos, Categorías y Precios Mayoristas
   # FRs: RF-13, RF-14, RF-15
   # ─────────────────────────────────────────────────────────
-  epic-6: backlog
+  epic-6: done
 
   # BFF Track — jedami-bff
-  6-1-fotos-de-productos: backlog
-  6-2-seed-data-realista: backlog
-  6-3-precios-mayoristas-por-variante: backlog
-  6-4-categorias-de-productos: backlog
+  6-1-fotos-de-productos: done
+  6-2-seed-data-realista: done
+  6-3-precios-mayoristas-por-variante: done
+  6-4-categorias-de-productos: done
 
   # WEB Track — jedami-web (después del BFF)
-  web-6-1-catalogo-con-fotos-precios-mayoristas-y-filtros: backlog
+  web-6-1-catalogo-con-fotos-precios-mayoristas-y-filtros: done
 
   epic-6-retrospective: optional
 
