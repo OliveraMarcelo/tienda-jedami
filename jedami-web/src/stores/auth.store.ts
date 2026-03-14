@@ -1,0 +1,105 @@
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+import { loginApi, registerApi, refreshApi, logoutApi } from '@/api/auth.api'
+
+interface JwtPayload {
+  id: number
+  email: string
+  roles: string[]
+}
+
+function parseJwtPayload(token: string): JwtPayload {
+  const base64 = token.split('.')[1]
+  return JSON.parse(atob(base64)) as JwtPayload
+}
+
+export const useAuthStore = defineStore('auth', () => {
+  const token = ref<string | null>(localStorage.getItem('jedami_token'))
+  const refreshToken = ref<string | null>(localStorage.getItem('jedami_refresh_token'))
+  const user = ref<JwtPayload | null>(
+    token.value ? parseJwtPayload(token.value) : null
+  )
+
+  const isAuthenticated = computed(() => !!token.value)
+  const isAdmin = computed(() => user.value?.roles.includes('admin') ?? false)
+  const isWholesale = computed(() => user.value?.roles.includes('wholesale') ?? false)
+  const isRetail = computed(() => !isWholesale.value)
+  const mode = computed<'retail' | 'wholesale'>(() =>
+    isWholesale.value ? 'wholesale' : 'retail'
+  )
+
+  function setToken(t: string, rt?: string) {
+    token.value = t
+    user.value = parseJwtPayload(t)
+    localStorage.setItem('jedami_token', t)
+    if (rt) {
+      refreshToken.value = rt
+      localStorage.setItem('jedami_refresh_token', rt)
+    }
+  }
+
+  function clearToken() {
+    token.value = null
+    refreshToken.value = null
+    user.value = null
+    localStorage.removeItem('jedami_token')
+    localStorage.removeItem('jedami_refresh_token')
+  }
+
+  async function tryRefresh(): Promise<boolean> {
+    const rt = refreshToken.value
+    if (!rt) return false
+    try {
+      const res = await refreshApi(rt)
+      setToken(res.data.token, res.data.refreshToken)
+      return true
+    } catch {
+      clearToken()
+      return false
+    }
+  }
+
+  async function login(email: string, password: string) {
+    const res = await loginApi(email, password)
+    setToken(res.data.token, res.data.refreshToken)
+    const { default: router } = await import('@/router')
+    const payload = parseJwtPayload(res.data.token)
+    if (payload.roles.includes('admin')) {
+      router.push('/admin')
+    } else {
+      router.push('/catalogo')
+    }
+  }
+
+  async function register(email: string, password: string) {
+    await registerApi(email, password)
+    await login(email, password)
+  }
+
+  async function logout() {
+    try {
+      await logoutApi()
+    } catch {
+      // silencioso — igual limpiamos local
+    }
+    clearToken()
+    import('@/router').then(({ default: router }) => {
+      router.push('/login')
+    })
+  }
+
+  return {
+    token,
+    refreshToken,
+    user,
+    isAuthenticated,
+    isAdmin,
+    isWholesale,
+    isRetail,
+    mode,
+    login,
+    register,
+    logout,
+    tryRefresh,
+  }
+})

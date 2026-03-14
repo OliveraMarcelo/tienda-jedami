@@ -1,23 +1,67 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
+import { useAuthStore } from '@/stores/auth.store'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
+    { path: '/', redirect: '/catalogo' },
+    { path: '/login', name: 'login', component: () => import('@/views/LoginView.vue') },
+    { path: '/registro', name: 'registro', component: () => import('@/views/RegisterView.vue') },
+    { path: '/catalogo', name: 'catalogo', component: () => import('@/views/CatalogView.vue') },
+    { path: '/catalogo/:id', name: 'producto', component: () => import('@/views/ProductView.vue') },
     {
-      path: '/',
-      name: 'home',
-      component: HomeView,
+      path: '/pedidos',
+      name: 'pedidos',
+      component: () => import('@/views/OrdersView.vue'),
+      meta: { requiresAuth: true },
     },
     {
-      path: '/about',
-      name: 'about',
-      // route level code-splitting
-      // this generates a separate chunk (About.[hash].js) for this route
-      // which is lazy-loaded when the route is visited.
-      component: () => import('../views/AboutView.vue'),
+      path: '/pedidos/:orderId',
+      name: 'pedidoDetalle',
+      component: () => import('@/views/OrderDetailView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/pedidos/:orderId/confirmacion',
+      name: 'pagoConfirmacion',
+      component: () => import('@/views/PaymentConfirmationView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/perfil',
+      name: 'perfil',
+      component: () => import('@/views/ProfileView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/admin',
+      name: 'admin',
+      component: () => import('@/views/admin/AdminView.vue'),
+      meta: { requiresRole: 'admin' },
+    },
+    {
+      path: '/admin/productos',
+      name: 'adminProductos',
+      component: () => import('@/views/admin/AdminProductsView.vue'),
+      meta: { requiresRole: 'admin' },
+    },
+    {
+      path: '/admin/usuarios',
+      name: 'adminUsuarios',
+      component: () => import('@/views/admin/AdminUsersView.vue'),
+      meta: { requiresRole: 'admin' },
     },
   ],
+})
+
+router.beforeEach((to) => {
+  const authStore = useAuthStore()
+  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+    return { name: 'login' }
+  }
+  if (to.meta.requiresRole === 'admin' && !authStore.isAdmin) {
+    return { name: 'catalogo' }
+  }
 })
 
 export default router
