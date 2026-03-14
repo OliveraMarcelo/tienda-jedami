@@ -41,3 +41,11 @@ export async function runMigrations(): Promise<void> {
 
   logger.info('[MIGRATE] Todas las migraciones aplicadas');
 }
+
+// Ejecutar cuando se corre directamente: npm run migrate
+const isMain = process.argv[1]?.endsWith('migrate.ts') || process.argv[1]?.endsWith('migrate.js');
+if (isMain) {
+  runMigrations()
+    .then(() => process.exit(0))
+    .catch(err => { console.error(err); process.exit(1); });
+}

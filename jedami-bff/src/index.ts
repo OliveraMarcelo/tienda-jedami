@@ -1,6 +1,7 @@
 import { createApp } from './app.js';
 import { connectDB } from './config/database.js';
 import { connectRedis } from './config/redis.js';
+import { runMigrations } from './database/migrate.js';
 import { logger } from './config/logger.js';
 import { ENV } from './config/env.js';
 
@@ -10,6 +11,9 @@ async function bootstrap() {
 
     await connectDB();
     logger.info('[BOOTSTRAP] PostgreSQL conectado');
+
+    await runMigrations();
+    logger.info('[BOOTSTRAP] Migraciones aplicadas');
 
     await connectRedis();
 
