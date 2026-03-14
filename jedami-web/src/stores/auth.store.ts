@@ -71,24 +71,26 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function login(email: string, password: string) {
+  async function login(email: string, password: string, navigate = true) {
     const res = await loginApi(email, password)
     setToken(res.data.token, res.data.refreshToken)
-    const { default: router } = await import('@/router')
-    const payload = parseJwtPayload(res.data.token)
-    if (payload?.roles.includes('admin')) {
-      router.push('/admin')
-    } else {
-      router.push('/catalogo')
+    if (navigate) {
+      const { default: router } = await import('@/router')
+      const payload = parseJwtPayload(res.data.token)
+      if (payload?.roles.includes('admin')) {
+        router.push('/admin')
+      } else {
+        router.push('/catalogo')
+      }
     }
   }
 
-  async function register(email: string, password: string) {
+  async function register(email: string, password: string, navigate = true) {
     await registerApi(email, password)
     // Si el registro fue exitoso pero el login falla, marcamos el error para que
     // el componente pueda distinguirlo de un error de registro (ej: email duplicado)
     try {
-      await login(email, password)
+      await login(email, password, navigate)
     } catch (loginErr) {
       const err = loginErr as Record<string, unknown>
       err.__registerOk = true

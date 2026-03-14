@@ -60,8 +60,13 @@ export async function cacheDel(...keys: string[]): Promise<void> {
 
     const expandedWildcardKeys: string[] = [];
     for (const pattern of wildcardKeys) {
-      const matched = await redisClient.keys(pattern);
-      expandedWildcardKeys.push(...matched);
+      // Usar SCAN en lugar de KEYS para no bloquear Redis en producción
+      let cursor = '0';
+      do {
+        const [nextCursor, matched] = await redisClient.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+        expandedWildcardKeys.push(...matched);
+        cursor = nextCursor;
+      } while (cursor !== '0');
     }
 
     const allKeys = [...exactKeys, ...expandedWildcardKeys];

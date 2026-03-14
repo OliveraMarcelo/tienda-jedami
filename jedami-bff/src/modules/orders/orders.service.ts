@@ -1,5 +1,6 @@
 import { pool } from '../../config/database.js';
 import { AppError } from '../../types/app-error.js';
+import { cacheDel } from '../../config/redis.js';
 import * as ordersRepository from './orders.repository.js';
 import * as customersRepository from '../customers/customers.repository.js';
 import * as productsRepository from '../products/products.repository.js';
@@ -59,6 +60,12 @@ export async function createRetailOrder(
 ) {
   if (!items || items.length === 0) {
     throw new AppError(400, 'Items requeridos', 'https://jedami.com/errors/validation', 'Debe enviar al menos un ítem');
+  }
+
+  for (const item of items) {
+    if (!Number.isInteger(item.quantity) || item.quantity <= 0) {
+      throw new AppError(400, 'Cantidad inválida', 'https://jedami.com/errors/validation', `La cantidad de cada ítem debe ser un entero positivo (variantId: ${item.variantId})`);
+    }
   }
 
   const customer = await getCustomerOrFail(userId);
@@ -126,6 +133,7 @@ export async function createRetailOrder(
     );
 
     await client.query('COMMIT');
+    await cacheDel('catalog:*', 'product:*');
 
     return {
       id: order.id,
@@ -223,6 +231,7 @@ export async function addCurvaItems(orderId: number, productId: number, curves: 
     );
 
     await client.query('COMMIT');
+    await cacheDel('catalog:*', 'product:*');
 
     return {
       orderId,
@@ -309,6 +318,7 @@ export async function addCantidadItems(orderId: number, productId: number, quant
     );
 
     await client.query('COMMIT');
+    await cacheDel('catalog:*', 'product:*');
 
     return {
       orderId,

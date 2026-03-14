@@ -9,7 +9,6 @@ import SoftRegistrationGate from '@/components/features/catalog/SoftRegistration
 import { useProductsStore } from '@/stores/products.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { useOrdersStore } from '@/stores/orders.store'
-import { usePaymentsStore } from '@/stores/payments.store'
 import { useRouter } from 'vue-router'
 
 const route = useRoute()
@@ -17,7 +16,6 @@ const router = useRouter()
 const productsStore = useProductsStore()
 const authStore = useAuthStore()
 const ordersStore = useOrdersStore()
-const paymentsStore = usePaymentsStore()
 
 const selectedColor = ref<string | null>(null)
 const selectedSize = ref<string | null>(null)
@@ -34,6 +32,7 @@ let toastTimer: ReturnType<typeof setTimeout> | null = null
 const showGate = ref(false)
 const retailQuantity = ref(1)
 const retailError = ref('')
+const retailLoading = ref(false)
 
 function showToast(msg: string) {
   toastMessage.value = msg
@@ -45,7 +44,7 @@ onMounted(async () => {
   try {
     await productsStore.loadProduct(Number(route.params.id))
     const variants = productsStore.currentProduct?.variants ?? []
-    if (variants.length) {
+    if (variants.length && variants[0]) {
       selectedColor.value = variants[0].color
     }
   } catch {
@@ -110,12 +109,15 @@ async function handleBuyRetail() {
     return
   }
 
+  retailLoading.value = true
   try {
     const order = await ordersStore.placeRetailOrder([{ variantId: selectedVariant.value.id, quantity: qty }])
-    await paymentsStore.startCheckout(order.id)
+    router.push('/pedidos/' + order.id)
   } catch (err: unknown) {
     const e = err as { response?: { data?: { detail?: string } } }
     retailError.value = e.response?.data?.detail ?? 'Error al crear el pedido'
+  } finally {
+    retailLoading.value = false
   }
 }
 
@@ -304,11 +306,11 @@ async function handleCantidadConfirm() {
             </div>
 
             <button
-              :disabled="!canBuy || ordersStore.loading || paymentsStore.loading"
+              :disabled="!canBuy || retailLoading"
               @click="handleBuyRetail"
               class="w-full h-10 rounded-xl bg-[#E91E8C] text-white font-semibold text-sm shadow hover:opacity-90 transition-opacity disabled:opacity-40 disabled:pointer-events-none"
             >
-              <span v-if="ordersStore.loading || paymentsStore.loading" class="inline-flex items-center gap-2">
+              <span v-if="retailLoading" class="inline-flex items-center gap-2">
                 <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />

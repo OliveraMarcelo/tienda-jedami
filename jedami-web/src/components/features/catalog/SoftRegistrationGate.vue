@@ -21,9 +21,9 @@ async function submit() {
   loading.value = true
   try {
     if (tab.value === 'login') {
-      await authStore.login(email.value, password.value)
+      await authStore.login(email.value, password.value, false)
     } else {
-      await authStore.register(email.value, password.value)
+      await authStore.register(email.value, password.value, false)
     }
     emit('update:open', false)
     emit('authenticated')

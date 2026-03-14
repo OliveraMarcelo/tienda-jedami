@@ -31,6 +31,12 @@ async function storeRefreshToken(userId: number, token: string): Promise<void> {
   const tokenHash = hashToken(token);
   const expiresAt = new Date(Date.now() + parseExpiresInMs(ENV.JWT_REFRESH_EXPIRES_IN));
 
+  // Limpiar tokens expirados o revocados para evitar crecimiento indefinido de la tabla
+  await pool.query(
+    `DELETE FROM refresh_tokens WHERE user_id = $1 AND (expires_at < NOW() OR revoked_at IS NOT NULL)`,
+    [userId],
+  );
+
   await pool.query(
     `INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)`,
     [userId, tokenHash, expiresAt],
