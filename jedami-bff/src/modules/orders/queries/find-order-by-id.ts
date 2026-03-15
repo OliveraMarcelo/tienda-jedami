@@ -12,10 +12,12 @@ export const FIND_ORDER_ITEMS = `
     oi.product_id,
     oi.quantity,
     oi.unit_price,
-    v.size AS variant_size,
-    v.color AS variant_color
+    sz.label AS variant_size,
+    cl.name  AS variant_color
   FROM order_items oi
   LEFT JOIN variants v ON v.id = oi.variant_id
+  LEFT JOIN sizes sz   ON sz.id = v.size_id
+  LEFT JOIN colors cl  ON cl.id = v.color_id
   WHERE oi.order_id = $1
   ORDER BY oi.id
 `;

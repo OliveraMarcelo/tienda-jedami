@@ -43,9 +43,22 @@ async function getVariantsWithStockInTx(
   productId: number,
 ): Promise<VariantWithStock[]> {
   const result = await client.query(
-    `SELECT v.id, v.size, v.color, v.retail_price, v.wholesale_price, COALESCE(s.quantity, 0) AS stock_quantity
+    `SELECT v.id,
+            sz.label                AS size,
+            cl.name                 AS color,
+            pp_r.price              AS retail_price,
+            pp_w.price              AS wholesale_price,
+            COALESCE(s.quantity, 0) AS stock_quantity
      FROM variants v
+     JOIN sizes sz  ON sz.id = v.size_id
+     JOIN colors cl ON cl.id = v.color_id
      LEFT JOIN stock s ON s.variant_id = v.id
+     LEFT JOIN product_prices pp_r
+       ON pp_r.product_id = v.product_id
+       AND pp_r.price_mode_id = (SELECT id FROM price_modes WHERE code = 'retail')
+     LEFT JOIN product_prices pp_w
+       ON pp_w.product_id = v.product_id
+       AND pp_w.price_mode_id = (SELECT id FROM price_modes WHERE code = 'wholesale')
      WHERE v.product_id = $1
      ORDER BY v.id`,
     [productId],
@@ -74,7 +87,11 @@ export async function createRetailOrder(
 
   // Fetch prices outside TX (read-only, prices don't change concurrently)
   const priceRes = await pool.query(
-    `SELECT v.id, v.retail_price FROM variants v WHERE v.id = ANY($1)`,
+    `SELECT v.id, pp.price AS retail_price
+     FROM variants v
+     JOIN product_prices pp ON pp.product_id = v.product_id
+     JOIN price_modes pm ON pm.id = pp.price_mode_id AND pm.code = 'retail'
+     WHERE v.id = ANY($1)`,
     [variantIds],
   );
   const priceMap = new Map<number, number>(
