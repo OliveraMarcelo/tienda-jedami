@@ -1,8 +1,9 @@
 import apiClient from './client'
+import type { CustomerType } from '@/lib/constants'
 
 export interface CustomerProfile {
   id: number
-  customerType: 'retail' | 'wholesale'
+  customerType: CustomerType
 }
 
 export interface MeResponse {

@@ -3,13 +3,14 @@ import { ref, computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import AppLayout from '@/layouts/AppLayout.vue'
+import { CUSTOMER_TYPES, type CustomerType } from '@/lib/constants'
 
 const authStore = useAuthStore()
 
 const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
-const customerType = ref<'retail' | 'wholesale'>('retail')
+const customerType = ref<CustomerType>(CUSTOMER_TYPES.RETAIL)
 const passwordVisible = ref(false)
 const loading = ref(false)
 const serverError = ref('')
@@ -82,10 +83,10 @@ async function handleSubmit() {
               <div class="grid grid-cols-2 gap-3">
                 <button
                   type="button"
-                  @click="customerType = 'retail'"
+                  @click="customerType = CUSTOMER_TYPES.RETAIL"
                   :class="[
                     'flex flex-col items-center gap-1 px-4 py-3 rounded-xl border-2 text-sm font-medium transition-colors',
-                    customerType === 'retail'
+                    customerType === CUSTOMER_TYPES.RETAIL
                       ? 'border-[#E91E8C] bg-[#E91E8C]/5 text-[#E91E8C]'
                       : 'border-gray-200 text-gray-600 hover:border-gray-300'
                   ]"
@@ -96,10 +97,10 @@ async function handleSubmit() {
                 </button>
                 <button
                   type="button"
-                  @click="customerType = 'wholesale'"
+                  @click="customerType = CUSTOMER_TYPES.WHOLESALE"
                   :class="[
                     'flex flex-col items-center gap-1 px-4 py-3 rounded-xl border-2 text-sm font-medium transition-colors',
-                    customerType === 'wholesale'
+                    customerType === CUSTOMER_TYPES.WHOLESALE
                       ? 'border-[#1565C0] bg-[#1565C0]/5 text-[#1565C0]'
                       : 'border-gray-200 text-gray-600 hover:border-gray-300'
                   ]"

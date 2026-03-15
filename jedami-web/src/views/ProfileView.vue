@@ -2,6 +2,10 @@
 import { ref, onMounted } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { fetchMe, type MeResponse } from '@/api/profile.api'
+import { ROLES, CUSTOMER_TYPES } from '@/lib/constants'
+import { useConfigStore } from '@/stores/config.store'
+
+const configStore = useConfigStore()
 
 const profile = ref<MeResponse | null>(null)
 const loading = ref(true)
@@ -43,8 +47,8 @@ onMounted(async () => {
               v-for="role in profile.roles"
               :key="role"
               class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold border"
-              :class="role === 'admin' ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                      role === 'wholesale' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+              :class="role === ROLES.ADMIN ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                      role === ROLES.WHOLESALE ? 'bg-blue-50 text-blue-700 border-blue-200' :
                       'bg-gray-50 text-gray-700 border-gray-200'"
             >
               {{ role }}
@@ -56,13 +60,13 @@ onMounted(async () => {
           <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Tipo de cuenta</p>
           <div
             class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-semibold"
-            :class="profile.customer.customerType === 'wholesale'
+            :class="profile.customer.customerType === CUSTOMER_TYPES.WHOLESALE
               ? 'bg-blue-600 text-white'
               : 'bg-[#E91E8C] text-white'"
           >
-            <span>{{ profile.customer.customerType === 'wholesale' ? '🏭 Mayorista' : '🛍️ Minorista' }}</span>
+            <span>{{ configStore.customerTypeLabel[profile.customer.customerType] ?? profile.customer.customerType }}</span>
           </div>
-          <p v-if="profile.customer.customerType === 'retail'" class="mt-2 text-xs text-gray-500">
+          <p v-if="profile.customer.customerType === CUSTOMER_TYPES.RETAIL" class="mt-2 text-xs text-gray-500">
             ¿Querés comprar al por mayor? Contactá a un administrador para activar tu cuenta mayorista.
           </p>
         </div>

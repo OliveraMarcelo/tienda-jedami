@@ -4,12 +4,14 @@ import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { useOrdersStore } from '@/stores/orders.store'
 import { usePaymentsStore } from '@/stores/payments.store'
-import type { OrderStatus, PurchaseType } from '@/api/orders.api'
+import { useConfigStore } from '@/stores/config.store'
+import type { OrderStatus } from '@/api/orders.api'
 
 const route = useRoute()
 const router = useRouter()
 const ordersStore = useOrdersStore()
 const paymentsStore = usePaymentsStore()
+const configStore = useConfigStore()
 
 onMounted(() => {
   const id = parseInt(String(route.params.orderId), 10)
@@ -26,12 +28,6 @@ const statusConfig: Record<OrderStatus, { label: string; classes: string }> = {
   pending:  { label: 'Pendiente de pago', classes: 'bg-amber-50 text-amber-700 border-amber-200' },
   paid:     { label: 'Pagado',            classes: 'bg-green-50 text-green-700 border-green-200' },
   rejected: { label: 'Rechazado',         classes: 'bg-red-50 text-red-700 border-red-200' },
-}
-
-const purchaseTypeLabel: Record<PurchaseType, string> = {
-  curva: 'Por curva',
-  cantidad: 'Por cantidad',
-  retail: 'Compra minorista',
 }
 </script>
 
@@ -60,7 +56,7 @@ const purchaseTypeLabel: Record<PurchaseType, string> = {
             <div>
               <h1 class="text-xl font-bold text-gray-900 mb-1">Pedido #{{ order.id }}</h1>
               <p class="text-sm text-gray-500">
-                {{ purchaseTypeLabel[order.purchaseType] }} ·
+                {{ configStore.purchaseTypeLabel[order.purchaseType] ?? order.purchaseType }} ·
                 {{ new Date(order.createdAt).toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' }) }}
               </p>
             </div>

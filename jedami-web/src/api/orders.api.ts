@@ -1,7 +1,8 @@
 import apiClient from './client'
+import type { PurchaseType } from '@/lib/constants'
 
 export type OrderStatus = 'pending' | 'paid' | 'rejected'
-export type PurchaseType = 'curva' | 'cantidad' | 'retail'
+export type { PurchaseType }
 
 export interface OrderItem {
   id: number
