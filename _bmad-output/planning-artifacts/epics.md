@@ -22,7 +22,7 @@ RF-02: Autenticación JWT — `POST /auth/login`; verifica hash; retorna JWT 24h
 RF-03: Gestión de Roles — roles admin, retail, wholesale consultables y creables por admin
 RF-04: Asignación de Roles a Usuarios — admin puede asignar uno o varios roles; efecto inmediato
 RF-05: Autorización RBAC — middleware JWT + rol; 401 sin token; 403 sin rol requerido
-RF-06: Gestión de Productos con Variantes — CRUD admin; variante = talle + color + retail_price; stock por variant_id
+RF-06: Gestión de Productos con Variantes — CRUD admin; variante = talle (FK `sizes`) + color (FK `colors`); precios en `product_prices` por `price_mode`; stock por variant_id
 RF-07: Visualización pública del catálogo — sin autenticación; variantes + precio según query param mode=retail|wholesale; paginación
 RF-08: Creación de Pedidos — asociado a customer_id; order_items con variant_id + quantity + unit_price (histórico); estado inicial pending
 RF-09: Modalidades de Venta — modo visualización (contexto tienda) ≠ modo compra (rol usuario); visitante puede ver precios
@@ -48,9 +48,9 @@ RNF-07: Tiempo real desacoplado — bus de eventos interno preparado pero no act
 - **Infra:** Docker Compose con BFF + PostgreSQL + Redis; Dockerfile por servicio
 - **API:** versionado `/api/v1/`; errores RFC 7807 `{type, title, status, detail}`; Swagger UI en `/api/docs`; pino logger con `LOG_LEVEL` configurable
 - **DB:** SQL puro con `pg` Pool; queries en `modules/<nombre>/queries/*.ts`; sin ORM
-- **Modelo de datos:** 9 tablas — users, user_roles, roles, customers, products, variants, stock, orders, order_items
+- **Modelo de datos:** 19 tablas — users, user_roles, roles, refresh_tokens, customers, products, product_images, product_prices, price_modes, variants, sizes, colors, stock, categories, orders, order_items, payments
 - **Separación users/customers:** `users` = cuenta auth; `customers` = perfil comercial con `customer_type`
-- **Precio histórico:** `order_items.unit_price` = copia de `variants.retail_price` al momento de compra; inmutable
+- **Precio histórico:** `order_items.unit_price` = copia del precio del producto al momento de compra (de `product_prices`); inmutable
 - **Stock:** 1-1 con variante; `variant_id` es PK en tabla `stock`; todas las queries de stock usan `variant_id`
 - **Respuestas API:** wrapper `{ data }` en éxito; mapeo snake_case → camelCase siempre
 - **jedami-web:** cliente Axios centralizado + interceptor JWT; stores Pinia por módulo; shadcn-vue + Tailwind (setup inicial)
@@ -102,8 +102,8 @@ Un comprador minorista puede registrarse, comprar cualquier variante en cualquie
 El sistema soporta carga real de producción con caché Redis activo, rate limiting y sesiones optimizadas.
 **Incluye:** Redis cache activo, rate limiting, refresh tokens, bus de eventos tiempo real
 
-### Epic 6: Catálogo Mejorado — Fotos, Categorías y Precios Mayoristas
-El catálogo refleja fielmente el negocio con imágenes de productos, categorías para navegación y precios mayoristas diferenciados por variante.
+### Epic 6: Catálogo Mejorado — Fotos, Categorías, Precios Mayoristas y Tablas de Referencia
+El catálogo refleja fielmente el negocio con imágenes de productos, categorías para navegación, precios mayoristas a nivel de producto (`product_prices`), y tablas de referencia normalizadas para talles (`sizes`) y colores (`colors`).
 **FRs cubiertos:** RF-13, RF-14, RF-15
 
 ### Epic 7: Panel de Administración Avanzado y Branding
@@ -216,10 +216,10 @@ para que el catálogo refleje la oferta real de la tienda.
 **Then** se crea el producto y retorna `201 { data: { id, name, description } }`
 
 **Given** un producto existente
-**When** un admin hace `POST /api/v1/products/:id/variants` con `{ size, color, retailPrice, initialStock }`
-**Then** se crea la variante en `variants` con `size`, `color`, `retail_price`
+**When** un admin hace `POST /api/v1/products/:id/variants` con `{ sizeId, colorId, initialStock }`
+**Then** se crea la variante en `variants` con las FKs a `sizes` y `colors`
 **And** se crea el registro de stock en `stock` con `variant_id` como PK y `quantity = initialStock`
-**And** retorna `201 { data: { id, productId, size, color, retailPrice, stock: { quantity } } }`
+**And** retorna `201 { data: { id, productId, sizeId, size, colorId, color, hexCode, stock: { quantity } } }`
 
 **Given** un admin autenticado
 **When** hace `PUT /api/v1/products/:id` con datos actualizados
@@ -244,15 +244,15 @@ para que pueda explorar la oferta antes de decidir si comprar.
 **Given** productos con variantes cargados en la base de datos
 **When** se hace `GET /api/v1/products` sin token de autenticación
 **Then** retorna `200 { data: [...], meta: { page, pageSize, total } }` con todos los productos y sus variantes
-**And** cada variante incluye: `id`, `size`, `color`, `retailPrice`, `stock.quantity`
+**And** cada producto incluye: `retailPrice`, `wholesalePrice`; cada variante incluye `id`, `sizeId`, `size`, `colorId`, `color`, `hexCode`, `stock.quantity`
 
 **Given** query param `mode=retail` (o sin mode)
 **When** se hace `GET /api/v1/products`
-**Then** el precio devuelto es `retailPrice` de cada variante
+**Then** el precio visible es `product.retailPrice`
 
 **Given** query param `mode=wholesale`
 **When** se hace `GET /api/v1/products`
-**Then** en Fase 1 también retorna `retailPrice` (el precio mayorista es extensión futura)
+**Then** el precio visible es `product.wholesalePrice` (o `retailPrice` como fallback si no está definido)
 
 **Given** query params `page=2&pageSize=10`
 **When** se hace `GET /api/v1/products`
@@ -268,7 +268,7 @@ para que pueda explorar la oferta antes de decidir si comprar.
 
 Un comprador mayorista puede registrarse, crear pedidos en modalidad curva o por cantidad, con validación de stock atómica y descuento real de stock.
 
-### Story 2.1: Registro de Comprador Mayorista y Perfil Customer
+### Story 2.1: Registro de Comprador Mayorista y Perfil Customer _(actualizado)_
 
 Como comprador mayorista,
 quiero registrarme en el sistema y tener un perfil de comprador asociado a mi cuenta,
@@ -277,13 +277,10 @@ para que pueda generar pedidos con las reglas que corresponden a un mayorista.
 **Acceptance Criteria:**
 
 **Given** las tablas `customers`, `orders` y `order_items` existen en la base de datos con sus FKs y constraints
-**When** se hace `POST /api/v1/auth/register` con `{ email, password }`
-**Then** se crea el usuario en `users` y también un registro en `customers` con `customer_type = 'retail'` por defecto
+**When** se hace `POST /api/v1/auth/register` con `{ email, password, customerType: 'retail' | 'wholesale' }`
+**Then** se crea el usuario en `users`, el perfil en `customers` con `customer_type` elegido, y se asigna el rol correspondiente (`retail` o `wholesale`) automáticamente
 **And** retorna `201 { data: { id, email, createdAt } }`
-
-**Given** un admin autenticado asigna rol `wholesale` a un usuario mediante `POST /api/v1/users/:userId/roles`
-**When** el rol queda asignado en `user_roles`
-**Then** el campo `customer_type` del registro `customers` asociado se actualiza a `'wholesale'`
+**And** no requiere intervención del administrador
 
 **Given** un usuario con rol `wholesale` autenticado
 **When** hace `GET /api/v1/me`
@@ -326,7 +323,7 @@ para que pueda comprar el set completo del producto en las cantidades que necesi
 **When** el mayorista dueño del pedido hace `POST /api/v1/orders/:orderId/items` con `{ productId, curves: N }`
 **Then** el sistema identifica todas las variantes disponibles del producto
 **And** valida que `stock.quantity >= N` para **cada** variante del producto
-**And** si hay stock suficiente en todas: crea un `order_item` por cada variante con `quantity = N` y `unit_price = variant.retail_price` (copia histórica inmutable)
+**And** si hay stock suficiente en todas: crea un `order_item` por cada variante con `quantity = N` y `unit_price = product.wholesalePrice ?? product.retailPrice` (copia histórica inmutable)
 **And** descuenta `N` unidades del stock de cada variante dentro de una transacción atómica
 **And** recalcula y actualiza `orders.total_amount`
 **And** retorna `200 { data: { orderId, items: [...], totalAmount } }`
@@ -356,7 +353,7 @@ para que pueda comprar en volumen con distribución libre de talles y colores se
 **When** el mayorista dueño del pedido hace `POST /api/v1/orders/:orderId/items` con `{ productId, quantity: N }`
 **Then** el sistema suma el stock de **todas las variantes** del producto: `SUM(stock.quantity) para todas las variants del producto`
 **And** valida que `stock_total_producto >= N`
-**And** si hay stock total suficiente: crea un `order_item` por producto con `quantity = N`; el `unit_price` se calcula como el promedio ponderado de `retail_price` de las variantes disponibles (copia histórica)
+**And** si hay stock total suficiente: crea un `order_item` por producto con `quantity = N`; el `unit_price` es `product.wholesalePrice ?? product.retailPrice` (copia histórica)
 **And** descuenta el stock proporcionalmente entre las variantes disponibles (de mayor a menor stock) dentro de una transacción atómica
 **And** recalcula y actualiza `orders.total_amount`
 **And** retorna `200 { data: { orderId, items: [...], totalAmount } }`
@@ -491,7 +488,7 @@ para que pueda comprar exactamente lo que necesito con validación de stock gara
 **When** hace `POST /api/v1/orders` con `{ items: [{ variantId, quantity: N }] }`
 **Then** el sistema valida que `stock.quantity >= N` para cada variante solicitada
 **And** si hay stock: crea el pedido en `orders` con `customer_id` y `status = 'pending'`
-**And** crea los `order_items` con `quantity` y `unit_price = variant.retail_price` (copia histórica)
+**And** crea los `order_items` con `quantity` y `unit_price = product.retailPrice` (copia histórica)
 **And** descuenta el stock de cada variante en una transacción atómica
 **And** calcula `total_amount` como suma de `quantity * unit_price` por ítem
 **And** retorna `201 { data: { id, status, totalAmount, items: [...] } }`
@@ -760,7 +757,7 @@ para que el catálogo refleje la oferta real de la tienda.
 **Then** se llama `POST /api/v1/products` y el producto aparece en la lista
 
 **Given** el admin agrega una variante a un producto
-**When** completa `{ size, color, retailPrice, initialStock }` y guarda
+**When** selecciona talle y color desde dropdowns y completa `{ sizeId, colorId, initialStock }` y guarda
 **Then** se llama `POST /api/v1/products/:id/variants` y la variante aparece en el detalle
 
 **Given** un usuario sin rol admin intenta acceder a `/admin/productos`
@@ -848,9 +845,10 @@ para que pueda generar pedidos mayoristas con las reglas correctas.
 
 **Acceptance Criteria:**
 
-**Given** el formulario de registro tiene un selector de "Tipo de cliente"
-**When** el usuario elige "Soy mayorista" y completa el registro
-**Then** el `authStore` registra al usuario y el `ModeIndicator` cambia a modo wholesale automáticamente
+**Given** el formulario de registro tiene un selector de tipo (Minorista / Mayorista)
+**When** el usuario elige "Mayorista" y completa el registro
+**Then** se envía `customerType: 'wholesale'` al BFF, el usuario recibe el rol `wholesale` automáticamente sin intervención del admin
+**And** el `authStore` hace login automático y el `ModeIndicator` cambia a modo wholesale
 
 **Given** el mayorista está logueado
 **When** accede a `/perfil`
@@ -997,9 +995,9 @@ para que pueda hacer seguimiento de mis compras minoristas.
 
 ---
 
-## Epic 6: Catálogo Mejorado — Fotos, Categorías y Precios Mayoristas
+## Epic 6: Catálogo Mejorado — Fotos, Categorías, Precios Mayoristas y Tablas de Referencia
 
-El catálogo refleja fielmente el negocio con imágenes de productos, categorías para navegación y precios mayoristas diferenciados por variante.
+El catálogo refleja fielmente el negocio con imágenes de productos, categorías para navegación, precios mayoristas a nivel de producto (`product_prices`), y tablas de referencia normalizadas para talles (`sizes`) y colores (`colors`).
 
 ### Story 6.1: Fotos de Productos — BFF
 
@@ -1046,31 +1044,42 @@ para que el sistema refleje el negocio real desde el inicio.
 
 ---
 
-### Story 6.3: Precios Mayoristas por Variante — BFF
+### Story 6.3: Precios Mayoristas y Tablas de Referencia — BFF _(done)_
 
 Como administrador,
-quiero definir un precio mayorista independiente por variante,
-para que los mayoristas vean y compren a precios diferenciados.
+quiero definir precios minoristas y mayoristas a nivel de producto, y gestionar talles y colores desde tablas de referencia normalizadas,
+para que los mayoristas vean precios diferenciados y el catálogo sea mantenible sin redundancias.
+
+**Status:** done (implementado en migraciones 015–017)
 
 **Acceptance Criteria:**
 
-**Given** un admin crea o edita una variante
-**When** incluye `wholesalePrice` en el body
-**Then** el campo `wholesale_price` se persiste en la tabla `variants`
+**Given** un admin hace `PUT /api/v1/products/:id/prices` con `{ retailPrice, wholesalePrice }`
+**When** los valores son válidos (≥ 0)
+**Then** se persisten en `product_prices` con `price_mode_id` correspondiente (`retail` / `wholesale`)
+**And** retorna `200 { data: { retailPrice, wholesalePrice } }`
 
-**Given** `GET /products?mode=wholesale`
-**When** el catálogo retorna las variantes
-**Then** cada variante incluye `wholesalePrice` (o `retailPrice` si no tiene precio mayorista definido)
+**Given** `GET /products` o `GET /products/:id`
+**When** el catálogo retorna productos
+**Then** cada producto incluye `retailPrice` y `wholesalePrice` (null si no definido)
+**And** cada variante incluye `sizeId`, `size`, `colorId`, `color`, `hexCode`
 
 **Given** un mayorista crea un pedido por curva
 **When** el sistema calcula el total
-**Then** usa `wholesale_price` (o `retail_price` como fallback) como `unit_price` en `order_items`
+**Then** usa `wholesalePrice` del producto (o `retailPrice` como fallback) como `unit_price` en `order_items`
+
+**Given** `GET /api/v1/products/sizes` y `GET /api/v1/products/colors`
+**When** se consultan sin autenticación
+**Then** retornan el listado completo de talles (ordenados por `sort_order`) y colores (con `hexCode`)
 
 **Tasks:**
-- [ ] Migración: `ALTER TABLE variants ADD COLUMN wholesale_price NUMERIC(10,2)`
-- [ ] Actualizar `createVariant` y `updateVariant` en BFF para aceptar `wholesalePrice`
-- [ ] Actualizar queries de catálogo para exponer `wholesalePrice`
-- [ ] Actualizar `addCurvaItems` y `addCantidadItems` para usar `wholesale_price` si está disponible
+- [x] Migraciones `015_reference_tables.sql` — tablas `price_modes`, `sizes` (18 talles con sort_order), `colors` (15 con hex_code)
+- [x] Migración `016_product_prices.sql` — tabla `product_prices (product_id PK, price_mode_id PK, price)`
+- [x] Migración `017_variants_refactor.sql` — `variants` pasa a usar `size_id`/`color_id` FK; elimina columnas `size`, `color`, `retail_price`, `wholesale_price`
+- [x] Queries `find-sizes-colors.ts`, `product-prices.ts` — `FIND_ALL_SIZES`, `FIND_ALL_COLORS`, `UPSERT_PRODUCT_PRICE`
+- [x] Queries de catálogo actualizadas: JOIN con `sizes`, `colors`, subquery `product_prices` retail/wholesale
+- [x] Controller + routes: `GET /sizes`, `GET /colors` (públicos), `PUT /:id/prices` (admin)
+- [x] `orders.service`: `addCurvaItems` y `addCantidadItems` usan `wholesalePrice` del producto
 
 ---
 
@@ -1101,19 +1110,28 @@ para que los compradores puedan filtrar el catálogo fácilmente.
 
 ---
 
-### Story 6.5: Web — Catálogo con Fotos, Precios Mayoristas y Filtros
+### Story 6.5: Web — Catálogo con Fotos, Precios Mayoristas y Filtros _(done)_
 
 Como visitante o comprador,
 quiero ver fotos de productos, precios diferenciados y filtrar por categoría,
 para tener una experiencia de compra visual y organizada.
 
 **Depende de:** Stories 6.1, 6.3, 6.4 done
+**Status:** done (implementado en jedami-web)
+
+**Notas de implementación:**
+- `product.retailPrice` / `product.wholesalePrice` vienen del producto, no de la variante
+- Swatches de color usan `variant.hexCode` directamente (no hardcoded COLOR_MAP)
+- `VariantSelector`, `CurvaCalculator`, `ProductCard`, `ProductView` actualizados
+- Panel admin: `ProductFormDialog` edita precios; `VariantFormDialog` usa selectores de `sizes`/`colors`
 
 **Tasks:**
-- [ ] ProductCard: mostrar imagen del producto (con placeholder si no tiene)
-- [ ] Modo wholesale: mostrar `wholesalePrice` en lugar de `retailPrice`
-- [ ] Filtro de categorías en CatalogView (pills/tabs horizontales)
-- [ ] ProductView: galería de imágenes si tiene múltiples
+- [x] ProductCard: mostrar imagen del producto (con placeholder si no tiene); swatches con `hexCode` real
+- [x] Modo wholesale: mostrar `product.wholesalePrice` en lugar de `product.retailPrice`
+- [x] Filtro de categorías en CatalogView (pills/tabs horizontales)
+- [x] ProductView: galería de imágenes si tiene múltiples; precio de compra desde nivel producto
+- [x] VariantFormDialog: dropdowns de sizes/colors en lugar de inputs de texto libres
+- [x] AdminProductsView: columnas Min./May. en tabla; `PUT /:id/prices` al guardar producto
 
 ---
 
