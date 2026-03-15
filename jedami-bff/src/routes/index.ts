@@ -7,6 +7,7 @@ import categoriesRoutes from './categories.routes.js';
 import ordersRoutes from './orders.routes.js';
 import paymentsRoutes from './payments.routes.js';
 import configRoutes from './config.routes.js';
+import adminRoutes from './admin.routes.js';
 import { authMiddleware } from '../middlewares/auth.middleware.js';
 import { requireRole } from '../middlewares/role.middleware.js';
 import { assignRole } from '../modules/roles/roles.controller.js';
@@ -21,6 +22,9 @@ router.get('/health', (_req, res) => {
 
 // Config — público
 router.use('/config', configRoutes);
+
+// Admin — requiere auth + admin
+router.use('/admin', authMiddleware, requireRole([ROLES.ADMIN]), adminRoutes);
 
 // Auth — público
 router.use('/auth', authRoutes);
