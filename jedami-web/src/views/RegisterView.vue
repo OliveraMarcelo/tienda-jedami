@@ -1,16 +1,24 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watchEffect } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import AppLayout from '@/layouts/AppLayout.vue'
-import { CUSTOMER_TYPES, type CustomerType } from '@/lib/constants'
+import { useConfigStore } from '@/stores/config.store'
 
 const authStore = useAuthStore()
+const configStore = useConfigStore()
 
 const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
-const customerType = ref<CustomerType>(CUSTOMER_TYPES.RETAIL)
+const customerType = ref<string>('')
+
+// Seleccionar el primer tipo de cliente activo por defecto cuando cargue el config
+watchEffect(() => {
+  if (!customerType.value && configStore.config.customerTypes.length > 0) {
+    customerType.value = configStore.config.customerTypes[0]!.code
+  }
+})
 const passwordVisible = ref(false)
 const loading = ref(false)
 const serverError = ref('')
@@ -82,32 +90,19 @@ async function handleSubmit() {
               <label class="block text-sm font-semibold text-gray-700 mb-2">Tipo de cuenta</label>
               <div class="grid grid-cols-2 gap-3">
                 <button
+                  v-for="ct in configStore.config.customerTypes"
+                  :key="ct.id"
                   type="button"
-                  @click="customerType = CUSTOMER_TYPES.RETAIL"
+                  @click="customerType = ct.code"
                   :class="[
                     'flex flex-col items-center gap-1 px-4 py-3 rounded-xl border-2 text-sm font-medium transition-colors',
-                    customerType === CUSTOMER_TYPES.RETAIL
-                      ? 'border-[#E91E8C] bg-[#E91E8C]/5 text-[#E91E8C]'
+                    customerType === ct.code
+                      ? 'border-[var(--mode-accent)] bg-[var(--mode-accent)]/5 text-[var(--mode-accent)]'
                       : 'border-gray-200 text-gray-600 hover:border-gray-300'
                   ]"
                 >
-                  <span class="text-xl">🛍️</span>
-                  Minorista
-                  <span class="text-xs font-normal text-gray-400">Compro para mí</span>
-                </button>
-                <button
-                  type="button"
-                  @click="customerType = CUSTOMER_TYPES.WHOLESALE"
-                  :class="[
-                    'flex flex-col items-center gap-1 px-4 py-3 rounded-xl border-2 text-sm font-medium transition-colors',
-                    customerType === CUSTOMER_TYPES.WHOLESALE
-                      ? 'border-[#1565C0] bg-[#1565C0]/5 text-[#1565C0]'
-                      : 'border-gray-200 text-gray-600 hover:border-gray-300'
-                  ]"
-                >
-                  <span class="text-xl">🏭</span>
-                  Mayorista
-                  <span class="text-xs font-normal text-gray-400">Compro para revender</span>
+                  <span v-if="ct.icon" class="text-xl">{{ ct.icon }}</span>
+                  {{ ct.label }}
                 </button>
               </div>
             </div>

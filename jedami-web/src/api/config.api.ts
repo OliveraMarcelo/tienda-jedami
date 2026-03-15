@@ -4,6 +4,7 @@ export interface ConfigItem {
   id: number
   code: string
   label: string
+  icon: string | null
 }
 
 export interface RoleItem {

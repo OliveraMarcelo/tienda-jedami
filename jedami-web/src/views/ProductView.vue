@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, watchEffect, onMounted } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
 import VariantSelector from '@/components/features/catalog/VariantSelector.vue'
@@ -8,21 +8,32 @@ import SoftRegistrationGate from '@/components/features/catalog/SoftRegistration
 import { useProductsStore } from '@/stores/products.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { useOrdersStore } from '@/stores/orders.store'
+import { useConfigStore } from '@/stores/config.store'
 import { useRouter } from 'vue-router'
+import { MODES } from '@/lib/constants'
 
 const route = useRoute()
 const router = useRouter()
 const productsStore = useProductsStore()
 const authStore = useAuthStore()
 const ordersStore = useOrdersStore()
+const configStore = useConfigStore()
 
 const selectedColor = ref<string | null>(null)
 const selectedSize = ref<string | null>(null)
 const notFound = ref(false)
 const activeImageIndex = ref(0)
 
-// Wholesale
-const wholesaleTab = ref<'curva' | 'cantidad'>('curva')
+// Wholesale — tabs generados desde config (excluye 'retail')
+const wholesaleTabs = computed(() =>
+  configStore.config.purchaseTypes.filter(pt => pt.code !== MODES.RETAIL)
+)
+const wholesaleTab = ref<string>('')
+watchEffect(() => {
+  if (!wholesaleTab.value && wholesaleTabs.value.length > 0) {
+    wholesaleTab.value = wholesaleTabs.value[0]!.code
+  }
+})
 const cantidadInput = ref(1)
 const orderError = ref('')
 const toastMessage = ref('')
@@ -70,7 +81,7 @@ watch(selectedVariant, () => {
 })
 
 const priceLabel = computed(() =>
-  authStore.mode === 'wholesale' ? 'Precio mayorista' : 'Precio'
+  authStore.mode === MODES.WHOLESALE ? 'Precio mayorista' : 'Precio'
 )
 
 const totalStockForProduct = computed(() =>
@@ -81,7 +92,7 @@ async function handleCurvaConfirm(curves: number) {
   if (!product.value) return
   orderError.value = ''
   try {
-    const order = await ordersStore.startWholesaleOrder('curva')
+    const order = await ordersStore.startWholesaleOrder(PURCHASE_TYPES.CURVA)
     await ordersStore.addItem(order.id, { productId: product.value.id, curves })
     showToast('Agregado al pedido')
   } catch (err: unknown) {
@@ -134,7 +145,7 @@ async function handleCantidadConfirm() {
     return
   }
   try {
-    const order = await ordersStore.startWholesaleOrder('cantidad')
+    const order = await ordersStore.startWholesaleOrder(PURCHASE_TYPES.CANTIDAD)
     await ordersStore.addItem(order.id, { productId: product.value.id, quantity: qty })
     showToast('Agregado al pedido')
   } catch (err: unknown) {
@@ -224,35 +235,26 @@ async function handleCantidadConfirm() {
           <div v-if="product.retailPrice !== null">
             <p class="text-xs text-gray-500">{{ priceLabel }}</p>
             <p class="text-2xl font-bold text-gray-900">
-              ${{ (authStore.mode === 'wholesale' ? (product.wholesalePrice ?? product.retailPrice ?? 0) : (product.retailPrice ?? 0)).toLocaleString('es-AR') }}
+              ${{ (authStore.mode === MODES.WHOLESALE ? (product.wholesalePrice ?? product.retailPrice ?? 0) : (product.retailPrice ?? 0)).toLocaleString('es-AR') }}
             </p>
           </div>
 
           <!-- Modo Mayorista -->
-          <template v-if="authStore.mode === 'wholesale'">
-            <!-- Tabs -->
+          <template v-if="authStore.mode === MODES.WHOLESALE">
+            <!-- Tabs dinámicos desde config -->
             <div class="flex gap-2 border-b border-gray-200">
               <button
-                @click="wholesaleTab = 'curva'"
+                v-for="tab in wholesaleTabs"
+                :key="tab.code"
+                @click="wholesaleTab = tab.code"
                 :class="[
                   'pb-2 px-1 text-sm font-semibold border-b-2 transition-colors',
-                  wholesaleTab === 'curva'
+                  wholesaleTab === tab.code
                     ? 'border-[#1565C0] text-[#1565C0]'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 ]"
               >
-                Por curva
-              </button>
-              <button
-                @click="wholesaleTab = 'cantidad'"
-                :class="[
-                  'pb-2 px-1 text-sm font-semibold border-b-2 transition-colors',
-                  wholesaleTab === 'cantidad'
-                    ? 'border-[#1565C0] text-[#1565C0]'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                ]"
-              >
-                Por cantidad
+                <span v-if="tab.icon" class="mr-1">{{ tab.icon }}</span>{{ tab.label }}
               </button>
             </div>
 
@@ -264,7 +266,7 @@ async function handleCantidadConfirm() {
             />
 
             <!-- Tab: Cantidad -->
-            <div v-else class="space-y-4">
+            <div v-else-if="wholesaleTab === 'cantidad'" class="space-y-4">
               <div class="bg-blue-50 rounded-xl border border-blue-100 p-4 text-sm text-blue-800">
                 <p class="font-semibold mb-1">Compra por cantidad total</p>
                 <p>Stock total disponible del producto: <strong>{{ totalStockForProduct }} unidades</strong></p>
@@ -300,6 +302,11 @@ async function handleCantidadConfirm() {
                 </span>
                 <span v-else>Agregar {{ cantidadInput }} uds. al pedido</span>
               </button>
+            </div>
+
+            <!-- Tab desconocido (por si se agrega un tipo nuevo sin UI específica) -->
+            <div v-else class="bg-gray-50 rounded-xl border border-gray-200 p-4 text-sm text-gray-500">
+              Modalidad "{{ configStore.purchaseTypeLabel[wholesaleTab] ?? wholesaleTab }}" próximamente disponible.
             </div>
 
             <!-- Error inline -->
