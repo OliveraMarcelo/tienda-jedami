@@ -136,18 +136,18 @@ development_status:
   # EPIC 6: Catálogo Mejorado — Fotos, Categorías, Precios, Tablas de Referencia y Configuración
   # FRs: RF-13, RF-14, RF-15
   # ─────────────────────────────────────────────────────────
-  epic-6: in-progress
+  epic-6: done
 
   # BFF Track — jedami-bff
   6-1-fotos-de-productos: done
   6-2-seed-data-realista: done
   6-3-precios-mayoristas-por-variante: done
   6-4-categorias-de-productos: done
-  6-6-tablas-de-configuracion-del-sistema: backlog  # purchase_types, customer_types, GET /config
+  6-6-tablas-de-configuracion-del-sistema: done
 
   # WEB Track — jedami-web (después del BFF)
   web-6-1-catalogo-con-fotos-precios-mayoristas-y-filtros: done
-  web-6-2-config-store-y-eliminacion-de-hardcoding: backlog  # depende de: 6-6-bff done
+  web-6-2-config-store-y-eliminacion-de-hardcoding: done
 
   epic-6-retrospective: optional
 
@@ -155,10 +155,10 @@ development_status:
   # EPIC 7: Panel de Administración Avanzado y Branding
   # FRs: RF-16, RF-17
   # ─────────────────────────────────────────────────────────
-  epic-7: backlog
+  epic-7: in-progress
 
   # BFF Track — jedami-bff
-  7-1-dashboard-de-ventas: backlog
+  7-1-dashboard-de-ventas: in-progress
   7-2-tabla-de-pagos-y-gestion-de-usuarios: backlog
   7-3-branding-dinamico: backlog
 
