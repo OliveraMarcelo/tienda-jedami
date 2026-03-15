@@ -229,7 +229,7 @@ async function handleCantidadConfirm() {
           </div>
 
           <!-- Modo Mayorista -->
-          <template v-if="authStore.isWholesale">
+          <template v-if="authStore.mode === 'wholesale'">
             <!-- Tabs -->
             <div class="flex gap-2 border-b border-gray-200">
               <button
