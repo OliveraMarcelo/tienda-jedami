@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
 import ProductFormDialog from '@/components/features/admin/ProductFormDialog.vue'
 import VariantFormDialog from '@/components/features/admin/VariantFormDialog.vue'
+import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import { useAdminProductsStore } from '@/stores/admin.products.store'
 import { useProductsStore } from '@/stores/products.store'
 import type { Product } from '@/types/api'
@@ -16,11 +17,13 @@ const showVariantDialog = ref(false)
 const variantProductId = ref<number>(0)
 const actionError = ref<string | null>(null)
 
-// Set de productIds con variantes expandidas
 const expandedProducts = ref<Set<number>>(new Set())
+const editMap = reactive<Map<number, { stock: number }>>(new Map())
 
-// Map de edición inline por variantId: { retailPrice, wholesalePrice, stock }
-const editMap = ref<Map<number, { retailPrice: number; wholesalePrice: number | string; stock: number }>>(new Map())
+// Confirm dialog
+const confirmOpen = ref(false)
+const confirmMessage = ref('')
+const confirmCallback = ref<() => void>(() => {})
 
 onMounted(() => {
   adminStore.fetchAll()
@@ -32,14 +35,9 @@ function toggleVariants(product: Product) {
     expandedProducts.value.delete(product.id)
   } else {
     expandedProducts.value.add(product.id)
-    // Inicializar el mapa de edición con los valores actuales
     for (const v of product.variants) {
-      if (!editMap.value.has(v.id)) {
-        editMap.value.set(v.id, {
-          retailPrice: v.retailPrice,
-          wholesalePrice: v.wholesalePrice ?? '',
-          stock: v.stock.quantity,
-        })
+      if (!editMap.has(v.id)) {
+        editMap.set(v.id, { stock: v.stock.quantity })
       }
     }
   }
@@ -51,6 +49,34 @@ function totalStock(product: Product): number {
 
 function hasActiveStock(product: Product): boolean {
   return product.variants.some(v => v.stock.quantity > 0)
+}
+
+function getProductSizes(product: Product) {
+  const seen = new Set<number>()
+  const result: { id: number; label: string }[] = []
+  for (const v of [...product.variants].sort((a, b) => a.sizeId - b.sizeId)) {
+    if (!seen.has(v.sizeId)) {
+      seen.add(v.sizeId)
+      result.push({ id: v.sizeId, label: v.size })
+    }
+  }
+  return result
+}
+
+function getProductColors(product: Product) {
+  const seen = new Set<number>()
+  const result: { id: number; name: string; hexCode: string | null }[] = []
+  for (const v of product.variants) {
+    if (!seen.has(v.colorId)) {
+      seen.add(v.colorId)
+      result.push({ id: v.colorId, name: v.color, hexCode: v.hexCode })
+    }
+  }
+  return result
+}
+
+function getVariantByCell(product: Product, sizeId: number, colorId: number) {
+  return product.variants.find(v => v.sizeId === sizeId && v.colorId === colorId) ?? null
 }
 
 function openNewProduct() {
@@ -71,54 +97,69 @@ function openAddVariant(productId: number) {
   showVariantDialog.value = true
 }
 
+function askConfirm(message: string, callback: () => void) {
+  confirmMessage.value = message
+  confirmCallback.value = callback
+  confirmOpen.value = true
+}
+
 async function handleDeleteProduct(product: Product) {
-  if (!window.confirm(`¿Eliminar el producto "${product.name}"? Esta acción no se puede deshacer.`)) return
-  actionError.value = null
-  try {
-    await adminStore.deleteProduct(product.id)
-    expandedProducts.value.delete(product.id)
-  } catch (err: unknown) {
-    const e = err as { response?: { data?: { detail?: string } } }
-    actionError.value = e.response?.data?.detail ?? 'Error al eliminar el producto.'
-  }
+  askConfirm(`¿Eliminar el producto "${product.name}"? Esta acción no se puede deshacer.`, async () => {
+    actionError.value = null
+    try {
+      await adminStore.deleteProduct(product.id)
+      expandedProducts.value.delete(product.id)
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } } }
+      actionError.value = e.response?.data?.detail ?? 'Error al eliminar el producto.'
+    }
+  })
 }
 
 async function handleDeleteVariant(productId: number, variantId: number, label: string) {
-  if (!window.confirm(`¿Eliminar la variante "${label}"?`)) return
-  actionError.value = null
-  try {
-    await adminStore.deleteVariant(productId, variantId)
-    editMap.value.delete(variantId)
-  } catch (err: unknown) {
-    const e = err as { response?: { data?: { detail?: string } } }
-    actionError.value = e.response?.data?.detail ?? 'Error al eliminar la variante.'
-  }
+  askConfirm(`¿Eliminar la variante "${label}"?`, async () => {
+    actionError.value = null
+    try {
+      await adminStore.deleteVariant(productId, variantId)
+      editMap.delete(variantId)
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } } }
+      actionError.value = e.response?.data?.detail ?? 'Error al eliminar la variante.'
+    }
+  })
 }
 
-async function handleSaveVariant(productId: number, variantId: number) {
-  const entry = editMap.value.get(variantId)
+async function handleSaveVariantStock(productId: number, variantId: number) {
+  const entry = editMap.get(variantId)
   if (!entry) return
   actionError.value = null
   try {
-    const wholesalePrice = entry.wholesalePrice === '' ? null : Number(entry.wholesalePrice)
-    await adminStore.updateVariantPrices(productId, variantId, {
-      retailPrice: entry.retailPrice,
-      wholesalePrice,
-    })
     await adminStore.updateVariantStock(productId, variantId, entry.stock)
   } catch (err: unknown) {
     const e = err as { response?: { data?: { detail?: string } } }
-    actionError.value = e.response?.data?.detail ?? 'Error al guardar la variante.'
+    actionError.value = e.response?.data?.detail ?? 'Error al guardar el stock.'
   }
 }
 
-async function handleProductSaved(data: { name: string; description: string; categoryId: number | null }) {
+async function handleProductSaved(data: { name: string; description: string; categoryId: number | null; retailPrice: number; wholesalePrice: number | null }) {
   actionError.value = null
   try {
     if (editingProduct.value) {
-      await adminStore.updateProduct(editingProduct.value.id, data)
+      await adminStore.updateProduct(editingProduct.value.id, {
+        name: data.name,
+        description: data.description || undefined,
+        categoryId: data.categoryId,
+      })
+      await adminStore.updateProductPrices(editingProduct.value.id, {
+        retailPrice: data.retailPrice,
+        wholesalePrice: data.wholesalePrice,
+      })
     } else {
-      await adminStore.createProduct(data.name, data.description || undefined, data.categoryId)
+      const newProduct = await adminStore.createProduct(data.name, data.description || undefined, data.categoryId)
+      await adminStore.updateProductPrices(newProduct.id, {
+        retailPrice: data.retailPrice,
+        wholesalePrice: data.wholesalePrice,
+      })
     }
     showProductDialog.value = false
   } catch (err: unknown) {
@@ -127,16 +168,11 @@ async function handleProductSaved(data: { name: string; description: string; cat
   }
 }
 
-async function handleVariantSaved(data: { size: string; color: string; retailPrice: number; wholesalePrice: number | null; initialStock: number }) {
+async function handleVariantSaved(data: { sizeId: number; colorId: number; initialStock: number }) {
   actionError.value = null
   try {
     const newVariant = await adminStore.createVariant(variantProductId.value, data)
-    // Inicializar el editMap para la nueva variante
-    editMap.value.set(newVariant.id, {
-      retailPrice: newVariant.retailPrice,
-      wholesalePrice: newVariant.wholesalePrice ?? '',
-      stock: newVariant.stock.quantity,
-    })
+    editMap.set(newVariant.id, { stock: newVariant.stock.quantity })
     showVariantDialog.value = false
   } catch (err: unknown) {
     const e = err as { response?: { data?: { detail?: string } } }
@@ -191,7 +227,9 @@ async function handleVariantSaved(data: { size: string; color: string; retailPri
             <th class="text-left px-4 py-3 font-semibold text-gray-700 w-12">Foto</th>
             <th class="text-left px-4 py-3 font-semibold text-gray-700">Nombre</th>
             <th class="text-left px-4 py-3 font-semibold text-gray-700 hidden md:table-cell">Categoría</th>
-            <th class="text-center px-4 py-3 font-semibold text-gray-700">Stock Total</th>
+            <th class="text-right px-4 py-3 font-semibold text-gray-700 hidden lg:table-cell">Min.</th>
+            <th class="text-right px-4 py-3 font-semibold text-gray-700 hidden lg:table-cell">May.</th>
+            <th class="text-center px-4 py-3 font-semibold text-gray-700">Stock</th>
             <th class="px-4 py-3"></th>
           </tr>
         </thead>
@@ -212,6 +250,12 @@ async function handleVariantSaved(data: { size: string; color: string; retailPri
               </td>
               <td class="px-4 py-3 font-medium text-gray-900">{{ product.name }}</td>
               <td class="px-4 py-3 text-gray-500 hidden md:table-cell">{{ product.categoryName ?? '—' }}</td>
+              <td class="px-4 py-3 text-right text-gray-700 hidden lg:table-cell">
+                {{ product.retailPrice != null ? `$${product.retailPrice.toLocaleString('es-AR')}` : '—' }}
+              </td>
+              <td class="px-4 py-3 text-right text-gray-500 hidden lg:table-cell">
+                {{ product.wholesalePrice != null ? `$${product.wholesalePrice.toLocaleString('es-AR')}` : '—' }}
+              </td>
               <td class="px-4 py-3 text-center text-gray-600">{{ totalStock(product) }}</td>
               <td class="px-4 py-3">
                 <div class="flex gap-2 justify-end flex-wrap">
@@ -245,87 +289,86 @@ async function handleVariantSaved(data: { size: string; color: string; retailPri
               </td>
             </tr>
 
-            <!-- Subtabla de variantes (expandida) -->
+            <!-- Subtabla de variantes (expandida) — matriz Talle × Color -->
             <tr v-if="expandedProducts.has(product.id)" class="bg-blue-50/40">
-              <td colspan="5" class="px-6 py-3">
+              <td colspan="7" class="px-6 py-3">
                 <div class="rounded-xl border border-blue-100 overflow-hidden">
-                  <table class="w-full text-xs">
-                    <thead class="bg-blue-100/60 border-b border-blue-100">
-                      <tr>
-                        <th class="text-left px-3 py-2 font-semibold text-gray-700">Talle</th>
-                        <th class="text-left px-3 py-2 font-semibold text-gray-700">Color</th>
-                        <th class="text-left px-3 py-2 font-semibold text-gray-700">Precio minorista</th>
-                        <th class="text-left px-3 py-2 font-semibold text-gray-700">Precio mayorista</th>
-                        <th class="text-left px-3 py-2 font-semibold text-gray-700">Stock</th>
-                        <th class="px-3 py-2"></th>
-                      </tr>
-                    </thead>
-                    <tbody class="divide-y divide-blue-100">
-                      <tr v-for="variant in product.variants" :key="variant.id" class="bg-white hover:bg-blue-50/30 transition-colors">
-                        <td class="px-3 py-2 text-gray-800 font-medium">{{ variant.size }}</td>
-                        <td class="px-3 py-2 text-gray-600">{{ variant.color }}</td>
-                        <td class="px-3 py-2">
-                          <input
-                            v-if="editMap.has(variant.id)"
-                            type="number"
-                            min="0"
-                            step="1"
-                            :value="editMap.get(variant.id)!.retailPrice"
-                            @input="editMap.get(variant.id)!.retailPrice = Number(($event.target as HTMLInputElement).value)"
-                            class="w-24 px-2 py-1 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#E91E8C]"
-                          />
-                        </td>
-                        <td class="px-3 py-2">
-                          <input
-                            v-if="editMap.has(variant.id)"
-                            type="number"
-                            min="0"
-                            step="1"
-                            :value="editMap.get(variant.id)!.wholesalePrice"
-                            @input="editMap.get(variant.id)!.wholesalePrice = ($event.target as HTMLInputElement).value === '' ? '' : Number(($event.target as HTMLInputElement).value)"
-                            placeholder="—"
-                            class="w-24 px-2 py-1 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#E91E8C]"
-                          />
-                        </td>
-                        <td class="px-3 py-2">
-                          <input
-                            v-if="editMap.has(variant.id)"
-                            type="number"
-                            min="0"
-                            step="1"
-                            :value="editMap.get(variant.id)!.stock"
-                            @input="editMap.get(variant.id)!.stock = Number(($event.target as HTMLInputElement).value)"
-                            class="w-20 px-2 py-1 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-[#E91E8C]"
-                          />
-                        </td>
-                        <td class="px-3 py-2">
-                          <div class="flex gap-2">
-                            <button
-                              @click="handleSaveVariant(product.id, variant.id)"
-                              class="px-2 py-1 rounded-lg bg-green-600 text-white text-xs font-medium hover:bg-green-700 transition-colors"
-                            >
-                              Guardar
-                            </button>
-                            <button
-                              @click="handleDeleteVariant(product.id, variant.id, `${variant.size} / ${variant.color}`)"
-                              class="px-2 py-1 rounded-lg border border-red-300 text-red-600 text-xs font-medium hover:bg-red-50 transition-colors"
-                            >
-                              Eliminar
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                      <tr v-if="product.variants.length === 0">
-                        <td colspan="6" class="px-3 py-3 text-center text-gray-400 italic">Sin variantes</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                  <div class="px-3 py-2 bg-white border-t border-blue-100">
+                  <div v-if="product.variants.length === 0" class="px-4 py-4 text-center text-gray-400 italic text-xs bg-white">
+                    Sin variantes
+                  </div>
+                  <div v-else class="overflow-x-auto">
+                    <table class="w-full text-xs border-collapse">
+                      <thead class="bg-blue-100/60 border-b border-blue-100">
+                        <tr>
+                          <th class="px-3 py-2 text-left font-semibold text-gray-700 whitespace-nowrap">Talle \ Color</th>
+                          <th
+                            v-for="color in getProductColors(product)"
+                            :key="color.id"
+                            class="px-3 py-2 text-center font-semibold text-gray-700 whitespace-nowrap"
+                          >
+                            <div class="flex items-center justify-center gap-1">
+                              <span
+                                v-if="color.hexCode"
+                                class="w-2.5 h-2.5 rounded-full border border-gray-300 flex-none"
+                                :style="{ backgroundColor: color.hexCode }"
+                              />
+                              {{ color.name }}
+                            </div>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody class="divide-y divide-blue-100">
+                        <tr
+                          v-for="size in getProductSizes(product)"
+                          :key="size.id"
+                          class="border-t border-blue-100 bg-white hover:bg-blue-50/30 transition-colors"
+                        >
+                          <td class="px-3 py-2 font-semibold text-gray-700 whitespace-nowrap">{{ size.label }}</td>
+                          <td
+                            v-for="color in getProductColors(product)"
+                            :key="color.id"
+                            class="px-2 py-1.5 text-center"
+                          >
+                            <div v-if="getVariantByCell(product, size.id, color.id)" class="flex items-center justify-center gap-1">
+                              <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                :value="editMap.get(getVariantByCell(product, size.id, color.id)!.id)?.stock ?? getVariantByCell(product, size.id, color.id)!.stock.quantity"
+                                @input="editMap.get(getVariantByCell(product, size.id, color.id)!.id)!.stock = Number(($event.target as HTMLInputElement).value)"
+                                class="w-14 px-1 py-0.5 border border-gray-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-[#1565C0]"
+                              />
+                              <button
+                                @click="handleDeleteVariant(product.id, getVariantByCell(product, size.id, color.id)!.id, `${size.label} / ${color.name}`)"
+                                class="text-gray-300 hover:text-red-500 transition-colors leading-none"
+                                title="Eliminar variante"
+                              >×</button>
+                            </div>
+                            <span v-else class="text-gray-300">—</span>
+                          </td>
+                        </tr>
+                      </tbody>
+                      <tfoot>
+                        <tr class="border-t-2 border-blue-100 bg-blue-50/60">
+                          <td class="px-3 py-2 text-gray-500 font-semibold" :colspan="getProductColors(product).length + 1">
+                            Total de stock: <span class="text-gray-800 font-bold">{{ totalStock(product) }}</span>
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                  <div class="px-3 py-2 bg-white border-t border-blue-100 flex items-center gap-3">
                     <button
                       @click="openAddVariant(product.id)"
                       class="px-3 py-1 rounded-lg border border-[#E91E8C] text-xs font-medium text-[#E91E8C] hover:bg-[#E91E8C] hover:text-white transition-colors"
                     >
                       + Agregar variante
+                    </button>
+                    <button
+                      @click="product.variants.forEach(v => handleSaveVariantStock(product.id, v.id))"
+                      class="px-3 py-1 rounded-lg bg-green-600 text-white text-xs font-medium hover:bg-green-700 transition-colors"
+                    >
+                      Guardar cambios
                     </button>
                   </div>
                 </div>
@@ -348,6 +391,13 @@ async function handleVariantSaved(data: { size: string; color: string; retailPri
       :product-id="variantProductId"
       @update:open="showVariantDialog = $event"
       @saved="handleVariantSaved"
+    />
+
+    <ConfirmDialog
+      :open="confirmOpen"
+      :message="confirmMessage"
+      @update:open="confirmOpen = $event"
+      @confirm="confirmCallback()"
     />
   </AppLayout>
 </template>

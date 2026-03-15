@@ -1,6 +1,6 @@
 # Story W1.4: Panel de Administración — CRUD de Productos
 
-Status: review
+Status: done
 
 ## Story
 
@@ -135,7 +135,9 @@ claude-sonnet-4-6
 - Task 2: admin.products.store.ts con fetchAll (pageSize=100 para listar todo), actualización optimista in-place.
 - Task 3: AdminProductsView.vue con tabla responsive (columna descripción hidden en mobile). AdminView.vue actualizado como hub con card navegación a /admin/productos.
 - Task 4: ProductFormDialog.vue — watch open para resetear form, modo edición si prop product existe.
-- Task 5: VariantFormDialog.vue — grid 2 columnas talle/color y precio/stock, inputs type=number con min=0.
+- Task 5: VariantFormDialog.vue — dropdowns de sizes/colors (desde API de referencia), sin precios (precios a nivel producto).
+- Task 6 (nuevo): Variantes en admin display como matriz Talle×Color — input de stock por celda, × para eliminar, "Guardar cambios" por producto. `editMap` migrado de `ref<Map>` a `reactive(Map)` para reactividad correcta.
+- Task 7 (nuevo): ConfirmDialog.vue — modal de confirmación reutilizable reemplaza todos los `window.confirm`. Usado para eliminar producto y eliminar variante.
 - Agregada ruta /admin/productos al router con guard requiresRole: 'admin'.
 
 ### File List
@@ -147,3 +149,5 @@ claude-sonnet-4-6
 - `jedami-web/src/views/admin/AdminProductsView.vue` (NUEVO)
 - `jedami-web/src/views/admin/AdminView.vue` (MODIFICADO — hub de navegación admin)
 - `jedami-web/src/router/index.ts` (MODIFICADO — ruta /admin/productos)
+- `jedami-web/src/views/admin/AdminProductsView.vue` (MODIFICADO — matriz variantes, ConfirmDialog, reactive editMap)
+- `jedami-web/src/components/ui/ConfirmDialog.vue` (NUEVO)
