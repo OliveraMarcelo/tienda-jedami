@@ -1,7 +1,11 @@
+import { PurchaseType } from '../../lib/constants.js';
+
+export type WholesalePurchaseType = Exclude<PurchaseType, 'retail'>;
+
 export interface Order {
   id: number;
   customer_id: number;
-  purchase_type: 'curva' | 'cantidad';
+  purchase_type: PurchaseType;
   status: 'pending' | 'paid' | 'rejected';
   total_amount: string;
   created_at: Date;

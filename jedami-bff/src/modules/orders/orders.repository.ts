@@ -1,10 +1,10 @@
 import { pool } from '../../config/database.js';
-import { Order, OrderItem } from './orders.entity.js';
+import { Order, OrderItem, WholesalePurchaseType } from './orders.entity.js';
 import { CREATE_ORDER } from './queries/create-order.js';
 import { FIND_ORDERS_BY_CUSTOMER } from './queries/find-orders-by-customer.js';
 import { FIND_ORDER_BY_ID, FIND_ORDER_ITEMS } from './queries/find-order-by-id.js';
 
-export const create = async (customerId: number, purchaseType: 'curva' | 'cantidad'): Promise<Order> => {
+export const create = async (customerId: number, purchaseType: WholesalePurchaseType): Promise<Order> => {
   const result = await pool.query(CREATE_ORDER, [customerId, purchaseType]);
   return result.rows[0];
 };

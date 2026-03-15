@@ -4,6 +4,8 @@ import { cacheDel } from '../../config/redis.js';
 import * as ordersRepository from './orders.repository.js';
 import * as customersRepository from '../customers/customers.repository.js';
 import * as productsRepository from '../products/products.repository.js';
+import { PRICE_MODES, PURCHASE_TYPES } from '../../lib/constants.js';
+import { WholesalePurchaseType } from './orders.entity.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -55,10 +57,10 @@ async function getVariantsWithStockInTx(
      LEFT JOIN stock s ON s.variant_id = v.id
      LEFT JOIN product_prices pp_r
        ON pp_r.product_id = v.product_id
-       AND pp_r.price_mode_id = (SELECT id FROM price_modes WHERE code = 'retail')
+       AND pp_r.price_mode_id = (SELECT id FROM price_modes WHERE code = '${PRICE_MODES.RETAIL}')
      LEFT JOIN product_prices pp_w
        ON pp_w.product_id = v.product_id
-       AND pp_w.price_mode_id = (SELECT id FROM price_modes WHERE code = 'wholesale')
+       AND pp_w.price_mode_id = (SELECT id FROM price_modes WHERE code = '${PRICE_MODES.WHOLESALE}')
      WHERE v.product_id = $1
      ORDER BY v.id`,
     [productId],
@@ -90,7 +92,7 @@ export async function createRetailOrder(
     `SELECT v.id, pp.price AS retail_price
      FROM variants v
      JOIN product_prices pp ON pp.product_id = v.product_id
-     JOIN price_modes pm ON pm.id = pp.price_mode_id AND pm.code = 'retail'
+     JOIN price_modes pm ON pm.id = pp.price_mode_id AND pm.code = '${PRICE_MODES.RETAIL}'
      WHERE v.id = ANY($1)`,
     [variantIds],
   );
@@ -110,7 +112,7 @@ export async function createRetailOrder(
 
     const orderRes = await client.query(
       `INSERT INTO orders (customer_id, purchase_type, status)
-       VALUES ($1, 'retail', 'pending') RETURNING id, customer_id, purchase_type, status, total_amount, created_at`,
+       VALUES ($1, '${PURCHASE_TYPES.RETAIL}', 'pending') RETURNING id, customer_id, purchase_type, status, total_amount, created_at`,
       [customer.id],
     );
     const order = orderRes.rows[0];
@@ -172,8 +174,8 @@ export async function createRetailOrder(
 
 // ─── Create Order ─────────────────────────────────────────────────────────────
 
-export async function createOrder(userId: number, purchaseType: 'curva' | 'cantidad') {
-  if (!purchaseType || !['curva', 'cantidad'].includes(purchaseType)) {
+export async function createOrder(userId: number, purchaseType: WholesalePurchaseType) {
+  if (!purchaseType || ![PURCHASE_TYPES.CURVA, PURCHASE_TYPES.CANTIDAD].includes(purchaseType)) {
     throw new AppError(400, 'purchaseType requerido', 'https://jedami.com/errors/validation', 'purchaseType es obligatorio para compras mayoristas y debe ser "curva" o "cantidad"');
   }
 
@@ -199,7 +201,7 @@ export async function addCurvaItems(orderId: number, productId: number, curves: 
   const customer = await getCustomerOrFail(userId);
   const order = await getOrderAndVerifyOwnership(orderId, customer.id);
 
-  if (order.purchase_type !== 'curva') {
+  if (order.purchase_type !== PURCHASE_TYPES.CURVA) {
     throw new AppError(400, 'Tipo de pedido incorrecto', 'https://jedami.com/errors/validation', 'Este pedido no es de tipo curva');
   }
 
@@ -276,7 +278,7 @@ export async function addCantidadItems(orderId: number, productId: number, quant
   const customer = await getCustomerOrFail(userId);
   const order = await getOrderAndVerifyOwnership(orderId, customer.id);
 
-  if (order.purchase_type !== 'cantidad') {
+  if (order.purchase_type !== PURCHASE_TYPES.CANTIDAD) {
     throw new AppError(400, 'Tipo de pedido incorrecto', 'https://jedami.com/errors/validation', 'Este pedido no es de tipo cantidad');
   }
 
