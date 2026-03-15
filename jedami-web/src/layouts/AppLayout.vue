@@ -26,7 +26,7 @@ const authStore = useAuthStore()
           <RouterLink v-if="authStore.isAdmin" to="/admin" class="text-sm font-medium text-gray-700 hover:text-[#E91E8C] transition-colors">
             Admin
           </RouterLink>
-          <ModeIndicator :mode="authStore.mode" />
+          <ModeIndicator :mode="authStore.mode" @toggle="authStore.toggleMode()" />
           <RouterLink v-if="!authStore.isAuthenticated" to="/login" class="text-sm font-medium text-gray-700 hover:text-[#E91E8C] transition-colors">
             Ingresar
           </RouterLink>

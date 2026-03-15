@@ -3,7 +3,6 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
 import VariantSelector from '@/components/features/catalog/VariantSelector.vue'
-import StockMatrix from '@/components/features/catalog/StockMatrix.vue'
 import CurvaCalculator from '@/components/features/catalog/CurvaCalculator.vue'
 import SoftRegistrationGate from '@/components/features/catalog/SoftRegistrationGate.vue'
 import { useProductsStore } from '@/stores/products.store'
@@ -222,10 +221,10 @@ async function handleCantidadConfirm() {
             <p v-if="product.description" class="mt-2 text-gray-600">{{ product.description }}</p>
           </div>
 
-          <div v-if="selectedVariant || product.variants.length">
+          <div v-if="product.retailPrice !== null">
             <p class="text-xs text-gray-500">{{ priceLabel }}</p>
             <p class="text-2xl font-bold text-gray-900">
-              ${{ (selectedVariant?.retailPrice ?? Math.min(...product.variants.map(v => v.retailPrice))).toLocaleString('es-AR') }}
+              ${{ (authStore.mode === 'wholesale' ? (product.wholesalePrice ?? product.retailPrice ?? 0) : (product.retailPrice ?? 0)).toLocaleString('es-AR') }}
             </p>
           </div>
 
@@ -364,10 +363,6 @@ async function handleCantidadConfirm() {
             @authenticated="handleBuyRetail"
           />
 
-          <div v-if="product.variants.length > 1" class="border-t pt-4">
-            <p class="text-sm font-semibold text-gray-700 mb-3">Disponibilidad por talle y color</p>
-            <StockMatrix :variants="product.variants" />
-          </div>
         </div>
       </div>
     </div>

@@ -31,13 +31,20 @@ export const useAuthStore = defineStore('auth', () => {
   const refreshToken = ref<string | null>(parsedUser ? localStorage.getItem('jedami_refresh_token') : null)
   const user = ref<JwtPayload | null>(parsedUser)
 
+  // Modo de visualización de precios — independiente del rol, persistido
+  const storedViewMode = localStorage.getItem('jedami_view_mode') as 'retail' | 'wholesale' | null
+  const viewMode = ref<'retail' | 'wholesale'>(storedViewMode ?? (parsedUser?.roles.includes('wholesale') ? 'wholesale' : 'retail'))
+
   const isAuthenticated = computed(() => !!token.value)
   const isAdmin = computed(() => user.value?.roles.includes('admin') ?? false)
   const isWholesale = computed(() => user.value?.roles.includes('wholesale') ?? false)
   const isRetail = computed(() => user.value?.roles.includes('retail') ?? false)
-  const mode = computed<'retail' | 'wholesale'>(() =>
-    isWholesale.value ? 'wholesale' : 'retail'
-  )
+  const mode = computed<'retail' | 'wholesale'>(() => viewMode.value)
+
+  function toggleMode() {
+    viewMode.value = viewMode.value === 'retail' ? 'wholesale' : 'retail'
+    localStorage.setItem('jedami_view_mode', viewMode.value)
+  }
 
   function setToken(t: string, rt?: string) {
     token.value = t
@@ -48,6 +55,10 @@ export const useAuthStore = defineStore('auth', () => {
       refreshToken.value = rt
       localStorage.setItem('jedami_refresh_token', rt)
     }
+    // Al hacer login, si no hay preferencia guardada, usar el modo del rol
+    if (!localStorage.getItem('jedami_view_mode')) {
+      viewMode.value = user.value.roles.includes('wholesale') ? 'wholesale' : 'retail'
+    }
   }
 
   function clearToken() {
@@ -56,6 +67,8 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
     localStorage.removeItem('jedami_token')
     localStorage.removeItem('jedami_refresh_token')
+    viewMode.value = 'retail'
+    localStorage.removeItem('jedami_view_mode')
   }
 
   async function tryRefresh(): Promise<boolean> {
@@ -85,8 +98,8 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function register(email: string, password: string, navigate = true) {
-    await registerApi(email, password)
+  async function register(email: string, password: string, customerType: 'retail' | 'wholesale' = 'retail', navigate = true) {
+    await registerApi(email, password, customerType)
     // Si el registro fue exitoso pero el login falla, marcamos el error para que
     // el componente pueda distinguirlo de un error de registro (ej: email duplicado)
     try {
@@ -119,6 +132,8 @@ export const useAuthStore = defineStore('auth', () => {
     isWholesale,
     isRetail,
     mode,
+    viewMode,
+    toggleMode,
     login,
     register,
     logout,

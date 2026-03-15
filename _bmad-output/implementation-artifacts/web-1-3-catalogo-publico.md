@@ -1,6 +1,6 @@
 # Story W1.3: Catálogo Público — ProductCard + VariantSelector + StockMatrix
 
-Status: review
+Status: done
 
 ## Story
 
@@ -211,9 +211,10 @@ claude-sonnet-4-6
 - Task 2: products.store.ts con append de páginas, loading, total.
 - Task 3: ProductCard.vue con hover scale, color swatches como pills CSS, badge de stock, precio con label retail/wholesale.
 - Task 4: VariantSelector.vue con selector de color (circles) y talle filtrado por color, line-through para agotados, aria-disabled.
-- Task 5: StockMatrix.vue con tabla color×talle, colores semánticos verde/naranja/rojo + leyenda.
+- Task 5: StockMatrix.vue refactorizado a tabla Talle×Color (filas=talles ordenados por sizeId, columnas=colores) con fila de Total de stock. Formato limpio con colores semánticos inline, sin badges.
 - Task 6: CatalogView.vue con grid responsive 2/3/4 cols, skeletons animate-pulse, botón "Cargar más".
-- Task 7: ProductView.vue con layout imagen+datos, VariantSelector+StockMatrix integrados, botón deshabilitado si sin stock.
+- Task 7: ProductView.vue con layout imagen+datos, VariantSelector integrado, botón deshabilitado si sin stock. StockMatrix removido de ProductView (innecesario para el flujo de compra).
+- Task 8 (nuevo): ModeIndicator convertido en botón clickeable que emite `toggle`. `authStore` expone `viewMode` (persistido en localStorage) y `toggleMode()`. Al login se inicializa según rol; al logout se resetea. AppLayout conecta el toggle.
 
 ### File List
 
