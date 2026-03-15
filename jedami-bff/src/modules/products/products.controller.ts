@@ -31,29 +31,10 @@ export async function createVariant(req: Request, res: Response, next: NextFunct
       next(new AppError(400, 'ID inválido', 'https://jedami.com/errors/validation', 'El id del producto debe ser un entero positivo'));
       return;
     }
-    const { size, color, retailPrice, initialStock, wholesalePrice } = req.body;
-    const variant = await productsService.createVariant(productId, {
-      size, color, retailPrice, initialStock, wholesalePrice: wholesalePrice ?? null,
-    });
+    const { sizeId, colorId, initialStock } = req.body;
+    const variant = await productsService.createVariant(productId, { sizeId, colorId, initialStock });
     await cacheDel(CATALOG_KEY, PRODUCT_KEY(productId));
     res.status(201).json({ data: variant });
-  } catch (err) {
-    next(err);
-  }
-}
-
-export async function updateVariantHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
-  try {
-    const productId = parseId(req.params.id);
-    const variantId = parseId(req.params.variantId);
-    if (!productId || !variantId) {
-      next(new AppError(400, 'ID inválido', 'https://jedami.com/errors/validation', 'Los ids deben ser enteros positivos'));
-      return;
-    }
-    const { retailPrice, wholesalePrice } = req.body;
-    const variant = await productsService.updateVariant(productId, variantId, { retailPrice, wholesalePrice });
-    await cacheDel(CATALOG_KEY, PRODUCT_KEY(productId));
-    res.status(200).json({ data: variant });
   } catch (err) {
     next(err);
   }
@@ -75,6 +56,22 @@ export async function updateProduct(req: Request, res: Response, next: NextFunct
   }
 }
 
+export async function updateProductPricesHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) {
+      next(new AppError(400, 'ID inválido', 'https://jedami.com/errors/validation', 'El id del producto debe ser un entero positivo'));
+      return;
+    }
+    const { retailPrice, wholesalePrice } = req.body;
+    await productsService.updateProductPrices(id, { retailPrice, wholesalePrice: wholesalePrice ?? null });
+    await cacheDel(CATALOG_KEY, PRODUCT_KEY(id));
+    res.status(200).json({ data: { productId: id, retailPrice, wholesalePrice: wholesalePrice ?? null } });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function getProduct(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const id = parseId(req.params.id);
@@ -88,7 +85,6 @@ export async function getProduct(req: Request, res: Response, next: NextFunction
       res.status(200).json(JSON.parse(cached));
       return;
     }
-
     const product = await productsService.getProductWithVariants(id);
     const body = { data: product };
     await cacheSet(cacheKey, JSON.stringify(body), ENV.CACHE_TTL);
@@ -124,6 +120,20 @@ export async function listProducts(req: Request, res: Response, next: NextFuncti
   } catch (err) {
     next(err);
   }
+}
+
+export async function listSizesHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const sizes = await productsService.listSizes();
+    res.status(200).json({ data: sizes });
+  } catch (err) { next(err); }
+}
+
+export async function listColorsHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const colors = await productsService.listColors();
+    res.status(200).json({ data: colors });
+  } catch (err) { next(err); }
 }
 
 export function uploadImageHandler(req: Request, res: Response, next: NextFunction): void {

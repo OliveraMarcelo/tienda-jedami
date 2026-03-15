@@ -1,12 +1,14 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { fetchProducts, fetchProduct, fetchCategories } from '@/api/products.api'
-import type { Product, Category } from '@/types/api'
+import { fetchProducts, fetchProduct, fetchCategories, fetchSizes, fetchColors } from '@/api/products.api'
+import type { Product, Category, Size, Color } from '@/types/api'
 
 export const useProductsStore = defineStore('products', () => {
   const products = ref<Product[]>([])
   const currentProduct = ref<Product | null>(null)
   const categories = ref<Category[]>([])
+  const sizes = ref<Size[]>([])
+  const colors = ref<Color[]>([])
   const selectedCategoryId = ref<number | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
@@ -44,7 +46,27 @@ export const useProductsStore = defineStore('products', () => {
       const res = await fetchCategories()
       categories.value = res.data
     } catch {
-      // Silencioso — las categorías son opcionales para la navegación
+      // Silencioso
+    }
+  }
+
+  async function loadSizes() {
+    if (sizes.value.length > 0) return
+    try {
+      const res = await fetchSizes()
+      sizes.value = res.data
+    } catch {
+      // Silencioso
+    }
+  }
+
+  async function loadColors() {
+    if (colors.value.length > 0) return
+    try {
+      const res = await fetchColors()
+      colors.value = res.data
+    } catch {
+      // Silencioso
     }
   }
 
@@ -63,6 +85,8 @@ export const useProductsStore = defineStore('products', () => {
     products,
     currentProduct,
     categories,
+    sizes,
+    colors,
     selectedCategoryId,
     loading,
     error,
@@ -72,6 +96,8 @@ export const useProductsStore = defineStore('products', () => {
     fetchCatalog,
     filterByCategory,
     loadCategories,
+    loadSizes,
+    loadColors,
     loadProduct,
   }
 })

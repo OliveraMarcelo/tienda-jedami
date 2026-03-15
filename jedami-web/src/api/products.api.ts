@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { Product, Category, PaginationMeta } from '@/types/api'
+import type { Product, Category, Size, Color, PaginationMeta } from '@/types/api'
 
 interface CatalogResponse {
   data: Product[]
@@ -32,5 +32,15 @@ export async function fetchProduct(id: number): Promise<ProductResponse> {
 
 export async function fetchCategories(): Promise<CategoriesResponse> {
   const res = await apiClient.get<CategoriesResponse>('/categories')
+  return res.data
+}
+
+export async function fetchSizes(): Promise<{ data: Size[] }> {
+  const res = await apiClient.get<{ data: Size[] }>('/products/sizes')
+  return res.data
+}
+
+export async function fetchColors(): Promise<{ data: Color[] }> {
+  const res = await apiClient.get<{ data: Color[] }>('/products/colors')
   return res.data
 }

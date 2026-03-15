@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import Dialog from '@/components/ui/Dialog.vue'
+import { useProductsStore } from '@/stores/products.store'
 
 const props = defineProps<{
   open: boolean
@@ -9,32 +10,33 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  'saved': [data: { size: string; color: string; retailPrice: number; wholesalePrice: number | null; initialStock: number }]
+  'saved': [data: { sizeId: number; colorId: number; initialStock: number }]
 }>()
 
-const size = ref('')
-const color = ref('')
-const retailPrice = ref<number | ''>('')
-const wholesalePrice = ref<number | ''>('')
+const productsStore = useProductsStore()
+
+const sizeId = ref<number | ''>('')
+const colorId = ref<number | ''>('')
 const initialStock = ref<number | ''>('')
 const loading = ref(false)
 const serverError = ref('')
 
-watch(() => props.open, (val) => {
+watch(() => props.open, async (val) => {
   if (val) {
-    size.value = ''
-    color.value = ''
-    retailPrice.value = ''
-    wholesalePrice.value = ''
+    sizeId.value = ''
+    colorId.value = ''
     initialStock.value = ''
     serverError.value = ''
+    await Promise.all([
+      productsStore.loadSizes(),
+      productsStore.loadColors(),
+    ])
   }
 })
 
 const isValid = computed(() =>
-  size.value.trim() &&
-  color.value.trim() &&
-  retailPrice.value !== '' && Number(retailPrice.value) >= 0 &&
+  sizeId.value !== '' &&
+  colorId.value !== '' &&
   initialStock.value !== '' && Number(initialStock.value) >= 0
 )
 
@@ -44,10 +46,8 @@ async function handleSubmit() {
   serverError.value = ''
   try {
     emit('saved', {
-      size: size.value.trim(),
-      color: color.value.trim(),
-      retailPrice: Number(retailPrice.value),
-      wholesalePrice: wholesalePrice.value !== '' ? Number(wholesalePrice.value) : null,
+      sizeId: Number(sizeId.value),
+      colorId: Number(colorId.value),
       initialStock: Number(initialStock.value),
     })
     emit('update:open', false)
@@ -68,46 +68,27 @@ async function handleSubmit() {
       <div class="grid grid-cols-2 gap-4">
         <div>
           <label class="block text-sm font-semibold text-gray-700 mb-1">Talle *</label>
-          <input
-            v-model="size"
-            type="text"
-            placeholder="ej. XL"
-            class="flex h-9 w-full rounded-md border border-gray-300 px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#E91E8C]"
-          />
+          <select
+            v-model="sizeId"
+            class="flex h-9 w-full rounded-md border border-gray-300 px-3 py-1 text-sm shadow-sm bg-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#E91E8C]"
+          >
+            <option value="">Seleccionar talle</option>
+            <option v-for="s in productsStore.sizes" :key="s.id" :value="s.id">
+              {{ s.label }}
+            </option>
+          </select>
         </div>
         <div>
           <label class="block text-sm font-semibold text-gray-700 mb-1">Color *</label>
-          <input
-            v-model="color"
-            type="text"
-            placeholder="ej. azul"
-            class="flex h-9 w-full rounded-md border border-gray-300 px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#E91E8C]"
-          />
-        </div>
-      </div>
-
-      <div class="grid grid-cols-2 gap-4">
-        <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-1">Precio minorista (ARS) *</label>
-          <input
-            v-model="retailPrice"
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="0.00"
-            class="flex h-9 w-full rounded-md border border-gray-300 px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#E91E8C]"
-          />
-        </div>
-        <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-1">Precio mayorista (ARS)</label>
-          <input
-            v-model="wholesalePrice"
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="Opcional"
-            class="flex h-9 w-full rounded-md border border-gray-300 px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#E91E8C]"
-          />
+          <select
+            v-model="colorId"
+            class="flex h-9 w-full rounded-md border border-gray-300 px-3 py-1 text-sm shadow-sm bg-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#E91E8C]"
+          >
+            <option value="">Seleccionar color</option>
+            <option v-for="c in productsStore.colors" :key="c.id" :value="c.id">
+              {{ c.name }}
+            </option>
+          </select>
         </div>
       </div>
 

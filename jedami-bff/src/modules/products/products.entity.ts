@@ -8,10 +8,26 @@ export interface Product {
 export interface Variant {
   id: number;
   product_id: number;
-  size: string;
-  color: string;
-  retail_price: string;
-  wholesale_price: string | null;
+  size_id: number;
+  color_id: number;
+}
+
+export interface Size {
+  id: number;
+  label: string;
+  sort_order: number;
+}
+
+export interface Color {
+  id: number;
+  name: string;
+  hex_code: string | null;
+}
+
+export interface PriceMode {
+  id: number;
+  code: string;
+  label: string;
 }
 
 export interface Stock {

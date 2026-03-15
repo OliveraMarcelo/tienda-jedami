@@ -21,6 +21,11 @@ interface CurvaRow {
   subtotal: number
 }
 
+// Precio unitario: usa precio mayorista si existe, sino minorista
+const unitPrice = computed(() =>
+  props.product.wholesalePrice ?? props.product.retailPrice ?? 0
+)
+
 const rows = computed<CurvaRow[]>(() =>
   props.product.variants.map(v => ({
     size: v.size,
@@ -28,7 +33,7 @@ const rows = computed<CurvaRow[]>(() =>
     requested: curves.value,
     available: v.stock.quantity,
     hasStock: v.stock.quantity >= curves.value,
-    subtotal: curves.value * v.retailPrice,
+    subtotal: curves.value * unitPrice.value,
   }))
 )
 

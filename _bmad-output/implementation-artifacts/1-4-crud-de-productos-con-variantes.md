@@ -15,10 +15,10 @@ para que el catálogo refleje la oferta real de la tienda.
    **Then** se crea el producto y retorna `201 { data: { id, name, description } }`
 
 2. **Given** un producto existente
-   **When** un admin hace `POST /api/v1/products/:id/variants` con `{ size, color, retailPrice, initialStock }`
-   **Then** se crea la variante en `variants` con `size`, `color`, `retail_price`
+   **When** un admin hace `POST /api/v1/products/:id/variants` con `{ sizeId, colorId, initialStock }`
+   **Then** se crea la variante en `variants` con FK a `sizes(sizeId)` y `colors(colorId)`
    **And** se crea el registro de stock en `stock` con `variant_id` como PK y `quantity = initialStock`
-   **And** retorna `201 { data: { id, productId, size, color, retailPrice, stock: { quantity } } }`
+   **And** retorna `201 { data: { id, productId, sizeId, size, colorId, color, hexCode, stock: { quantity } } }`
 
 3. **Given** un admin autenticado
    **When** hace `PUT /api/v1/products/:id` con datos actualizados
@@ -80,60 +80,60 @@ para que el catálogo refleje la oferta real de la tienda.
 
 ## Dev Notes
 
-### Diseño de la migración 004_products.sql
+### Diseño de la migración 004_products.sql (schema inicial)
+
+> ⚠️ **Schema evolucionado.** La migración `004` creó el schema inicial. Las migraciones `015`–`017` lo refactorizaron profundamente. El schema actual es el descrito abajo — ver `docs/data-mapping/schema.md` para el estado final.
 
 ```sql
-BEGIN;
-
+-- Schema INICIAL (004_products.sql) — ya no refleja el estado actual
 CREATE TABLE products (
   id          SERIAL PRIMARY KEY,
   name        VARCHAR(255) NOT NULL,
   description TEXT
 );
 
+-- OBSOLETO: variants ahora usa size_id FK → sizes, color_id FK → colors
+-- y NO tiene retail_price ni wholesale_price
 CREATE TABLE variants (
   id           SERIAL PRIMARY KEY,
   product_id   INT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-  size         VARCHAR(50) NOT NULL,
-  color        VARCHAR(50) NOT NULL,
-  retail_price NUMERIC(10, 2) NOT NULL
+  size_id      INT NOT NULL REFERENCES sizes(id),   -- desde migración 017
+  color_id     INT NOT NULL REFERENCES colors(id)   -- desde migración 017
 );
 
 CREATE TABLE stock (
   variant_id  INT PRIMARY KEY REFERENCES variants(id) ON DELETE CASCADE,
   quantity    INT NOT NULL DEFAULT 0 CHECK (quantity >= 0)
 );
-
-CREATE INDEX idx_variants_product_id ON variants(product_id);
-
-COMMIT;
 ```
+
+**Schema actual (post-migración 017):**
+- `variants` tiene `size_id FK → sizes` y `color_id FK → colors` — sin `size` varchar, sin `color` varchar, sin `retail_price`, sin `wholesale_price`
+- Los precios viven en `product_prices (product_id, price_mode_id, price)` — a nivel de producto, no de variante
+- `stock.variant_id` es PK — relación 1-1 estricta con `variants`
+- Ver schema completo: `docs/data-mapping/schema.md`
 
 **Puntos críticos del modelo:**
 - `stock.variant_id` es PK (no SERIAL) — es un 1-1 exacto con `variants`
 - `quantity CHECK >= 0` previene stock negativo a nivel DB
-- No hay precio en `products` — el precio vive en `variants.retail_price` (regla arquitectónica)
+- Precios en `product_prices`, no en `variants` — todas las variantes de un producto comparten precio
 
 ### Transacción atómica para crear variante + stock
 
 ```typescript
-// products.repository.ts
+// products.repository.ts (estado actual — post migración 017)
 export const createVariantWithStock = async (
   productId: number,
-  size: string,
-  color: string,
-  retailPrice: number,
+  sizeId: number,
+  colorId: number,
   initialStock: number
 ): Promise<{ variant: Variant; stock: Stock }> => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-
-    const variantResult = await client.query(CREATE_VARIANT, [productId, size, color, retailPrice]);
+    const variantResult = await client.query(CREATE_VARIANT, [productId, sizeId, colorId]);
     const variant = variantResult.rows[0];
-
     await client.query(CREATE_STOCK, [variant.id, initialStock]);
-
     await client.query('COMMIT');
     return { variant, stock: { variantId: variant.id, quantity: initialStock } };
   } catch (err) {
@@ -147,38 +147,36 @@ export const createVariantWithStock = async (
 
 **IMPORTANTE:** Usar `pool.connect()` para transacciones (no `pool.query()` directamente) para garantizar que BEGIN/COMMIT/ROLLBACK estén en la misma conexión.
 
-### Respuesta exacta de creación de variante (AC #2)
+### Respuesta exacta de creación de variante (AC #2) — estado actual
 
 ```json
 POST /api/v1/products/1/variants
-Body: { "size": "L", "color": "azul", "retailPrice": 1500, "initialStock": 10 }
+Body: { "sizeId": 3, "colorId": 4, "initialStock": 10 }
 → 201
 {
   "data": {
     "id": 1,
     "productId": 1,
-    "size": "L",
-    "color": "azul",
-    "retailPrice": 1500,
+    "sizeId": 3,
+    "size": "1",
+    "colorId": 4,
+    "color": "Rosa",
+    "hexCode": "#F48FB1",
     "stock": { "quantity": 10 }
   }
 }
 ```
 
-Notar: mapeo snake_case DB → camelCase respuesta:
-- `product_id` → `productId`
-- `retail_price` → `retailPrice`
-- `variant_id` (en stock) → omitir, ya está en el contexto de la variante
-
-### Regla crítica — precio solo en variante
+### Regla crítica — precios a nivel de producto
 
 ```typescript
-// ❌ NO crear campo price en products
-// ✅ El precio es retail_price en variants
+// ❌ NO almacenar precio en variants
+// ✅ Los precios viven en product_prices (product_id, price_mode_id, price)
 // ✅ El stock.quantity está en la tabla stock, no en variants
+// ✅ Para editar precios: PUT /products/:id/prices { retailPrice, wholesalePrice }
 ```
 
-### DTO para crear producto
+### DTO para crear producto y variante (estado actual)
 
 ```typescript
 interface CreateProductDTO {
@@ -187,9 +185,8 @@ interface CreateProductDTO {
 }
 
 interface CreateVariantDTO {
-  size: string;
-  color: string;
-  retailPrice: number;
+  sizeId: number;
+  colorId: number;
   initialStock: number;
 }
 ```
@@ -203,11 +200,11 @@ if (!dto.name?.trim()) {
 }
 
 // En service.createVariant:
-if (!productId || !dto.size || !dto.color || dto.retailPrice == null || dto.initialStock == null) {
+if (!productId || !dto.sizeId || !dto.colorId || dto.initialStock == null) {
   throw new AppError(400, 'Datos de variante incompletos', '/errors/validation', 'Faltan campos requeridos');
 }
-if (dto.retailPrice < 0 || dto.initialStock < 0) {
-  throw new AppError(400, 'Valores inválidos', '/errors/validation', 'retailPrice e initialStock deben ser >= 0');
+if (dto.initialStock < 0) {
+  throw new AppError(400, 'Valores inválidos', '/errors/validation', 'initialStock debe ser >= 0');
 }
 ```
 
@@ -242,7 +239,7 @@ jedami-bff/src/
 - RF-06: [Source: _bmad-output/planning-artifacts/prd.md]
 - Modelo de datos products/variants/stock: [Source: _bmad-output/planning-artifacts/architecture.md#Modelo de Datos]
 - D1 (SQL puro, queries en modules/<nombre>/queries/*.ts): [Source: _bmad-output/planning-artifacts/architecture.md#D1 — Acceso a Base de Datos]
-- Regla: precio vive en variante, stock 1-1 con variante: [Source: _bmad-output/planning-artifacts/architecture.md#Decisiones de Diseño del Modelo]
+- Regla: precio vive en `product_prices` (nivel producto), stock 1-1 con variante: [Source: docs/data-mapping/schema.md]
 - Reglas obligatorias: [Source: _bmad-output/planning-artifacts/architecture.md#Reglas obligatorias para todos los agentes]
 - RNF-02 (transacciones atómicas): [Source: _bmad-output/planning-artifacts/prd.md]
 
@@ -260,7 +257,7 @@ claude-sonnet-4-6
 - Task 2: Todas las interfaces en products.entity.ts (Product, Variant, Stock).
 - Task 3: 6 queries creadas. find-all-with-variants.ts incluye COUNT_PRODUCTS y FIND_PRODUCT_WITH_VARIANTS_BY_ID para Story 1.5.
 - Task 4: createVariantWithStock usa pool.connect() para transacción atómica garantizada.
-- Task 5: Service con validaciones completas. retailPrice se castea a Number() para evitar string de Numeric de PG.
+- Task 5: Service con validaciones completas. Precios se gestionan via product_prices, no en variante.
 - Task 7: products.routes.ts con guard de admin en mutaciones y público en GET /:id.
 
 ### File List

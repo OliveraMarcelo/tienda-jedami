@@ -12,7 +12,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  'saved': [data: { name: string; description: string; categoryId: number | null }]
+  'saved': [data: { name: string; description: string; categoryId: number | null; retailPrice: number; wholesalePrice: number | null }]
 }>()
 
 const productsStore = useProductsStore()
@@ -20,6 +20,8 @@ const productsStore = useProductsStore()
 const name = ref('')
 const description = ref('')
 const categoryId = ref<number | null>(null)
+const retailPrice = ref<number | ''>('')
+const wholesalePrice = ref<number | ''>('')
 const localImages = ref<{ id: number; url: string; position: number }[]>([])
 const imageError = ref('')
 const imageLoading = ref(false)
@@ -31,23 +33,26 @@ watch(() => props.open, async (val) => {
     name.value = props.product?.name ?? ''
     description.value = props.product?.description ?? ''
     categoryId.value = props.product?.categoryId ?? null
+    retailPrice.value = props.product?.retailPrice ?? ''
+    wholesalePrice.value = props.product?.wholesalePrice ?? ''
     imageError.value = ''
     serverError.value = ''
     localImages.value = []
 
-    // Cargar imágenes del producto si existe
     if (props.product) {
       try {
         const res = await fetchProductDetail(props.product.id)
         localImages.value = res.data.images ?? []
       } catch {
-        // silencioso — las imágenes son opcionales
+        // silencioso
       }
     }
   }
 })
 
-const isValid = () => name.value.trim().length > 0
+const isValid = () =>
+  name.value.trim().length > 0 &&
+  retailPrice.value !== '' && Number(retailPrice.value) >= 0
 
 const title = () => props.product ? 'Editar producto' : 'Nuevo producto'
 
@@ -93,6 +98,8 @@ async function handleSubmit() {
       name: name.value.trim(),
       description: description.value.trim(),
       categoryId: categoryId.value,
+      retailPrice: Number(retailPrice.value),
+      wholesalePrice: wholesalePrice.value !== '' ? Number(wholesalePrice.value) : null,
     })
     emit('update:open', false)
   } catch (err: unknown) {
@@ -141,6 +148,32 @@ async function handleSubmit() {
             {{ cat.name }}
           </option>
         </select>
+      </div>
+
+      <!-- Precios -->
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Precio minorista (ARS) *</label>
+          <input
+            v-model="retailPrice"
+            type="number"
+            min="0"
+            step="1"
+            placeholder="0"
+            class="flex h-9 w-full rounded-md border border-gray-300 px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#E91E8C]"
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Precio mayorista (ARS)</label>
+          <input
+            v-model="wholesalePrice"
+            type="number"
+            min="0"
+            step="1"
+            placeholder="Opcional"
+            class="flex h-9 w-full rounded-md border border-gray-300 px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#E91E8C]"
+          />
+        </div>
       </div>
 
       <!-- Fotos -->

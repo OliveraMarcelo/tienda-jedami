@@ -10,19 +10,23 @@ const props = defineProps<{
 
 const hovered = ref(false)
 
-const uniqueColors = computed(() =>
-  [...new Set(props.product.variants.map(v => v.color))]
-)
-
-const minPrice = computed(() => {
-  if (!props.product.variants.length) return null
-  if (props.mode === 'wholesale') {
-    // Mostrar el menor precio mayorista disponible (o retail como fallback)
-    return Math.min(
-      ...props.product.variants.map(v => v.wholesalePrice ?? v.retailPrice)
-    )
+const uniqueColors = computed(() => {
+  const seen = new Set<number>()
+  const result: { name: string; hexCode: string | null }[] = []
+  for (const v of props.product.variants) {
+    if (!seen.has(v.colorId)) {
+      seen.add(v.colorId)
+      result.push({ name: v.color, hexCode: v.hexCode })
+    }
   }
-  return Math.min(...props.product.variants.map(v => v.retailPrice))
+  return result
+})
+
+const displayPrice = computed(() => {
+  if (props.mode === 'wholesale') {
+    return props.product.wholesalePrice ?? props.product.retailPrice
+  }
+  return props.product.retailPrice
 })
 
 const stockBadge = computed(() => {
@@ -44,7 +48,6 @@ const stockBadge = computed(() => {
       @mouseleave="hovered = false"
     >
       <div class="relative aspect-[3/4] bg-gray-100 overflow-hidden">
-        <!-- Imagen real del producto -->
         <img
           v-if="product.imageUrl"
           :src="product.imageUrl"
@@ -53,7 +56,6 @@ const stockBadge = computed(() => {
           :class="hovered ? 'scale-105' : 'scale-100'"
           loading="lazy"
         />
-        <!-- Placeholder si no hay imagen -->
         <div
           v-else
           class="absolute inset-0 flex items-center justify-center text-gray-300 text-4xl transition-transform duration-200"
@@ -69,7 +71,6 @@ const stockBadge = computed(() => {
           {{ stockBadge.text }}
         </span>
 
-        <!-- Badge de categoría -->
         <span
           v-if="product.categoryName"
           class="absolute bottom-2 right-2 bg-white/80 backdrop-blur-sm text-gray-700 text-xs font-medium px-2 py-0.5 rounded-full border border-gray-200"
@@ -83,17 +84,17 @@ const stockBadge = computed(() => {
 
         <div class="flex gap-1 mb-2 flex-wrap">
           <span
-            v-for="color in uniqueColors"
-            :key="color"
+            v-for="c in uniqueColors"
+            :key="c.name"
             class="w-4 h-4 rounded-full border border-gray-300 inline-block"
-            :style="{ backgroundColor: color }"
-            :title="color"
+            :style="c.hexCode ? { backgroundColor: c.hexCode } : { backgroundColor: '#E5E7EB' }"
+            :title="c.name"
           />
         </div>
 
-        <p v-if="minPrice !== null" class="text-sm text-gray-700">
+        <p v-if="displayPrice !== null" class="text-sm text-gray-700">
           <span class="text-xs text-gray-500 mr-1">{{ mode === 'wholesale' ? 'Precio mayorista' : 'Precio' }}</span>
-          <span class="font-bold text-gray-900">${{ minPrice.toLocaleString('es-AR') }}</span>
+          <span class="font-bold text-gray-900">${{ displayPrice!.toLocaleString('es-AR') }}</span>
         </p>
       </div>
     </div>

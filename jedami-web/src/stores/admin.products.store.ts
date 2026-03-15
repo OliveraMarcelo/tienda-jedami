@@ -1,6 +1,15 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { createProduct as apiCreate, updateProduct as apiUpdate, createVariant as apiCreateVariant, deleteImage as apiDeleteImage, deleteProduct as apiDeleteProduct, deleteVariant as apiDeleteVariant, updateStock as apiUpdateStock, updateVariant as apiUpdateVariant } from '@/api/admin.api'
+import {
+  createProduct as apiCreate,
+  updateProduct as apiUpdate,
+  updateProductPrices as apiUpdateProductPrices,
+  createVariant as apiCreateVariant,
+  deleteImage as apiDeleteImage,
+  deleteProduct as apiDeleteProduct,
+  deleteVariant as apiDeleteVariant,
+  updateStock as apiUpdateStock,
+} from '@/api/admin.api'
 import { fetchProducts } from '@/api/products.api'
 import type { Product, Variant } from '@/types/api'
 
@@ -41,16 +50,26 @@ export const useAdminProductsStore = defineStore('adminProducts', () => {
     return res.data
   }
 
-  async function createVariant(productId: number, dto: { size: string; color: string; retailPrice: number; wholesalePrice?: number | null; initialStock: number }) {
+  async function updateProductPrices(productId: number, dto: { retailPrice: number; wholesalePrice: number | null }) {
+    await apiUpdateProductPrices(productId, dto)
+    const product = products.value.find(p => p.id === productId)
+    if (product) {
+      product.retailPrice = dto.retailPrice
+      product.wholesalePrice = dto.wholesalePrice
+    }
+  }
+
+  async function createVariant(productId: number, dto: { sizeId: number; colorId: number; initialStock: number }) {
     const res = await apiCreateVariant(productId, dto)
     const product = products.value.find(p => p.id === productId)
     if (product) {
       const variant: Variant = {
         id: res.data.id,
+        sizeId: res.data.sizeId,
         size: res.data.size,
+        colorId: res.data.colorId,
         color: res.data.color,
-        retailPrice: res.data.retailPrice,
-        wholesalePrice: res.data.wholesalePrice ?? null,
+        hexCode: res.data.hexCode ?? null,
         stock: res.data.stock,
       }
       product.variants.push(variant)
@@ -78,11 +97,6 @@ export const useAdminProductsStore = defineStore('adminProducts', () => {
     if (product) product.variants = product.variants.filter(v => v.id !== variantId)
   }
 
-  async function updateVariantPrices(productId: number, variantId: number, dto: { retailPrice?: number; wholesalePrice?: number | null }) {
-    await apiUpdateVariant(productId, variantId, dto)
-    await fetchAll()
-  }
-
   async function updateVariantStock(productId: number, variantId: number, quantity: number) {
     await apiUpdateStock(productId, variantId, quantity)
     const product = products.value.find(p => p.id === productId)
@@ -92,5 +106,19 @@ export const useAdminProductsStore = defineStore('adminProducts', () => {
     }
   }
 
-  return { products, loading, error, totalProducts, fetchAll, createProduct, updateProduct, createVariant, deleteImage, deleteProduct, deleteVariant, updateVariantPrices, updateVariantStock }
+  return {
+    products,
+    loading,
+    error,
+    totalProducts,
+    fetchAll,
+    createProduct,
+    updateProduct,
+    updateProductPrices,
+    createVariant,
+    deleteImage,
+    deleteProduct,
+    deleteVariant,
+    updateVariantStock,
+  }
 })

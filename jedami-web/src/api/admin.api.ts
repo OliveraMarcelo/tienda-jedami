@@ -14,10 +14,8 @@ interface UpdateProductDTO {
 }
 
 interface CreateVariantDTO {
-  size: string
-  color: string
-  retailPrice: number
-  wholesalePrice?: number | null
+  sizeId: number
+  colorId: number
   initialStock: number
 }
 
@@ -33,6 +31,13 @@ export async function createProduct(dto: CreateProductDTO): Promise<{ data: Prod
 export async function updateProduct(id: number, dto: UpdateProductDTO): Promise<{ data: Product }> {
   const res = await apiClient.put<{ data: Product }>(`/products/${id}`, dto)
   return res.data
+}
+
+export async function updateProductPrices(
+  id: number,
+  dto: { retailPrice: number; wholesalePrice: number | null },
+): Promise<void> {
+  await apiClient.put(`/products/${id}/prices`, dto)
 }
 
 export async function createVariant(productId: number, dto: CreateVariantDTO): Promise<{ data: VariantWithProductId }> {
@@ -73,8 +78,4 @@ export async function deleteVariant(productId: number, variantId: number): Promi
 
 export async function updateStock(productId: number, variantId: number, quantity: number): Promise<void> {
   await apiClient.patch(`/products/${productId}/variants/${variantId}/stock`, { quantity })
-}
-
-export async function updateVariant(productId: number, variantId: number, dto: { retailPrice?: number; wholesalePrice?: number | null }): Promise<void> {
-  await apiClient.put(`/products/${productId}/variants/${variantId}`, dto)
 }
