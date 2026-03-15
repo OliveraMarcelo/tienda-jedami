@@ -7,7 +7,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function register(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { email, password } = req.body;
+    const { email, password, customerType } = req.body;
     if (!email || !password) {
       next(new AppError(400, 'Datos incompletos', 'https://jedami.com/errors/validation', 'Email y password son obligatorios'));
       return;
@@ -16,7 +16,8 @@ export async function register(req: Request, res: Response, next: NextFunction):
       next(new AppError(400, 'Email inválido', 'https://jedami.com/errors/validation', 'El email no tiene un formato válido'));
       return;
     }
-    const user = await authService.register(email, password);
+    const type = customerType === 'wholesale' ? 'wholesale' : 'retail';
+    const user = await authService.register(email, password, type);
     res.status(201).json({ data: user });
   } catch (err) {
     next(err);

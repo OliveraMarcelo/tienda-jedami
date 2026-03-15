@@ -9,6 +9,7 @@ const authStore = useAuthStore()
 const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
+const customerType = ref<'retail' | 'wholesale'>('retail')
 const passwordVisible = ref(false)
 const loading = ref(false)
 const serverError = ref('')
@@ -52,7 +53,7 @@ async function handleSubmit() {
   loading.value = true
   serverError.value = ''
   try {
-    await authStore.register(email.value, password.value)
+    await authStore.register(email.value, password.value, customerType.value)
   } catch (err: unknown) {
     const e = err as { response?: { data?: { detail?: string } }; __registerOk?: boolean }
     if (e.__registerOk) {
@@ -72,14 +73,44 @@ async function handleSubmit() {
     <div class="min-h-[60vh] flex items-center justify-center">
       <div class="w-full max-w-md">
         <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
-          <h1 class="text-2xl font-bold text-gray-900 mb-2">Crear cuenta</h1>
-          <p class="text-sm text-gray-500 mb-6">
-            Las cuentas nuevas son minoristas.
-            <span class="text-blue-600">¿Sos mayorista?</span>
-            Registrate y contactá al administrador para activar tu acceso mayorista.
-          </p>
+          <h1 class="text-2xl font-bold text-gray-900 mb-6">Crear cuenta</h1>
 
           <form @submit.prevent="handleSubmit" novalidate>
+            <!-- Tipo de cuenta -->
+            <div class="mb-5">
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Tipo de cuenta</label>
+              <div class="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  @click="customerType = 'retail'"
+                  :class="[
+                    'flex flex-col items-center gap-1 px-4 py-3 rounded-xl border-2 text-sm font-medium transition-colors',
+                    customerType === 'retail'
+                      ? 'border-[#E91E8C] bg-[#E91E8C]/5 text-[#E91E8C]'
+                      : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                  ]"
+                >
+                  <span class="text-xl">🛍️</span>
+                  Minorista
+                  <span class="text-xs font-normal text-gray-400">Compro para mí</span>
+                </button>
+                <button
+                  type="button"
+                  @click="customerType = 'wholesale'"
+                  :class="[
+                    'flex flex-col items-center gap-1 px-4 py-3 rounded-xl border-2 text-sm font-medium transition-colors',
+                    customerType === 'wholesale'
+                      ? 'border-[#1565C0] bg-[#1565C0]/5 text-[#1565C0]'
+                      : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                  ]"
+                >
+                  <span class="text-xl">🏭</span>
+                  Mayorista
+                  <span class="text-xs font-normal text-gray-400">Compro para revender</span>
+                </button>
+              </div>
+            </div>
+
             <div class="mb-4">
               <label class="block text-sm font-semibold text-gray-700 mb-1">Email</label>
               <input

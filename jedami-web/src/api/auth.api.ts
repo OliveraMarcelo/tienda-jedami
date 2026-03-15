@@ -17,8 +17,8 @@ export async function loginApi(email: string, password: string): Promise<LoginRe
   return res.data
 }
 
-export async function registerApi(email: string, password: string): Promise<RegisterResponse> {
-  const res = await apiClient.post<RegisterResponse>('/auth/register', { email, password })
+export async function registerApi(email: string, password: string, customerType: 'retail' | 'wholesale'): Promise<RegisterResponse> {
+  const res = await apiClient.post<RegisterResponse>('/auth/register', { email, password, customerType })
   return res.data
 }
 

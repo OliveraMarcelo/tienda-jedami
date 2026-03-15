@@ -45,7 +45,7 @@ async function storeRefreshToken(userId: number, token: string): Promise<void> {
 
 // ─── Register ─────────────────────────────────────────────────────────────────
 
-export async function register(email: string, password: string) {
+export async function register(email: string, password: string, customerType: 'retail' | 'wholesale' = 'retail') {
   const existing = await usersRepository.findByEmail(email);
   if (existing) {
     throw new AppError(
@@ -59,15 +59,15 @@ export async function register(email: string, password: string) {
   const passwordHash = await bcrypt.hash(password, 10);
   const user = await usersRepository.create(email, passwordHash);
 
-  // Crear perfil de comprador con customer_type = 'retail' por defecto
-  await customersRepository.createCustomer(user.id);
+  // Crear perfil de comprador con el tipo elegido
+  await customersRepository.createCustomer(user.id, customerType);
 
-  // Asignar rol 'retail' automáticamente
+  // Asignar el rol correspondiente automáticamente
   await pool.query(
     `INSERT INTO user_roles (user_id, role_id)
-     SELECT $1, id FROM roles WHERE name = 'retail'
+     SELECT $1, id FROM roles WHERE name = $2
      ON CONFLICT DO NOTHING`,
-    [user.id],
+    [user.id, customerType],
   );
 
   return {

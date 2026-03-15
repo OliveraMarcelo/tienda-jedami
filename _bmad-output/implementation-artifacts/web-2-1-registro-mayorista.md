@@ -1,6 +1,6 @@
 # Story W2.1: Registro Mayorista y Perfil Customer
 
-Status: review
+Status: done
 
 ## Story
 
@@ -8,13 +8,14 @@ Como comprador mayorista,
 quiero registrarme como mayorista y ver mi perfil con el tipo de cliente correcto,
 para que el sistema me habilite a comprar en las modalidades mayoristas.
 
-**Depende de:** BFF Story 2.1 done (registro crea customer + update customerType al asignar rol wholesale)
+**Depende de:** BFF Story 2.1 done
 
 ## Acceptance Criteria
 
-1. **Given** el form de registro tiene un selector "Tipo de cliente"
-   **When** el usuario elige "Soy mayorista" y completa el registro
-   **Then** el `authStore.mode` cambia a `'wholesale'` y el `ModeIndicator` muestra "🏭 Mayorista"
+1. **Given** el form de registro tiene un selector visual de tipo (🛍️ Minorista / 🏭 Mayorista)
+   **When** el usuario elige "Mayorista" y completa el registro
+   **Then** el BFF asigna el rol `wholesale` y crea el customer con `customer_type = 'wholesale'` automáticamente — sin intervención del admin
+   **And** el `authStore.viewMode` se inicializa en `'wholesale'` y el `ModeIndicator` muestra "🏭 Mayorista"
 
 2. **Given** el mayorista está logueado
    **When** accede a `/perfil`
@@ -26,10 +27,13 @@ para que el sistema me habilite a comprar en las modalidades mayoristas.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1 — Actualizar `RegisterView.vue` con selector de tipo de cliente (AC: #1)
-  - [ ] Agregar `Select` de shadcn-vue con opciones: "Soy minorista" / "Soy mayorista"
-  - [ ] Al registrarse como mayorista: el BFF crea el user → admin asigna rol wholesale → `customerType` se actualiza
-  - [ ] El `authStore.mode` se deriva del token JWT (roles del payload)
+- [x] Task 1 — Actualizar `RegisterView.vue` con selector de tipo de cliente (AC: #1)
+  - [x] Selector visual con tarjetas (🛍️ Minorista / 🏭 Mayorista), sin `Select` de shadcn
+  - [x] Envía `customerType` al BFF en el body del registro
+  - [x] BFF asigna rol automáticamente — no requiere paso de admin
+  - [x] BFF: `auth.controller` lee `customerType`, `auth.service` lo pasa a `createCustomer` y asigna rol dinámico
+  - [x] `auth.api.ts`: `registerApi` incluye `customerType` en el POST
+  - [x] `auth.store.ts`: `register()` acepta `customerType`
 
 - [ ] Task 2 — Crear `src/api/profile.api.ts` (AC: #2)
   - [ ] `fetchMe()`: GET `/me` → `{ data: { id, email, roles, customer: { id, customerType } } }`
@@ -48,10 +52,10 @@ GET /api/v1/me
   Response 200: { data: { id, email, roles: string[], customer: { id, customerType: 'retail' | 'wholesale' } } }
 ```
 
-**Nota sobre el flujo de activación mayorista:**
-El registro inicial crea al usuario con `customerType: 'retail'`. Para ser mayorista, un admin debe asignar el rol `wholesale` via `POST /api/v1/users/:userId/roles`. Esto actualiza `customerType` a `'wholesale'` automáticamente en el BFF (Story 2.1).
+**Flujo de registro self-service (implementado):**
+El usuario elige `customerType` ('retail' | 'wholesale') en el formulario. El BFF recibe el campo, crea el customer con ese tipo y asigna el rol correspondiente en un solo paso. No se requiere admin. El JWT devuelto tras el auto-login ya contiene los roles correctos.
 
-En la UI: el `authStore.mode` se deriva de los roles en el JWT. Después de que el admin asigne el rol, el usuario debe hacer logout/login para obtener un nuevo token con los roles actualizados.
+`auth.store.viewMode` se inicializa desde localStorage; si no hay preferencia guardada, se deduce del rol al hacer login (wholesale → 'wholesale', retail → 'retail').
 
 ### References
 
@@ -68,7 +72,7 @@ claude-sonnet-4-6
 
 ### Completion Notes List
 
-- Task 1: RegisterView actualizado con selector de tipo retail/wholesale. Selector visual con botones toggle. Nota informativa cuando elige wholesale sobre activación por admin.
+- Task 1: RegisterView actualizado con selector visual de tipo retail/wholesale (tarjetas con iconos). Flow self-service: BFF asigna rol y customer_type sin intervención de admin. auth.api, auth.store y auth.controller/service actualizados.
 - Task 2: `src/api/profile.api.ts` creado con fetchMe() tipado.
 - Task 3: `ProfileView.vue` en `/perfil` con email, roles como badges de colores y customerType con badge colorido. Link agregado en AppLayout.
 

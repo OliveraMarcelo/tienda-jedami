@@ -7,10 +7,10 @@ export interface Customer {
   customer_type: 'retail' | 'wholesale';
 }
 
-export const createCustomer = async (userId: number): Promise<Customer> => {
+export const createCustomer = async (userId: number, customerType: 'retail' | 'wholesale' = 'retail'): Promise<Customer> => {
   const result = await pool.query(
     'INSERT INTO customers (user_id, customer_type) VALUES ($1, $2) RETURNING id, user_id, customer_type',
-    [userId, 'retail'],
+    [userId, customerType],
   );
   return result.rows[0];
 };
