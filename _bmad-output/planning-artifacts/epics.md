@@ -102,12 +102,14 @@ Un comprador minorista puede registrarse, comprar cualquier variante en cualquie
 El sistema soporta carga real de producción con caché Redis activo, rate limiting y sesiones optimizadas.
 **Incluye:** Redis cache activo, rate limiting, refresh tokens, bus de eventos tiempo real
 
-### Epic 6: Catálogo Mejorado — Fotos, Categorías, Precios Mayoristas y Tablas de Referencia
-El catálogo refleja fielmente el negocio con imágenes de productos, categorías para navegación, precios mayoristas a nivel de producto (`product_prices`), y tablas de referencia normalizadas para talles (`sizes`) y colores (`colors`).
+### Epic 6: Catálogo Mejorado — Fotos, Categorías, Precios, Tablas de Referencia y Configuración del Sistema
+El catálogo refleja fielmente el negocio con imágenes de productos, categorías, precios mayoristas, tablas de referencia normalizadas y un sistema de configuración dinámica que elimina hardcoding del código.
+**Stories:** 6.1 (fotos BFF), 6.2 (seed realista), 6.3 (precios mayoristas ✅), 6.4 (categorías BFF), 6.5 (web catálogo ✅), 6.6 (tablas config + /config), W6.2 (config store + sin hardcoding)
 **FRs cubiertos:** RF-13, RF-14, RF-15
 
 ### Epic 7: Panel de Administración Avanzado y Branding
-El administrador tiene visibilidad completa del negocio (dashboard de ventas, tabla de pagos, gestión de usuarios) y la tienda soporta branding dinámico para operar como plataforma whitelabel.
+El administrador tiene visibilidad completa del negocio (dashboard de ventas, tabla de pagos, gestión de usuarios y configuración del sistema) y la tienda soporta branding dinámico para operar como plataforma whitelabel.
+**Stories:** 7.1 (dashboard BFF), 7.2 (pagos/usuarios BFF), 7.3 (web admin panel), 7.4 (branding), 7.5 (admin gestión config: purchase_types, customer_types, sizes, colors)
 **FRs cubiertos:** RF-16, RF-17
 
 ### Epic 8: App Flutter Desktop — Gestión de Stock
@@ -995,9 +997,9 @@ para que pueda hacer seguimiento de mis compras minoristas.
 
 ---
 
-## Epic 6: Catálogo Mejorado — Fotos, Categorías, Precios Mayoristas y Tablas de Referencia
+## Epic 6: Catálogo Mejorado — Fotos, Categorías, Precios, Tablas de Referencia y Configuración del Sistema
 
-El catálogo refleja fielmente el negocio con imágenes de productos, categorías para navegación, precios mayoristas a nivel de producto (`product_prices`), y tablas de referencia normalizadas para talles (`sizes`) y colores (`colors`).
+El catálogo refleja fielmente el negocio con imágenes de productos, categorías para navegación, precios mayoristas a nivel de producto (`product_prices`), tablas de referencia normalizadas para talles y colores, y un sistema de configuración dinámica que elimina valores hardcodeados del código.
 
 ### Story 6.1: Fotos de Productos — BFF
 
@@ -1135,6 +1137,73 @@ para tener una experiencia de compra visual y organizada.
 
 ---
 
+### Story 6.6: Tablas de Configuración del Sistema — BFF
+
+Como desarrollador y administrador,
+quiero que los tipos de compra, tipos de cliente y modos de precio estén almacenados en tablas de la base de datos con un endpoint de configuración,
+para que el sistema no tenga valores hardcodeados y cualquier cambio de negocio sea configurable sin redesplegar código.
+
+**Depende de:** Story 6.3 done (price_modes ya existe)
+
+**Acceptance Criteria:**
+
+1. **Given** se ejecutan las migraciones
+   **When** se consulta la DB
+   **Then** existen las tablas `purchase_types (id, code, label, active)` y `customer_types (id, code, label, active)`
+   **And** `purchase_types` tiene registros: `{ curva, "Por curva" }`, `{ cantidad, "Por cantidad" }`, `{ retail, "Minorista" }`
+   **And** `customer_types` tiene registros: `{ retail, "Minorista" }`, `{ wholesale, "Mayorista" }`
+
+2. **Given** cualquier cliente hace `GET /api/v1/config`
+   **When** el endpoint responde
+   **Then** retorna `{ roles, priceModes, purchaseTypes, customerTypes }` con todos los valores activos de la DB
+   **And** el endpoint es público (sin autenticación)
+
+3. **Given** el BFF valida un `purchaseType` recibido en un request
+   **When** valida el valor
+   **Then** consulta `purchase_types` de la DB (o caché en memoria) en lugar de comparar contra strings literales
+
+**Tasks:**
+- [ ] Migración `018_config_tables.sql`: tablas `purchase_types` y `customer_types` con seed inicial
+- [ ] Query `find-config.ts`: SELECT de `roles`, `price_modes`, `purchase_types`, `customer_types` activos
+- [ ] Controller `config.controller.ts` + route `GET /config` (público)
+- [ ] Reemplazar strings hardcodeados en servicios y rutas del BFF con valores de `src/lib/constants.ts`
+- [ ] Crear `src/lib/constants.ts` en BFF: `ROLES`, `PRICE_MODES`, `PURCHASE_TYPES`, `CUSTOMER_TYPES` — fuente única para constantes de dominio
+
+---
+
+### Story W6.2: Config Store y Eliminación de Hardcoding — Web
+
+Como usuario de la aplicación,
+quiero que la app cargue la configuración del sistema desde el servidor al iniciar,
+para que los tipos de compra, roles y modos de precio sean dinámicos y no estén hardcodeados en el frontend.
+
+**Depende de:** Story 6.6 done
+
+**Acceptance Criteria:**
+
+1. **Given** la app inicia
+   **When** `App.vue` monta
+   **Then** se hace `GET /api/v1/config` antes de renderizar las rutas
+   **And** mientras carga se muestra un skeleton de pantalla completa (header + contenido)
+
+2. **Given** el config store está cargado
+   **When** cualquier componente necesita saber los roles, modos o tipos de compra
+   **Then** los obtiene de `useConfigStore()` en lugar de strings literales
+
+3. **Given** el código del frontend
+   **When** se revisa
+   **Then** no hay strings `'admin'`, `'wholesale'`, `'retail'`, `'curva'`, `'cantidad'` hardcodeados — todos vienen de `@/lib/constants.ts` o del config store
+
+**Tasks:**
+- [ ] Crear `src/api/config.api.ts`: `fetchConfig()` → `GET /api/v1/config`
+- [ ] Crear `src/stores/config.store.ts`: estado `{ roles, priceModes, purchaseTypes, customerTypes }`, acción `loadConfig()`
+- [ ] Crear `src/lib/constants.ts`: `ROLES`, `MODES`, `PURCHASE_TYPES`, `CUSTOMER_TYPES` como constantes tipadas
+- [ ] Actualizar `App.vue`: `await configStore.loadConfig()` en `onMounted`, mostrar `AppSkeleton` mientras carga
+- [ ] Crear `AppSkeleton.vue`: placeholder de header + contenido con `animate-pulse`
+- [ ] Reemplazar todos los strings hardcodeados en `auth.store.ts`, `router/index.ts`, `ModeIndicator.vue`, `ProductCard.vue`, `ProductView.vue`, `RegisterView.vue`, `OrdersView.vue`, `OrderDetailView.vue`, `ProfileView.vue`
+
+---
+
 ## Epic 7: Panel de Administración Avanzado y Branding
 
 ### Story 7.1: Dashboard de Ventas — BFF
@@ -1206,6 +1275,46 @@ para operar la tienda bajo la marca del cliente.
 - [ ] Endpoint `GET /config/branding` (público, sin autenticación)
 - [ ] Leer configuración de `ENV` (variables de entorno)
 - [ ] Frontend: leer branding al montar App.vue y aplicar CSS variables dinámicas
+
+---
+
+### Story 7.5: Admin — Gestión de Tablas de Configuración
+
+Como administrador,
+quiero gestionar los tipos de compra, tipos de cliente, talles y colores desde el panel admin,
+para que pueda adaptar el sistema a cambios del negocio sin tocar la base de datos.
+
+**Depende de:** Story 6.6 done, Story 7.3 done
+
+**Acceptance Criteria:**
+
+1. **Given** el admin accede a `/admin/configuracion`
+   **When** la página carga
+   **Then** ve 4 secciones: Tipos de Compra, Tipos de Cliente, Talles, Colores — cada una con su tabla editable
+
+2. **Given** el admin agrega un nuevo tipo de compra
+   **When** completa `{ code, label }` y guarda
+   **Then** se llama `POST /api/v1/config/purchase-types` y aparece en la lista sin recargar
+
+3. **Given** el admin desactiva un tipo de compra
+   **When** hace click en "Desactivar"
+   **Then** `active` pasa a `false` y el tipo ya no aparece en `GET /config` ni en la app
+
+4. **Given** el admin gestiona talles o colores
+   **When** agrega/edita/elimina
+   **Then** se reflejan en `GET /products/sizes` y `GET /products/colors` que usa el frontend
+
+**Tasks:**
+
+BFF:
+- [ ] `POST /config/purchase-types`, `PUT /config/purchase-types/:id`, `DELETE /config/purchase-types/:id` (admin)
+- [ ] `POST /config/customer-types`, `PUT /config/customer-types/:id`, `DELETE /config/customer-types/:id` (admin)
+- [ ] Endpoints CRUD para `sizes` y `colors` ya existentes — verificar que estén completos
+
+Web:
+- [ ] Vista `/admin/configuracion` con 4 tabs: Tipos de Compra / Tipos de Cliente / Talles / Colores
+- [ ] Tabla editable inline por sección con botones Agregar / Editar / Desactivar
+- [ ] Guard: `requiresRole: 'admin'`
 
 ---
 
