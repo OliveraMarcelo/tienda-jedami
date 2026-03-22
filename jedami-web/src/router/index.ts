@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
+import { ROLES } from '@/lib/constants'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -37,19 +38,55 @@ const router = createRouter({
       path: '/admin',
       name: 'admin',
       component: () => import('@/views/admin/AdminView.vue'),
-      meta: { requiresRole: 'admin' },
+      meta: { requiresRole: ROLES.ADMIN },
+    },
+    {
+      path: '/admin/dashboard',
+      name: 'adminDashboard',
+      component: () => import('@/views/admin/AdminDashboardView.vue'),
+      meta: { requiresRole: ROLES.ADMIN },
+    },
+    {
+      path: '/admin/pagos',
+      name: 'adminPagos',
+      component: () => import('@/views/admin/AdminPaymentsView.vue'),
+      meta: { requiresRole: ROLES.ADMIN },
     },
     {
       path: '/admin/productos',
       name: 'adminProductos',
       component: () => import('@/views/admin/AdminProductsView.vue'),
-      meta: { requiresRole: 'admin' },
+      meta: { requiresRole: ROLES.ADMIN },
     },
     {
       path: '/admin/usuarios',
       name: 'adminUsuarios',
       component: () => import('@/views/admin/AdminUsersView.vue'),
-      meta: { requiresRole: 'admin' },
+      meta: { requiresRole: ROLES.ADMIN },
+    },
+    {
+      path: '/admin/configuracion',
+      name: 'adminConfiguracion',
+      component: () => import('@/views/admin/AdminConfigView.vue'),
+      meta: { requiresRole: ROLES.ADMIN },
+    },
+    {
+      path: '/admin/despacho',
+      name: 'adminDespacho',
+      component: () => import('@/views/admin/AdminFulfillmentView.vue'),
+      meta: { requiresRole: ROLES.ADMIN },
+    },
+    {
+      path: '/admin/banners',
+      name: 'adminBanners',
+      component: () => import('@/views/admin/AdminBannersView.vue'),
+      meta: { requiresRole: ROLES.ADMIN },
+    },
+    {
+      path: '/admin/anuncios',
+      name: 'adminAnuncios',
+      component: () => import('@/views/admin/AdminAnnouncementsView.vue'),
+      meta: { requiresRole: ROLES.ADMIN },
     },
   ],
 })
@@ -67,7 +104,7 @@ router.beforeEach((to) => {
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     return { name: 'login' }
   }
-  if (to.meta.requiresRole === 'admin' && !authStore.isAdmin) {
+  if (to.meta.requiresRole === ROLES.ADMIN && !authStore.isAdmin) {
     return { name: 'catalogo' }
   }
 })
