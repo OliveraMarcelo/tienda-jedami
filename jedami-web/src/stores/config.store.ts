@@ -1,16 +1,32 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { fetchConfig, type AppConfig } from '@/api/config.api'
+import { fetchConfig, fetchBranding, type AppConfig, type BrandingConfig } from '@/api/config.api'
+
+const DEFAULT_BRANDING: BrandingConfig = {
+  storeName: 'Jedami',
+  primaryColor: '#E91E8C',
+  secondaryColor: '#1E1E2E',
+  logoUrl: null,
+  bankTransferCvu: null,
+  bankTransferAlias: null,
+  bankTransferHolderName: null,
+  bankTransferBankName: null,
+  bankTransferNotes: null,
+  whatsappNumber: null,
+}
 
 export const useConfigStore = defineStore('config', () => {
   const loaded = ref(false)
   const loading = ref(false)
+
+  const branding = ref<BrandingConfig>({ ...DEFAULT_BRANDING })
 
   const config = ref<AppConfig>({
     roles: [],
     priceModes: [],
     purchaseTypes: [],
     customerTypes: [],
+    paymentGateway: 'checkout_pro',
   })
 
   // Mapas código → label para uso en templates
@@ -37,13 +53,34 @@ export const useConfigStore = defineStore('config', () => {
     }
   }
 
+  async function refreshConfig() {
+    loading.value = true
+    try {
+      config.value = await fetchConfig()
+      loaded.value = true
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function loadBranding() {
+    try {
+      branding.value = await fetchBranding()
+    } catch {
+      branding.value = { ...DEFAULT_BRANDING }
+    }
+  }
+
   return {
     loaded,
     loading,
     config,
+    branding,
     purchaseTypeLabel,
     customerTypeLabel,
     priceModeLabel,
     loadConfig,
+    refreshConfig,
+    loadBranding,
   }
 })

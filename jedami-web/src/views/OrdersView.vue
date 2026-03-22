@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, ref, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { useOrdersStore } from '@/stores/orders.store'
 import { usePaymentsStore } from '@/stores/payments.store'
 import { useConfigStore } from '@/stores/config.store'
+import { cancelOrder, updateOrderNotes } from '@/api/orders.api'
+import { initiateCheckout, retryPayment, processPayment, type BankDetails } from '@/api/payments.api'
 import type { OrderStatus } from '@/api/orders.api'
 
 const router = useRouter()
@@ -17,12 +19,183 @@ onMounted(() => {
 })
 
 const statusConfig: Record<OrderStatus, { label: string; classes: string }> = {
-  pending:  { label: 'Pendiente de pago', classes: 'bg-amber-50 text-amber-700 border-amber-200' },
-  paid:     { label: 'Pagado',            classes: 'bg-green-50 text-green-700 border-green-200' },
-  rejected: { label: 'Rechazado',         classes: 'bg-red-50 text-red-700 border-red-200' },
+  pending:   { label: 'Pendiente de pago', classes: 'bg-amber-50 text-amber-700 border-amber-200' },
+  paid:      { label: 'Pagado',            classes: 'bg-green-50 text-green-700 border-green-200' },
+  rejected:  { label: 'Rechazado',         classes: 'bg-red-50 text-red-700 border-red-200' },
+  cancelled: { label: 'Cancelado',         classes: 'bg-gray-50 text-gray-500 border-gray-200' },
 }
 
 const hasOrders = computed(() => ordersStore.orders.length > 0)
+
+const confirmingCancel = ref<number | null>(null)
+const cancelError = ref('')
+
+const retrying = ref<number | null>(null)
+const retryError = ref<Record<number, string>>({})
+
+// ─── Notas ────────────────────────────────────────────────────────────────────
+const editingNotes = ref<number | null>(null)
+const notesText = ref('')
+const savingNotes = ref(false)
+
+function openNotesEdit(order: { id: number; notes: string | null }) {
+  editingNotes.value = order.id
+  notesText.value = order.notes ?? ''
+}
+
+async function saveNotes(order: { id: number; notes: string | null }) {
+  savingNotes.value = true
+  try {
+    await updateOrderNotes(order.id, notesText.value.trim() || null)
+    order.notes = notesText.value.trim() || null
+    editingNotes.value = null
+  } finally {
+    savingNotes.value = false
+  }
+}
+
+async function handleRetry(orderId: number) {
+  retrying.value = orderId
+  retryError.value[orderId] = ''
+  try {
+    const { checkoutUrl } = await retryPayment(orderId)
+    window.location.href = checkoutUrl
+  } catch (e: any) {
+    retryError.value[orderId] = e?.response?.data?.detail ?? 'Error al generar el link de pago'
+  } finally {
+    retrying.value = null
+  }
+}
+
+async function doCancel(orderId: number) {
+  cancelError.value = ''
+  try {
+    await cancelOrder(orderId)
+    const order = ordersStore.orders.find(o => o.id === orderId)
+    if (order) order.status = 'cancelled'
+    confirmingCancel.value = null
+  } catch (e: any) {
+    cancelError.value = e?.response?.data?.detail ?? 'Error al cancelar'
+  }
+}
+
+// ─── Bank Transfer ────────────────────────────────────────────────────────────
+const bankDetailsMap = ref<Record<number, BankDetails>>({})
+const bankTransferLoading = ref<number | null>(null)
+const copied = ref<Record<string, boolean>>({})
+
+async function startBankTransfer(orderId: number) {
+  bankTransferLoading.value = orderId
+  try {
+    const result = await initiateCheckout(orderId)
+    if (result.type === 'bank_transfer') {
+      bankDetailsMap.value[orderId] = result.bankDetails
+    }
+  } catch {
+    // ignorar — el usuario puede reintentar
+  } finally {
+    bankTransferLoading.value = null
+  }
+}
+
+async function copyToClipboard(text: string | null, key: string) {
+  if (!text) return
+  try {
+    await navigator.clipboard.writeText(text)
+    copied.value[key] = true
+    setTimeout(() => { copied.value[key] = false }, 2000)
+  } catch { /* navegador sin soporte */ }
+}
+
+function openWhatsApp(orderId: number, amount: number) {
+  const number = configStore.branding.whatsappNumber
+  if (!number) return
+  const text = encodeURIComponent(
+    `Hola! Realicé la transferencia para el Pedido #${orderId} por $${amount.toLocaleString('es-AR')}. Adjunto el comprobante.`
+  )
+  window.open(`https://wa.me/${number}?text=${text}`, '_blank')
+}
+
+// ─── Checkout API (CardPaymentBrick) ─────────────────────────────────────────
+const brickOrderId = ref<number | null>(null)
+const brickLoading = ref<number | null>(null)
+const brickError = ref('')
+const brickProcessing = ref(false)
+
+const statusDetailEs: Record<string, string> = {
+  cc_rejected_insufficient_amount:    'Fondos insuficientes',
+  cc_rejected_bad_filled_security_code: 'Código de seguridad incorrecto',
+  cc_rejected_bad_filled_date:        'Fecha de vencimiento incorrecta',
+  cc_rejected_bad_filled_other:       'Datos de tarjeta incorrectos',
+  cc_rejected_call_for_authorize:     'Llamá a tu banco para autorizar el pago',
+  cc_rejected_card_disabled:          'Tarjeta deshabilitada',
+  cc_rejected_duplicated_payment:     'Pago duplicado',
+  cc_rejected_high_risk:              'Pago rechazado por riesgo',
+}
+
+function loadMpSdk(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if ((window as any).MercadoPago) { resolve(); return }
+    const script = document.createElement('script')
+    script.src = 'https://sdk.mercadopago.com/js/v2'
+    script.onload = () => resolve()
+    script.onerror = () => reject(new Error('No se pudo cargar el SDK de MP'))
+    document.head.appendChild(script)
+  })
+}
+
+async function openCardBrick(order: { id: number; totalAmount: number }) {
+  brickLoading.value = order.id
+  brickError.value = ''
+  try {
+    const result = await initiateCheckout(order.id)
+    if (result.type !== 'preference') return
+    const { publicKey } = result
+    brickOrderId.value = order.id
+    await nextTick()
+    await loadMpSdk()
+    const mp = new (window as any).MercadoPago(publicKey, { locale: 'es-AR' })
+    const bricksBuilder = mp.bricks()
+    await bricksBuilder.create('cardPayment', `mp-brick-${order.id}`, {
+      initialization: { amount: order.totalAmount },
+      customization: {
+        paymentMethods: {
+          types: { excluded: ['credit_card'] },
+          maxInstallments: 1,
+        },
+      },
+      callbacks: {
+        onReady: () => {},
+        onSubmit: async (formData: any) => {
+          brickProcessing.value = true
+          brickError.value = ''
+          try {
+            const res = await processPayment(order.id, formData)
+            if (res.status === 'approved') {
+              brickOrderId.value = null
+              await nextTick()
+              router.push(`/pedidos/${order.id}`)
+            } else if (res.status === 'rejected') {
+              brickError.value = statusDetailEs[res.statusDetail ?? ''] ?? 'Pago rechazado'
+            } else {
+              brickError.value = 'Pago en revisión, te avisaremos por email'
+            }
+          } catch (e: any) {
+            brickError.value = e?.response?.data?.detail ?? 'Error al procesar el pago'
+          } finally {
+            brickProcessing.value = false
+          }
+        },
+        onError: (error: any) => { brickError.value = error.message },
+      },
+    })
+  } catch {
+    brickError.value = 'Error al preparar el pago'
+    brickOrderId.value = null
+  } finally {
+    brickLoading.value = null
+  }
+}
 </script>
 
 <template>
@@ -86,22 +259,199 @@ const hasOrders = computed(() => ordersStore.orders.length > 0)
             </div>
           </div>
 
-          <!-- CTA de pago para pedidos pendientes -->
+          <!-- Notas del comprador -->
+          <div class="mt-3 pt-3 border-t border-gray-100" @click.stop>
+            <!-- Modo lectura -->
+            <template v-if="editingNotes !== order.id">
+              <div class="flex items-start justify-between gap-2">
+                <p v-if="order.notes" class="text-xs text-gray-500 italic">
+                  "{{ order.notes }}"
+                </p>
+                <p v-else class="text-xs text-gray-400">Sin notas para el administrador</p>
+                <button
+                  v-if="order.status === 'pending'"
+                  @click="openNotesEdit(order)"
+                  class="text-xs text-[#E91E8C] hover:underline shrink-0"
+                >{{ order.notes ? 'Editar nota' : 'Agregar nota' }}</button>
+              </div>
+            </template>
+            <!-- Modo edición -->
+            <template v-else>
+              <textarea
+                v-model="notesText"
+                maxlength="500"
+                rows="2"
+                placeholder="Ej: Entregar en horario de la tarde, necesito factura A…"
+                class="w-full text-sm rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#E91E8C] resize-none"
+              ></textarea>
+              <div class="flex items-center justify-between mt-1.5">
+                <span class="text-xs text-gray-400">{{ notesText.length }}/500</span>
+                <div class="flex gap-2">
+                  <button @click="editingNotes = null" class="text-xs text-gray-400 hover:text-gray-600">Cancelar</button>
+                  <button
+                    :disabled="savingNotes"
+                    @click="saveNotes(order)"
+                    class="text-xs font-semibold text-white bg-[#E91E8C] px-3 py-1 rounded-lg hover:opacity-90 disabled:opacity-50"
+                  >{{ savingNotes ? 'Guardando…' : 'Guardar' }}</button>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <!-- CTA de pago y cancelación para pedidos pendientes -->
           <div
-            v-if="order.status === 'pending' && order.totalAmount > 0"
-            class="mt-3 pt-3 border-t border-gray-100 flex justify-end"
+            v-if="order.status === 'pending'"
+            class="mt-3 pt-3 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2"
+          >
+            <div v-if="order.totalAmount > 0" class="w-full">
+              <!-- Transferencia bancaria -->
+              <template v-if="configStore.config.paymentGateway === 'bank_transfer'">
+                <!-- Ya tenemos los datos bancarios -->
+                <div v-if="bankDetailsMap[order.id]" class="rounded-xl border border-indigo-200 bg-indigo-50 p-4 space-y-2">
+                  <p class="text-sm font-semibold text-indigo-800 mb-3">Datos para la transferencia</p>
+                  <div v-if="bankDetailsMap[order.id].cvu" class="flex items-center justify-between text-sm">
+                    <span class="text-gray-600 shrink-0 mr-2">CVU</span>
+                    <div class="flex items-center gap-2 min-w-0">
+                      <span class="font-mono font-semibold text-gray-800 truncate">{{ bankDetailsMap[order.id].cvu }}</span>
+                      <button
+                        @click.stop="copyToClipboard(bankDetailsMap[order.id].cvu, `cvu-${order.id}`)"
+                        class="shrink-0 text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
+                      >{{ copied[`cvu-${order.id}`] ? '✓ Copiado' : 'Copiar' }}</button>
+                    </div>
+                  </div>
+                  <div v-if="bankDetailsMap[order.id].alias" class="flex items-center justify-between text-sm">
+                    <span class="text-gray-600 shrink-0 mr-2">Alias</span>
+                    <div class="flex items-center gap-2">
+                      <span class="font-mono font-semibold text-gray-800">{{ bankDetailsMap[order.id].alias }}</span>
+                      <button
+                        @click.stop="copyToClipboard(bankDetailsMap[order.id].alias, `alias-${order.id}`)"
+                        class="shrink-0 text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
+                      >{{ copied[`alias-${order.id}`] ? '✓ Copiado' : 'Copiar' }}</button>
+                    </div>
+                  </div>
+                  <div v-if="bankDetailsMap[order.id].holderName" class="flex items-center justify-between text-sm">
+                    <span class="text-gray-600">Titular</span>
+                    <span class="font-semibold text-gray-800">{{ bankDetailsMap[order.id].holderName }}</span>
+                  </div>
+                  <div v-if="bankDetailsMap[order.id].bankName" class="flex items-center justify-between text-sm">
+                    <span class="text-gray-600">Banco</span>
+                    <span class="font-semibold text-gray-800">{{ bankDetailsMap[order.id].bankName }}</span>
+                  </div>
+                  <div class="flex items-center justify-between text-sm">
+                    <span class="text-gray-600">Monto a transferir</span>
+                    <span class="font-bold text-gray-900">${{ Number(bankDetailsMap[order.id].amount).toLocaleString('es-AR') }}</span>
+                  </div>
+                  <p v-if="bankDetailsMap[order.id].notes" class="text-xs text-indigo-700 bg-indigo-100 rounded-lg px-3 py-2 mt-1">
+                    {{ bankDetailsMap[order.id].notes }}
+                  </p>
+
+                  <!-- Instrucciones en 3 pasos -->
+                  <ol class="text-sm text-gray-600 space-y-1 pt-2 border-t border-indigo-200">
+                    <li><span class="font-semibold text-indigo-700">1.</span> Copiá el CVU o alias</li>
+                    <li><span class="font-semibold text-indigo-700">2.</span> Realizá la transferencia por el monto exacto</li>
+                    <li><span class="font-semibold text-indigo-700">3.</span> Avisanos por WhatsApp para confirmar tu pago</li>
+                  </ol>
+
+                  <!-- Botón WhatsApp -->
+                  <button
+                    v-if="configStore.branding.whatsappNumber"
+                    @click.stop="openWhatsApp(order.id, order.totalAmount)"
+                    class="mt-1 inline-flex items-center gap-2 rounded-xl bg-green-500 text-white px-4 py-2 text-sm font-semibold hover:opacity-90 transition-opacity w-full justify-center"
+                  >
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                    </svg>
+                    Avisar por WhatsApp
+                  </button>
+                </div>
+                <!-- Aún no iniciamos el pago -->
+                <button
+                  v-else
+                  :disabled="bankTransferLoading === order.id"
+                  @click.stop="startBankTransfer(order.id)"
+                  class="inline-flex items-center gap-2 rounded-xl bg-indigo-600 text-white px-4 py-2 text-sm font-semibold hover:opacity-90 transition-opacity shadow disabled:opacity-50"
+                >
+                  <svg v-if="bankTransferLoading === order.id" class="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                  </svg>
+                  {{ bankTransferLoading === order.id ? 'Cargando…' : 'Ver datos de transferencia' }}
+                </button>
+              </template>
+
+              <!-- Checkout Pro: redirección a MP -->
+              <template v-else-if="configStore.config.paymentGateway !== 'checkout_api'">
+                <button
+                  :disabled="paymentsStore.processingOrderId === order.id"
+                  @click.stop="paymentsStore.startCheckout(order.id)"
+                  class="inline-flex items-center gap-2 rounded-xl bg-[#009EE3] text-white px-4 py-2 text-sm font-semibold hover:opacity-90 transition-opacity shadow disabled:opacity-50"
+                >
+                  <svg v-if="paymentsStore.processingOrderId === order.id" class="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                  </svg>
+                  {{ paymentsStore.processingOrderId === order.id ? 'Redirigiendo…' : 'Pagar con Mercado Pago' }}
+                </button>
+              </template>
+
+              <!-- Checkout API: formulario embebido -->
+              <template v-else>
+                <template v-if="brickOrderId !== order.id">
+                  <button
+                    :disabled="brickLoading === order.id"
+                    @click.stop="openCardBrick(order)"
+                    class="inline-flex items-center gap-2 rounded-xl bg-[#009EE3] text-white px-4 py-2 text-sm font-semibold hover:opacity-90 transition-opacity shadow disabled:opacity-50"
+                  >
+                    <svg v-if="brickLoading === order.id" class="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                    </svg>
+                    {{ brickLoading === order.id ? 'Preparando…' : 'Pagar con tarjeta' }}
+                  </button>
+                </template>
+                <div v-else class="w-full">
+                  <div :id="`mp-brick-${order.id}`"></div>
+                  <p v-if="brickError" class="text-xs text-red-500 mt-2">{{ brickError }}</p>
+                  <button
+                    @click.stop="brickOrderId = null; brickError = ''"
+                    class="text-xs text-gray-400 hover:text-gray-600 mt-2"
+                  >Cancelar</button>
+                </div>
+              </template>
+            </div>
+
+            <!-- Cancelación inline -->
+            <div @click.stop>
+              <button
+                v-if="confirmingCancel !== order.id"
+                @click="confirmingCancel = order.id; cancelError = ''"
+                class="text-xs text-red-500 hover:text-red-700 font-medium"
+              >Cancelar pedido</button>
+              <template v-else>
+                <p class="text-xs text-gray-600 mb-1">¿Estás seguro? Esta acción no se puede deshacer.</p>
+                <div class="flex gap-2 items-center">
+                  <button @click="doCancel(order.id)" class="text-xs text-red-600 font-semibold hover:underline">Sí, cancelar</button>
+                  <button @click="confirmingCancel = null" class="text-xs text-gray-500 hover:underline">No, volver</button>
+                </div>
+                <p v-if="cancelError" class="text-xs text-red-500 mt-1">{{ cancelError }}</p>
+              </template>
+            </div>
+          </div>
+
+          <!-- Reintentar pago para pedidos rechazados -->
+          <div
+            v-if="order.status === 'rejected'"
+            class="mt-3 pt-3 border-t border-gray-100 flex flex-wrap items-center gap-3"
+            @click.stop
           >
             <button
-              :disabled="paymentsStore.processingOrderId === order.id"
-              @click.stop="paymentsStore.startCheckout(order.id)"
-              class="inline-flex items-center gap-2 rounded-xl bg-[#009EE3] text-white px-4 py-2 text-sm font-semibold hover:opacity-90 transition-opacity shadow disabled:opacity-50"
+              :disabled="retrying === order.id"
+              @click="handleRetry(order.id)"
+              class="text-xs font-semibold text-[#009EE3] hover:opacity-80 disabled:opacity-40"
             >
-              <svg v-if="paymentsStore.processingOrderId === order.id" class="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-              </svg>
-              {{ paymentsStore.processingOrderId === order.id ? 'Redirigiendo…' : 'Pagar con Mercado Pago' }}
+              {{ retrying === order.id ? 'Generando link…' : 'Reintentar pago' }}
             </button>
+            <p v-if="retryError[order.id]" class="text-xs text-red-500">{{ retryError[order.id] }}</p>
           </div>
         </div>
         <p v-if="paymentsStore.error" class="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
