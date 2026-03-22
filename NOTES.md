@@ -1,26 +1,26 @@
-Revisar estos cambios y modificar prd, epicas y stories correspondientes
 
-- Tiene que tomar en cuenta y en cada storie hay que revisar el diseño ux que le corresponde a cada vista 
-PRODUCTOS
-- Hay que implementar las fotos de los productos en la alta de productos o de variantes. calculo que de variantes (evaluar)
-PRECIOS
-- Hacer tabla de precios ya que existen precios mayoristas o minoristas , depende del modo de la web que este viendo
-ADMIN
-- Quiero agregarle al panel de administracion mas vistas como Inicio, en donde tiene graficos sobre las ventas divididos por categoria , una vista de pagos - Una tabla de pagos en donde puede ver y registrar pagos  , vista de producto y de usuarios 
-- Evaluar por que solo me estan llegando pagos pendientes de las compras de mercado pago
-- Evaluar implementar checkout api de mercado pago cuanto costo puede llevar el cambio 
-- Branding dinamico segun cliente.
-- Implementar categoria de los productos : Ejemplo: Ropa de niña, Ropa de niño, de bebe, medias de bebe. 
+- Que sea personalizable o configurable utilizar la venta por menor o por mayor , pero si al menos una modalidad 
+- Ver precio por curva es a partir de una curva . Precio mayorista es apartir de 50 unidades. 
 
-- Cambiar datos del seed a mas realistas , como por ejemplo productos con  talle 1,2,3,4,5,6 y que cada cantidad  del stock varie del 20 al 30 
-- Evaluar una app de escritorio con flutter para windows en donde se gestione el stock tanto de las ventas de la web como de las ventas fisicas 
-Agregar
-- Detalle del pedido para comprar 
-- Hace modales de ¿Eliminar la variante "1 / Amarillo"? no uses alerts
-- que se pueda agregar fotos aca en nuevo producto Fotos
-Guardá el producto primero para agregar fotos.
+- Se puede sacar el pago por tarjeta de credito del checkout pro de mercado pago ? 
 
-- no me interesa que vean esta seccion si tengo stock o no .
-Disponibilidad por talle y color
+
+- referencias para ropa por mayor y por menor para adultos mujeres y hombres https://kandente.com.ar/ y https://www.byninamayorista.com.ar/
+
+
+                                                                                                                                                        
+  necesito que el usuario decida como configuracion si cuando vende por cantidad por mayor tiene un un minimo de compra por ejemplo 50 unidades
+  y hacer descuentos al precio a medida que avance la cantidad si por ejemplo vende 
+  50 unidades lo vende con un 10%
+  100 unidades lo vende con un 20%
+
+ 1. ¿Los escalones son globales o por producto? — La propuesta es global (más simple). Si necesitás que cada producto tenga sus propias reglas, la tabla lleva un product_id         
+  nullable.                                                                                                                                                                   es por producto y el usuario puede definir si tiene descuentos o no        
+  2. ¿El descuento aparece desglosado en el ticket/pedido? — Que el cliente vea "Descuento 10%" o solo ve el precio final.        
+  lo puede ver desglosado en el pedido lo veo tanto en el precio final como el descuento que fue aplicado                                                    
+  3. ¿Hay descuento por curva también? — La idea menciona solo modalidad cantidad, ¿aplica?  
+  Hay descuento por curva , tendria que ser configurable por ejemplo si compra por 10 curvas 
+
+
 
 

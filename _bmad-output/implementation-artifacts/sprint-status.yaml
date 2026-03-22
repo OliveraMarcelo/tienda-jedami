@@ -46,7 +46,7 @@ development_status:
   # EPIC 1: Gestión del Catálogo de Productos
   # FRs: RF-01, RF-02, RF-03, RF-04, RF-05, RF-06, RF-07
   # ─────────────────────────────────────────────────────────
-  epic-1: in-progress
+  epic-1: done
 
   # BFF Track — jedami-bff
   1-1-infraestructura-base-del-proyecto: done
@@ -71,7 +71,7 @@ development_status:
   # EPIC 2: Compra Mayorista
   # FRs: RF-08, RF-09, RF-10, RF-10.1, RF-10.2, RF-10.3, RF-11
   # ─────────────────────────────────────────────────────────
-  epic-2: in-progress
+  epic-2: done
 
   # BFF Track — jedami-bff
   2-1-registro-de-comprador-mayorista-y-perfil-customer: done
@@ -85,13 +85,23 @@ development_status:
   web-2-2-checkout-mayorista-curva-cantidad: done
   web-2-3-mis-pedidos-mayorista: done
 
+  # Admin despacho de pedidos curva (implementado en esta sesión)
+  2-6-admin-despacho-curva: done                   # GET /admin/orders/pending-fulfillment + PATCH /admin/orders/:id/items/:itemId/fulfill
+  web-2-6-admin-despacho-curva: done               # AdminFulfillmentView.vue — asignar color y confirmar despacho
+
+  # Descuentos por volumen (idea documentada, pendiente de implementar)
+  2-7-descuentos-por-volumen-cantidad: backlog     # mínimo de compra + escalones de descuento por volumen y curvas, por producto
+
+  # WEB Track (depende de 2-7 done)
+  web-2-7-descuentos-por-volumen-cantidad: backlog
+
   epic-2-retrospective: optional
 
   # ─────────────────────────────────────────────────────────
   # EPIC 3: Pagos con Mercado Pago
   # FRs: RF-12 (mayoristas)
   # ─────────────────────────────────────────────────────────
-  epic-3: in-progress
+  epic-3: done
 
   # BFF Track — jedami-bff
   3-1-checkout-de-pago-con-mercado-pago: done
@@ -155,17 +165,17 @@ development_status:
   # EPIC 7: Panel de Administración Avanzado y Branding
   # FRs: RF-16, RF-17
   # ─────────────────────────────────────────────────────────
-  epic-7: in-progress
+  epic-7: done
 
   # BFF Track — jedami-bff
-  7-1-dashboard-de-ventas: in-progress
-  7-2-tabla-de-pagos-y-gestion-de-usuarios: backlog
-  7-3-branding-dinamico: backlog
+  7-1-dashboard-de-ventas: done
+  7-2-tabla-de-pagos-y-gestion-de-usuarios: done
+  7-3-branding-dinamico: done
 
   # WEB Track — jedami-web (después del BFF)
-  web-7-1-panel-admin-con-dashboard-y-pagos: backlog
-  web-7-2-branding-dinamico: backlog
-  web-7-5-admin-gestion-de-configuracion: backlog  # depende de: 6-6-bff done; CRUD purchase_types, customer_types, sizes, colors
+  web-7-1-panel-admin-con-dashboard-y-pagos: done
+  web-7-2-branding-dinamico: done
+  web-7-5-admin-gestion-de-configuracion: done  # depende de: 6-6-bff done; CRUD purchase_types, customer_types, sizes, colors
 
   epic-7-retrospective: optional
 
@@ -176,7 +186,148 @@ development_status:
   epic-8: backlog
 
   # DESKTOP Track — jedami-mobile (Flutter Desktop)
-  desktop-8-1-flutter-desktop-setup-y-login: backlog
-  desktop-8-2-flutter-desktop-gestion-de-stock: backlog
+  desktop-8-1-flutter-desktop-setup-y-login: ready-for-dev
+  desktop-8-2-flutter-desktop-gestion-de-stock: ready-for-dev  # depende de: 8-1 done
 
   epic-8-retrospective: optional
+
+  # ─────────────────────────────────────────────────────────
+  # EPIC 9: Robustez, Mejoras Operacionales y Búsqueda
+  # Deuda técnica de Épicas 1-7 + nuevas features de alto valor
+  # ─────────────────────────────────────────────────────────
+  epic-9: done
+
+  # BFF Track — jedami-bff
+  9-1-idempotencia-webhook-mp: done
+  9-2-cancelacion-de-pedidos: done
+  9-3-soft-delete-sizes-colors: done
+  9-4-reintento-pago-fallido: done
+  9-5-busqueda-en-catalogo: done
+  9-6-reordenamiento-imagenes: done
+  9-7-cache-config: done
+  9-8-remocion-de-roles: done
+  9-9-tests-integracion: done
+
+  # WEB Track — jedami-web (después del BFF correspondiente)
+  web-9-1-cancelacion-de-pedidos: done               # depende de: 9-2 done
+  web-9-2-mejoras-admin-usuarios: done               # depende de: 9-8 done
+  web-9-3-reintento-pago-fallido: done               # depende de: 9-4 done
+  web-9-4-busqueda-catalogo: done                   # depende de: 9-5 done
+  web-9-5-reordenamiento-imagenes: done              # depende de: 9-6 done
+
+  epic-9-retrospective: optional
+
+  # ─────────────────────────────────────────────────────────
+  # EPIC 10: Gateway de Pago Configurable (Checkout Pro / Checkout API)
+  # Extensión de Épica 3 — permite al admin elegir la experiencia de pago
+  # ─────────────────────────────────────────────────────────
+  epic-10: done
+
+  # BFF Track — jedami-bff
+  10-1-gateway-pagos-configurable: done
+
+  # WEB Track — jedami-web (después del BFF)
+  web-10-1-checkout-api-embebido: done               # depende de: 10-1 done
+
+  # ─────────────────────────────────────────────────────────
+  # EPIC 11: Pago Presencial con Mercado Pago Point
+  # Extiende Épica 3 y 10 — agrega canal de pago físico POS
+  # ─────────────────────────────────────────────────────────
+  epic-11: backlog
+
+  # BFF Track — jedami-bff
+  11-1-point-modelo-datos: backlog             # payment_method en payments + point_device_id en branding
+  11-2-point-iniciar-pago: backlog             # POST /admin/orders/:id/point/initiate → intent en device
+  11-3-point-webhook: backlog                  # webhook automático MP Point → paid + stock
+  11-4-point-confirmar-manual: backlog         # PATCH /admin/orders/:id/point/confirm → fallback manual
+
+  # WEB Track — jedami-web (depende de 11-1..4 done)
+  web-11-1-point-admin-ui: backlog             # panel admin: iniciar cobro Point + confirmación manual + config device
+
+  # ─────────────────────────────────────────────────────────
+  # EPIC 12: Plataforma Multi-Tenant — Jedami como SaaS
+  # Convierte Jedami en una plataforma donde múltiples negocios
+  # pueden tener su propia tienda online (retail + mayorista)
+  # Doc: docs/06-arquitectura/multitenant.md
+  # ─────────────────────────────────────────────────────────
+  epic-12: backlog
+
+  # FASE 1 — Fundación (prerequisito para todo lo demás)
+  12-1-tablas-core-multitenant: backlog        # plans, tenants, tenant_modules, subscription_payments
+  12-2-tenant-id-tablas-existentes: backlog    # ADD COLUMN tenant_id en users, products, orders, payments, etc.
+  12-3-middleware-resolve-tenant: backlog      # resolveTenant + queries filtradas por tenant_id
+  12-4-modulos-verticales-dinamicos: backlog   # requireFeature middleware + rutas condicionales por módulo
+
+  # FASE 2 — Billing SaaS (depende de Fase 1)
+  12-5-mp-preapproval-suscripciones: backlog   # MP PreApproval + webhook /api/saas/webhook
+  12-6-guard-subscription-status: backlog      # bloqueo por estado de suscripción
+
+  # FASE 3 — Onboarding (depende de Fase 1 + 2)
+  12-7-registro-nuevo-tenant: backlog          # POST /api/saas/tenants + seed de config por defecto
+
+  # WEB Track (depende de BFF correspondiente)
+  web-12-1-onboarding-registro-tenant: backlog # UI registro + selector de plan + redirect MP
+  web-12-2-panel-suscripcion: backlog          # estado suscripción + upgrade + cancelar
+  web-12-3-superadmin-tenants: backlog         # panel de gestión de todos los tenants
+
+  # ─────────────────────────────────────────────────────────
+  # EPIC 13: Mejoras de experiencia del comprador
+  # ─────────────────────────────────────────────────────────
+  epic-13: backlog
+
+  # BFF Track — jedami-bff
+  13-1-notas-del-comprador-en-pedido: done     # campo notes en orders + PATCH /orders/:id/notes
+
+  # WEB Track — jedami-web (depende de 13-1 done)
+  web-13-1-notas-del-comprador-en-pedido: done
+
+  13-2-banner-del-catalogo: done
+  web-13-2-banner-del-catalogo: done
+
+  13-3-anuncios-personalizados: review
+  web-13-3-anuncios-personalizados: review
+
+  epic-13-retrospective: optional
+
+  # ─────────────────────────────────────────────────────────
+  # EPIC 14: Infraestructura y Deuda Técnica
+  # Refactors de arquitectura que no cambian funcionalidad visible
+  # ─────────────────────────────────────────────────────────
+  epic-14: backlog
+
+  # BFF Track — jedami-bff
+  14-1-media-table-centralizada: backlog       # migración de product_images + banners + branding a tabla media única
+  14-2-fk-purchase-type-customer-type: backlog # CHECK hardcodeados → FK reales a purchase_types y customer_types
+  14-3-normalizar-timestamps: backlog          # users.created_at TIMESTAMP → TIMESTAMPTZ
+  14-4-limpiar-order-items-nullables: backlog  # CHECK constraint + limpiar product_id redundante en order_items
+  14-5-payment-gateway-config: backlog         # extraer payment_gateway de branding → tabla system_config key-value
+
+  # ─────────────────────────────────────────────────────────
+  # EPIC 15: Medios de Pago Adicionales
+  # Extiende Épica 10 — agrega transferencia bancaria con confirmación manual
+  # ─────────────────────────────────────────────────────────
+  epic-15: done
+
+  # BFF Track — jedami-bff
+  15-1-transferencia-bancaria: done
+
+  # WEB Track — jedami-web (después del BFF)
+  web-15-1-transferencia-bancaria: done                      # depende de: 15-1 done
+
+  # BFF Track — WhatsApp en branding
+  15-2-whatsapp-branding: done
+
+  # WEB Track — UX transferencia + WhatsApp
+  web-15-2-whatsapp-aviso: done                              # depende de: 15-2 done
+
+  # ─────────────────────────────────────────────────────────
+  # EPIC 16: Despacho Unificado
+  # Rediseño del fulfillment: curva + cantidad + menor, stock opcional
+  # ─────────────────────────────────────────────────────────
+  epic-16: done
+
+  # BFF Track
+  16-1-despacho-unificado: done
+
+  # WEB Track
+  web-16-1-despacho-unificado: done                          # depende de: 16-1 done

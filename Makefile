@@ -1,6 +1,6 @@
 .PHONY: help \
         install install-bff install-web install-mobile \
-        dev dev-bff dev-web dev-mobile \
+        dev dev-bff dev-web dev-mobile dev \
         build build-bff build-web \
         lint lint-bff lint-web \
         clean clean-bff clean-web clean-mobile \
@@ -26,6 +26,7 @@ help:
 	@echo "    make install-mobile    Instala deps de Flutter (flutter pub get)"
 	@echo ""
 	@echo "  Desarrollo:"
+	@echo "    make dev               Levanta BFF + Web en paralelo (Ctrl+C detiene ambos)"
 	@echo "    make dev-bff           Levanta el BFF en modo watch"
 	@echo "    make dev-web           Levanta el frontend web (Vite)"
 	@echo "    make dev-mobile        Abre Flutter DevTools"
@@ -69,6 +70,13 @@ install-mobile:
 	cd jedami-mobile && flutter pub get
 
 # ─── Desarrollo ─────────────────────────────────────────────────────────────
+dev:
+	$(call log,Levantando BFF + Web en paralelo...)
+	@trap 'kill 0' INT; \
+	  (cd jedami-bff && npm run dev) & \
+	  (cd jedami-web && npm run dev) & \
+	  wait
+
 dev-bff:
 	$(call log,Levantando BFF en modo dev...)
 	cd jedami-bff && npm run dev

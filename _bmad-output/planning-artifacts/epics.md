@@ -116,6 +116,11 @@ El administrador tiene visibilidad completa del negocio (dashboard de ventas, ta
 El operador puede gestionar el stock de productos desde una aplicación Flutter Desktop nativa, compartiendo el mismo BFF.
 **FRs cubiertos:** RF-18
 
+### Epic 10: Gateway de Pago Configurable
+El administrador puede elegir entre Checkout Pro (redirección a MP) y Checkout API (formulario embebido con CardPaymentBrick) desde el panel de configuración, haciendo el método de pago dinámico sin cambios de código.
+**Stories:** 10.1 (BFF: config + endpoint process), W10.1 (Web: Bricks UI + admin selector)
+**Extiende:** Épica 3
+
 ---
 
 ## Epic 1: Gestión del Catálogo de Productos
