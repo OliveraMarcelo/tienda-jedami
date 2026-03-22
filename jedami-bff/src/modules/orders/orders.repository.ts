@@ -4,8 +4,8 @@ import { CREATE_ORDER } from './queries/create-order.js';
 import { FIND_ORDERS_BY_CUSTOMER } from './queries/find-orders-by-customer.js';
 import { FIND_ORDER_BY_ID, FIND_ORDER_ITEMS } from './queries/find-order-by-id.js';
 
-export const create = async (customerId: number, purchaseType: WholesalePurchaseType): Promise<Order> => {
-  const result = await pool.query(CREATE_ORDER, [customerId, purchaseType]);
+export const create = async (customerId: number, purchaseType: WholesalePurchaseType, notes?: string | null): Promise<Order> => {
+  const result = await pool.query(CREATE_ORDER, [customerId, purchaseType, notes ?? null]);
   return result.rows[0];
 };
 

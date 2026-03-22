@@ -6,8 +6,9 @@ export interface Order {
   id: number;
   customer_id: number;
   purchase_type: PurchaseType;
-  status: 'pending' | 'paid' | 'rejected';
+  status: 'pending' | 'paid' | 'rejected' | 'cancelled';
   total_amount: string;
+  notes: string | null;
   created_at: Date;
 }
 

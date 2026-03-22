@@ -2,6 +2,7 @@
 import { ref, computed, watch, watchEffect, onMounted } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
+import AnnouncementSidebar from '@/components/features/catalog/AnnouncementSidebar.vue'
 import VariantSelector from '@/components/features/catalog/VariantSelector.vue'
 import CurvaCalculator from '@/components/features/catalog/CurvaCalculator.vue'
 import SoftRegistrationGate from '@/components/features/catalog/SoftRegistrationGate.vue'
@@ -10,7 +11,7 @@ import { useAuthStore } from '@/stores/auth.store'
 import { useOrdersStore } from '@/stores/orders.store'
 import { useConfigStore } from '@/stores/config.store'
 import { useRouter } from 'vue-router'
-import { MODES } from '@/lib/constants'
+import { MODES, PURCHASE_TYPES } from '@/lib/constants'
 
 const route = useRoute()
 const router = useRouter()
@@ -84,9 +85,24 @@ const priceLabel = computed(() =>
   authStore.mode === MODES.WHOLESALE ? 'Precio mayorista' : 'Precio'
 )
 
-const totalStockForProduct = computed(() =>
-  product.value?.variants.reduce((sum, v) => sum + v.stock.quantity, 0) ?? 0
-)
+// Colores únicos del producto (para mostrar en modo mayorista)
+const uniqueProductColors = computed(() => {
+  const seen = new Set<number>()
+  const result: { id: number; name: string; hexCode: string | null }[] = []
+  for (const v of product.value?.variants ?? []) {
+    if (!seen.has(v.colorId)) {
+      seen.add(v.colorId)
+      result.push({ id: v.colorId, name: v.color, hexCode: v.hexCode })
+    }
+  }
+  return result
+})
+
+function needsDarkBorder(hexCode: string | null): boolean {
+  if (!hexCode) return false
+  const light = ['#FFFFFF', '#FFF', '#FFF176', '#F5F5DC', '#D7CCC8', '#F48FB1', '#81D4FA', '#A5D6A7', '#EF9A9A', '#FFCC80', '#CE93D8']
+  return light.some(c => hexCode.toUpperCase().startsWith(c.toUpperCase()))
+}
 
 async function handleCurvaConfirm(curves: number) {
   if (!product.value) return
@@ -138,10 +154,6 @@ async function handleCantidadConfirm() {
   const qty = cantidadInput.value
   if (!qty || qty <= 0) {
     orderError.value = 'La cantidad debe ser mayor a 0'
-    return
-  }
-  if (qty > totalStockForProduct.value) {
-    orderError.value = `Stock disponible: ${totalStockForProduct.value} unidades`
     return
   }
   try {
@@ -241,6 +253,26 @@ async function handleCantidadConfirm() {
 
           <!-- Modo Mayorista -->
           <template v-if="authStore.mode === MODES.WHOLESALE">
+            <!-- Colores disponibles -->
+            <div v-if="uniqueProductColors.length > 0">
+              <p class="text-xs font-semibold text-gray-500 mb-2">Colores disponibles</p>
+              <div class="flex gap-2 flex-wrap">
+                <div
+                  v-for="c in uniqueProductColors"
+                  :key="c.id"
+                  :title="c.name"
+                  class="flex items-center gap-1.5"
+                >
+                  <span
+                    class="w-6 h-6 rounded-full border-2 flex-none"
+                    :class="needsDarkBorder(c.hexCode) ? 'border-gray-400' : 'border-gray-300'"
+                    :style="c.hexCode ? { backgroundColor: c.hexCode } : { backgroundColor: '#BDBDBD' }"
+                  />
+                  <span class="text-xs text-gray-600">{{ c.name }}</span>
+                </div>
+              </div>
+            </div>
+
             <!-- Tabs dinámicos desde config -->
             <div class="flex gap-2 border-b border-gray-200">
               <button
@@ -267,29 +299,27 @@ async function handleCantidadConfirm() {
 
             <!-- Tab: Cantidad -->
             <div v-else-if="wholesaleTab === 'cantidad'" class="space-y-4">
-              <div class="bg-blue-50 rounded-xl border border-blue-100 p-4 text-sm text-blue-800">
-                <p class="font-semibold mb-1">Compra por cantidad total</p>
-                <p>Stock total disponible del producto: <strong>{{ totalStockForProduct }} unidades</strong></p>
-                <p class="mt-1 text-xs text-blue-600">Las unidades se distribuirán automáticamente entre las variantes disponibles.</p>
-              </div>
+              <p class="text-sm text-gray-500">Las unidades se distribuirán automáticamente entre las variantes disponibles.</p>
 
               <div class="flex items-center gap-3">
                 <label class="text-sm font-semibold text-gray-700">Cantidad total</label>
-                <input
-                  v-model.number="cantidadInput"
-                  type="number"
-                  min="1"
-                  :max="totalStockForProduct"
-                  class="w-28 h-9 rounded-md border border-gray-300 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#1565C0]"
-                />
+                <div class="flex items-center border border-gray-300 rounded-lg overflow-hidden">
+                  <button
+                    type="button"
+                    @click="cantidadInput = Math.max(1, cantidadInput - 1)"
+                    class="px-3 py-1.5 text-gray-600 hover:bg-gray-50 transition-colors"
+                  >−</button>
+                  <span class="px-3 py-1.5 text-sm font-semibold min-w-[2.5rem] text-center">{{ cantidadInput }}</span>
+                  <button
+                    type="button"
+                    @click="cantidadInput++"
+                    class="px-3 py-1.5 text-gray-600 hover:bg-gray-50 transition-colors"
+                  >+</button>
+                </div>
               </div>
 
-              <p v-if="cantidadInput > totalStockForProduct && cantidadInput > 0" class="text-sm text-red-600">
-                Stock disponible: {{ totalStockForProduct }} unidades
-              </p>
-
               <button
-                :disabled="!cantidadInput || cantidadInput <= 0 || cantidadInput > totalStockForProduct || ordersStore.loading"
+                :disabled="!cantidadInput || cantidadInput <= 0 || ordersStore.loading"
                 @click="handleCantidadConfirm"
                 class="w-full h-10 rounded-xl bg-[#1565C0] text-white font-semibold text-sm shadow hover:opacity-90 transition-opacity disabled:opacity-40 disabled:pointer-events-none"
               >
@@ -373,5 +403,9 @@ async function handleCantidadConfirm() {
         </div>
       </div>
     </div>
+
+  <template #sidebar>
+    <AnnouncementSidebar />
+  </template>
   </AppLayout>
 </template>

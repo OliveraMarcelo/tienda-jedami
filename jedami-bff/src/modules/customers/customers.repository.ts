@@ -1,13 +1,14 @@
 import { pool } from '../../config/database.js';
 import { AppError } from '../../types/app-error.js';
+import { CUSTOMER_TYPES, type CustomerType } from '../../lib/constants.js';
 
 export interface Customer {
   id: number;
   user_id: number;
-  customer_type: 'retail' | 'wholesale';
+  customer_type: CustomerType;
 }
 
-export const createCustomer = async (userId: number, customerType: 'retail' | 'wholesale' = 'retail'): Promise<Customer> => {
+export const createCustomer = async (userId: number, customerType: CustomerType = CUSTOMER_TYPES.RETAIL): Promise<Customer> => {
   const result = await pool.query(
     'INSERT INTO customers (user_id, customer_type) VALUES ($1, $2) RETURNING id, user_id, customer_type',
     [userId, customerType],
@@ -23,7 +24,7 @@ export const findByUserId = async (userId: number): Promise<Customer | null> => 
   return result.rows[0] ?? null;
 };
 
-export const updateCustomerType = async (userId: number, customerType: 'retail' | 'wholesale'): Promise<void> => {
+export const updateCustomerType = async (userId: number, customerType: CustomerType): Promise<void> => {
   const result = await pool.query(
     'UPDATE customers SET customer_type = $1 WHERE user_id = $2',
     [customerType, userId],

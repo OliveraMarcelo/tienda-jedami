@@ -8,7 +8,7 @@ import { ENV } from './config/env.js';
 import routes from './routes/index.js';
 import { errorMiddleware } from './middlewares/error.middleware.js';
 import { generalRateLimit } from './middlewares/rate-limit.middleware.js';
-import { UPLOADS_DIR } from './config/upload.js';
+import { UPLOADS_DIR, UPLOADS_BRANDING_DIR, UPLOADS_BANNERS_DIR, UPLOADS_ANNOUNCEMENTS_DIR } from './config/upload.js';
 
 export function createApp() {
   const app = express();
@@ -32,8 +32,11 @@ export function createApp() {
     },
   }));
 
-  // Archivos estáticos — imágenes de productos subidas
-  app.use('/uploads/products', express.static(UPLOADS_DIR));
+  // Archivos estáticos — imágenes subidas
+  app.use('/uploads/products',      express.static(UPLOADS_DIR));
+  app.use('/uploads/branding',      express.static(UPLOADS_BRANDING_DIR));
+  app.use('/uploads/banners',       express.static(UPLOADS_BANNERS_DIR));
+  app.use('/uploads/announcements', express.static(UPLOADS_ANNOUNCEMENTS_DIR));
 
   // Documentación API
   app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
