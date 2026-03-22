@@ -79,3 +79,10 @@ export async function deleteVariant(productId: number, variantId: number): Promi
 export async function updateStock(productId: number, variantId: number, quantity: number): Promise<void> {
   await apiClient.patch(`/products/${productId}/variants/${variantId}/stock`, { quantity })
 }
+
+export async function reorderProductImages(
+  productId: number,
+  items: { id: number; position: number }[],
+): Promise<void> {
+  await apiClient.patch(`/products/${productId}/images/reorder`, items)
+}

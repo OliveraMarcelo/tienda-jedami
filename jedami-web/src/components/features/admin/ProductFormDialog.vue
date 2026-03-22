@@ -3,7 +3,7 @@ import { ref, watch } from 'vue'
 import Dialog from '@/components/ui/Dialog.vue'
 import type { Product } from '@/types/api'
 import { useProductsStore } from '@/stores/products.store'
-import { uploadImage as apiUploadImage, deleteImage as apiDeleteImage, fetchProductDetail } from '@/api/admin.api'
+import { uploadImage as apiUploadImage, deleteImage as apiDeleteImage, fetchProductDetail, reorderProductImages } from '@/api/admin.api'
 
 const props = defineProps<{
   open: boolean
@@ -25,6 +25,9 @@ const wholesalePrice = ref<number | ''>('')
 const localImages = ref<{ id: number; url: string; position: number }[]>([])
 const imageError = ref('')
 const imageLoading = ref(false)
+const reorderSaving = ref(false)
+const reorderSuccess = ref(false)
+const reorderError = ref('')
 const loading = ref(false)
 const serverError = ref('')
 
@@ -37,6 +40,8 @@ watch(() => props.open, async (val) => {
     wholesalePrice.value = props.product?.wholesalePrice ?? ''
     imageError.value = ''
     serverError.value = ''
+    reorderError.value = ''
+    reorderSuccess.value = false
     localImages.value = []
 
     if (props.product) {
@@ -75,6 +80,31 @@ async function handleFileSelected(event: Event) {
   } finally {
     imageLoading.value = false
     input.value = ''
+  }
+}
+
+function moveImage(index: number, direction: 'up' | 'down') {
+  const arr = [...localImages.value]
+  const swapWith = direction === 'up' ? index - 1 : index + 1
+  if (swapWith < 0 || swapWith >= arr.length) return
+  ;[arr[index], arr[swapWith]] = [arr[swapWith], arr[index]]
+  localImages.value = arr
+}
+
+async function saveImageOrder() {
+  if (!props.product) return
+  reorderSaving.value = true
+  reorderError.value = ''
+  try {
+    const items = localImages.value.map((img, i) => ({ id: img.id, position: i + 1 }))
+    await reorderProductImages(props.product.id, items)
+    reorderSuccess.value = true
+    setTimeout(() => { reorderSuccess.value = false }, 2500)
+  } catch (e: unknown) {
+    const err = e as { response?: { data?: { detail?: string } } }
+    reorderError.value = err?.response?.data?.detail ?? 'Error al guardar el orden'
+  } finally {
+    reorderSaving.value = false
   }
 }
 
@@ -180,18 +210,56 @@ async function handleSubmit() {
       <div>
         <label class="block text-sm font-semibold text-gray-700 mb-2">Fotos</label>
 
-        <div v-if="localImages.length > 0" class="flex gap-2 flex-wrap mb-3">
-          <div
-            v-for="img in localImages"
-            :key="img.id"
-            class="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200"
-          >
-            <img :src="img.url" class="w-full h-full object-cover" />
+        <div v-if="localImages.length > 0" class="mb-3">
+          <div class="flex gap-2 flex-wrap">
+            <div
+              v-for="(img, index) in localImages"
+              :key="img.id"
+              class="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 group"
+            >
+              <img :src="img.url" class="w-full h-full object-cover" />
+              <!-- Badge Principal -->
+              <span
+                v-if="index === 0"
+                class="absolute bottom-0 left-0 right-0 text-center text-[9px] font-semibold bg-[#E91E8C] text-white py-0.5 leading-tight"
+              >Principal</span>
+              <!-- Botón eliminar -->
+              <button
+                type="button"
+                @click="handleDeleteImage(img.id)"
+                class="absolute top-0.5 right-0.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center hover:bg-red-600 leading-none"
+              >×</button>
+              <!-- Botones reordenar -->
+              <div class="absolute bottom-0.5 left-0.5 flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  type="button"
+                  @click="moveImage(index, 'up')"
+                  :disabled="index === 0"
+                  class="bg-black/50 text-white rounded w-4 h-4 text-xs flex items-center justify-center disabled:opacity-20 hover:bg-black/70"
+                  title="Mover arriba"
+                >↑</button>
+                <button
+                  type="button"
+                  @click="moveImage(index, 'down')"
+                  :disabled="index === localImages.length - 1"
+                  class="bg-black/50 text-white rounded w-4 h-4 text-xs flex items-center justify-center disabled:opacity-20 hover:bg-black/70"
+                  title="Mover abajo"
+                >↓</button>
+              </div>
+            </div>
+          </div>
+          <!-- Guardar orden -->
+          <div class="mt-2 flex items-center gap-2">
             <button
               type="button"
-              @click="handleDeleteImage(img.id)"
-              class="absolute top-0.5 right-0.5 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center hover:bg-red-600 leading-none"
-            >×</button>
+              @click="saveImageOrder"
+              :disabled="reorderSaving"
+              class="text-xs px-3 py-1 rounded border border-gray-300 font-medium text-gray-700 hover:border-[#E91E8C] hover:text-[#E91E8C] transition-colors disabled:opacity-50 disabled:pointer-events-none"
+            >
+              {{ reorderSaving ? 'Guardando...' : 'Guardar orden' }}
+            </button>
+            <span v-if="reorderSuccess" class="text-xs text-green-600 font-medium">Orden guardado</span>
+            <span v-if="reorderError" class="text-xs text-red-500">{{ reorderError }}</span>
           </div>
         </div>
         <p v-else-if="product" class="text-xs text-gray-400 mb-2">Sin fotos. Agregá la primera.</p>

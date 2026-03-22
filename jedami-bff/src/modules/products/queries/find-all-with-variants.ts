@@ -1,4 +1,6 @@
-// $1 = pageSize, $2 = offset, $3 = categoryId (INT | null — filtra por categoría si se especifica)
+import { PRICE_MODES } from '../../../lib/constants.js';
+
+// $1 = pageSize, $2 = offset, $3 = categoryId (INT | null), $4 = search (VARCHAR | null)
 export const FIND_ALL_WITH_VARIANTS = `
   SELECT
     p.id                      AS product_id,
@@ -19,7 +21,8 @@ export const FIND_ALL_WITH_VARIANTS = `
   FROM (
     SELECT id, name, description, category_id
     FROM products
-    WHERE $3::INT IS NULL OR category_id = $3
+    WHERE ($3::INT IS NULL OR category_id = $3)
+      AND ($4::VARCHAR IS NULL OR name ILIKE '%' || $4 || '%')
     ORDER BY id
     LIMIT $1 OFFSET $2
   ) p
@@ -33,23 +36,24 @@ export const FIND_ALL_WITH_VARIANTS = `
   LEFT JOIN (
     SELECT pp.product_id, pp.price
     FROM product_prices pp
-    JOIN price_modes pm ON pm.id = pp.price_mode_id AND pm.code = 'retail'
+    JOIN price_modes pm ON pm.id = pp.price_mode_id AND pm.code = '${PRICE_MODES.RETAIL}'
   ) rp ON rp.product_id = p.id
   LEFT JOIN (
     SELECT pp.product_id, pp.price
     FROM product_prices pp
-    JOIN price_modes pm ON pm.id = pp.price_mode_id AND pm.code = 'wholesale'
+    JOIN price_modes pm ON pm.id = pp.price_mode_id AND pm.code = '${PRICE_MODES.WHOLESALE}'
   ) wp ON wp.product_id = p.id
-  LEFT JOIN variants v ON v.product_id = p.id
+  LEFT JOIN variants v ON v.product_id = p.id AND v.active = TRUE
   LEFT JOIN sizes sz ON sz.id = v.size_id
   LEFT JOIN colors cl ON cl.id = v.color_id
   LEFT JOIN stock s ON s.variant_id = v.id
   ORDER BY p.id, sz.sort_order NULLS LAST, cl.name
 `;
 
-// $1 = categoryId (INT | null)
+// $1 = categoryId (INT | null), $2 = search (VARCHAR | null)
 export const COUNT_PRODUCTS = `
   SELECT COUNT(*)::int AS total
   FROM products
-  WHERE $1::INT IS NULL OR category_id = $1
+  WHERE ($1::INT IS NULL OR category_id = $1)
+    AND ($2::VARCHAR IS NULL OR name ILIKE '%' || $2 || '%')
 `;

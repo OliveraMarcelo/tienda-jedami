@@ -65,3 +65,11 @@ export const assignRole = async (userId: number, roleId: number): Promise<void> 
     [userId, roleId]
   );
 };
+
+export const removeRole = async (userId: number, roleId: number): Promise<boolean> => {
+  const result = await pool.query(
+    'DELETE FROM user_roles WHERE user_id = $1 AND role_id = $2',
+    [userId, roleId],
+  );
+  return (result.rowCount ?? 0) > 0;
+};

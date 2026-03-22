@@ -18,9 +18,11 @@ export async function fetchProducts(
   page = 1,
   pageSize = 20,
   categoryId?: number | null,
+  search?: string | null,
 ): Promise<CatalogResponse> {
   const params: Record<string, unknown> = { page, pageSize }
   if (categoryId != null) params.categoryId = categoryId
+  if (search) params.search = search
   const res = await apiClient.get<CatalogResponse>('/products', { params })
   return res.data
 }

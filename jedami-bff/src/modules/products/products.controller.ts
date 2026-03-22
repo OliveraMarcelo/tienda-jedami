@@ -106,15 +106,18 @@ export async function listProducts(req: Request, res: Response, next: NextFuncti
       ? (parseInt(rawCategoryId, 10) || null)
       : null;
 
-    const cacheKey = `catalog:page:${page}:size:${pageSize}:cat:${categoryId ?? 'all'}`;
+    const rawSearch = req.query.search as string | undefined;
+    const search = rawSearch?.trim() ? rawSearch.trim() : null;
+
+    const cacheKey = `catalog:page:${page}:size:${pageSize}:cat:${categoryId ?? 'all'}:search:${search ?? ''}`;
     const cached = await cacheGet(cacheKey);
     if (cached) {
       res.status(200).json(JSON.parse(cached));
       return;
     }
 
-    const { products, total } = await productsService.getCatalog(page, pageSize, categoryId);
-    const body = { data: products, meta: { page, pageSize, total, categoryId } };
+    const { products, total } = await productsService.getCatalog(page, pageSize, categoryId, search);
+    const body = { data: products, meta: { page, pageSize, total, categoryId, search } };
     await cacheSet(cacheKey, JSON.stringify(body), ENV.CACHE_TTL);
     res.status(200).json(body);
   } catch (err) {
@@ -133,6 +136,54 @@ export async function listColorsHandler(req: Request, res: Response, next: NextF
   try {
     const colors = await productsService.listColors();
     res.status(200).json({ data: colors });
+  } catch (err) { next(err); }
+}
+
+export async function createSizeHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { label, sortOrder } = req.body;
+    const size = await productsService.createSize(label, sortOrder ?? 0);
+    res.status(201).json({ data: size });
+  } catch (err) { next(err); }
+}
+
+export async function deleteSizeHandler(req: Request, res: Response): Promise<void> {
+  res.status(405).json({ detail: 'Usar PATCH con { active: false } para desactivar' });
+}
+
+export async function updateSizeHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) { res.status(400).json({ detail: 'ID inválido' }); return; }
+    const { active } = req.body;
+    if (typeof active !== 'boolean') { res.status(400).json({ detail: 'active debe ser boolean' }); return; }
+    const size = await productsService.updateSize(id, active);
+    if (!size) { res.status(404).json({ detail: 'Talle no encontrado' }); return; }
+    res.status(200).json({ data: size });
+  } catch (err) { next(err); }
+}
+
+export async function createColorHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { name, hexCode } = req.body;
+    const color = await productsService.createColor(name, hexCode ?? null);
+    res.status(201).json({ data: color });
+  } catch (err) { next(err); }
+}
+
+export async function deleteColorHandler(req: Request, res: Response): Promise<void> {
+  res.status(405).json({ detail: 'Usar PATCH con { active: false } para desactivar' });
+}
+
+export async function updateColorHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const id = parseId(req.params.id);
+    if (!id) { res.status(400).json({ detail: 'ID inválido' }); return; }
+    const { active } = req.body;
+    if (typeof active !== 'boolean') { res.status(400).json({ detail: 'active debe ser boolean' }); return; }
+    const color = await productsService.updateColor(id, active);
+    if (!color) { res.status(404).json({ detail: 'Color no encontrado' }); return; }
+    res.status(200).json({ data: color });
   } catch (err) { next(err); }
 }
 
@@ -208,6 +259,26 @@ export async function deleteImageHandler(req: Request, res: Response, next: Next
     await productsService.deleteImage(productId, imageId);
     await cacheDel(CATALOG_KEY, PRODUCT_KEY(productId));
     res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function reorderImagesHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const productId = parseId(req.params.id);
+    if (!productId) {
+      res.status(400).json({ detail: 'ID inválido' });
+      return;
+    }
+    const items = req.body;
+    if (!Array.isArray(items) || items.length === 0) {
+      res.status(400).json({ detail: 'El body debe ser un array no vacío de { id, position }' });
+      return;
+    }
+    await productsService.reorderProductImages(productId, items);
+    await cacheDel(CATALOG_KEY, PRODUCT_KEY(productId));
+    res.status(200).json({ data: { ok: true } });
   } catch (err) {
     next(err);
   }

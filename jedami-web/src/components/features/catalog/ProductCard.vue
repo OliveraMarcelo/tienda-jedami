@@ -2,10 +2,11 @@
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import type { Product } from '@/types/api'
+import { MODES, type Mode } from '@/lib/constants'
 
 const props = defineProps<{
   product: Product
-  mode: 'retail' | 'wholesale'
+  mode: Mode
 }>()
 
 const hovered = ref(false)
@@ -23,7 +24,7 @@ const uniqueColors = computed(() => {
 })
 
 const displayPrice = computed(() => {
-  if (props.mode === 'wholesale') {
+  if (props.mode === MODES.WHOLESALE) {
     return props.product.wholesalePrice ?? props.product.retailPrice
   }
   return props.product.retailPrice
@@ -93,7 +94,7 @@ const stockBadge = computed(() => {
         </div>
 
         <p v-if="displayPrice !== null" class="text-sm text-gray-700">
-          <span class="text-xs text-gray-500 mr-1">{{ mode === 'wholesale' ? 'Precio mayorista' : 'Precio' }}</span>
+          <span class="text-xs text-gray-500 mr-1">{{ mode === MODES.WHOLESALE ? 'Precio mayorista' : 'Precio' }}</span>
           <span class="font-bold text-gray-900">${{ displayPrice!.toLocaleString('es-AR') }}</span>
         </p>
       </div>

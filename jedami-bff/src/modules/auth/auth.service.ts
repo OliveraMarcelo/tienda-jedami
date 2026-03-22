@@ -7,6 +7,7 @@ import { pool } from '../../config/database.js';
 import * as usersRepository from '../users/users.repository.js';
 import * as customersRepository from '../customers/customers.repository.js';
 import { JwtUserPayload } from './jwt-payload.js';
+import { CUSTOMER_TYPES, type CustomerType } from '../../lib/constants.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -45,7 +46,7 @@ async function storeRefreshToken(userId: number, token: string): Promise<void> {
 
 // ─── Register ─────────────────────────────────────────────────────────────────
 
-export async function register(email: string, password: string, customerType: 'retail' | 'wholesale' = 'retail') {
+export async function register(email: string, password: string, customerType: CustomerType = CUSTOMER_TYPES.RETAIL) {
   const existing = await usersRepository.findByEmail(email);
   if (existing) {
     throw new AppError(

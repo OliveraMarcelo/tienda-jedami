@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { loginApi, registerApi, refreshApi, logoutApi } from '@/api/auth.api'
+import { ROLES, MODES, CUSTOMER_TYPES, type Mode, type CustomerType } from '@/lib/constants'
 
 interface JwtPayload {
   id: number
@@ -32,17 +33,17 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref<JwtPayload | null>(parsedUser)
 
   // Modo de visualización de precios — independiente del rol, persistido
-  const storedViewMode = localStorage.getItem('jedami_view_mode') as 'retail' | 'wholesale' | null
-  const viewMode = ref<'retail' | 'wholesale'>(storedViewMode ?? (parsedUser?.roles.includes('wholesale') ? 'wholesale' : 'retail'))
+  const storedViewMode = localStorage.getItem('jedami_view_mode') as Mode | null
+  const viewMode = ref<Mode>(storedViewMode ?? (parsedUser?.roles.includes(ROLES.WHOLESALE) ? MODES.WHOLESALE : MODES.RETAIL))
 
   const isAuthenticated = computed(() => !!token.value)
-  const isAdmin = computed(() => user.value?.roles.includes('admin') ?? false)
-  const isWholesale = computed(() => user.value?.roles.includes('wholesale') ?? false)
-  const isRetail = computed(() => user.value?.roles.includes('retail') ?? false)
-  const mode = computed<'retail' | 'wholesale'>(() => viewMode.value)
+  const isAdmin = computed(() => user.value?.roles.includes(ROLES.ADMIN) ?? false)
+  const isWholesale = computed(() => user.value?.roles.includes(ROLES.WHOLESALE) ?? false)
+  const isRetail = computed(() => user.value?.roles.includes(ROLES.RETAIL) ?? false)
+  const mode = computed<Mode>(() => viewMode.value)
 
   function toggleMode() {
-    viewMode.value = viewMode.value === 'retail' ? 'wholesale' : 'retail'
+    viewMode.value = viewMode.value === MODES.RETAIL ? MODES.WHOLESALE : MODES.RETAIL
     localStorage.setItem('jedami_view_mode', viewMode.value)
   }
 
@@ -57,7 +58,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
     // Al hacer login, si no hay preferencia guardada, usar el modo del rol
     if (!localStorage.getItem('jedami_view_mode')) {
-      viewMode.value = user.value.roles.includes('wholesale') ? 'wholesale' : 'retail'
+      viewMode.value = user.value.roles.includes(ROLES.WHOLESALE) ? MODES.WHOLESALE : MODES.RETAIL
     }
   }
 
@@ -67,7 +68,7 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
     localStorage.removeItem('jedami_token')
     localStorage.removeItem('jedami_refresh_token')
-    viewMode.value = 'retail'
+    viewMode.value = MODES.RETAIL
     localStorage.removeItem('jedami_view_mode')
   }
 
@@ -90,7 +91,7 @@ export const useAuthStore = defineStore('auth', () => {
     if (navigate) {
       const { default: router } = await import('@/router')
       const payload = parseJwtPayload(res.data.token)
-      if (payload?.roles.includes('admin')) {
+      if (payload?.roles.includes(ROLES.ADMIN)) {
         router.push('/admin')
       } else {
         router.push('/catalogo')
@@ -98,7 +99,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function register(email: string, password: string, customerType: 'retail' | 'wholesale' = 'retail', navigate = true) {
+  async function register(email: string, password: string, customerType: CustomerType = CUSTOMER_TYPES.RETAIL, navigate = true) {
     await registerApi(email, password, customerType)
     // Si el registro fue exitoso pero el login falla, marcamos el error para que
     // el componente pueda distinguirlo de un error de registro (ej: email duplicado)

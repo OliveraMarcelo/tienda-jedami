@@ -10,6 +10,7 @@ export const useProductsStore = defineStore('products', () => {
   const sizes = ref<Size[]>([])
   const colors = ref<Color[]>([])
   const selectedCategoryId = ref<number | null>(null)
+  const search = ref<string | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
   const page = ref(1)
@@ -24,7 +25,7 @@ export const useProductsStore = defineStore('products', () => {
     loading.value = true
     error.value = null
     try {
-      const res = await fetchProducts(page.value, pageSize, selectedCategoryId.value)
+      const res = await fetchProducts(page.value, pageSize, selectedCategoryId.value, search.value)
       products.value = [...products.value, ...res.data]
       total.value = res.meta.total
       page.value++
@@ -38,6 +39,11 @@ export const useProductsStore = defineStore('products', () => {
 
   async function filterByCategory(categoryId: number | null) {
     selectedCategoryId.value = categoryId
+    await fetchCatalog(true)
+  }
+
+  async function filterBySearch(term: string | null) {
+    search.value = term || null
     await fetchCatalog(true)
   }
 
@@ -88,6 +94,7 @@ export const useProductsStore = defineStore('products', () => {
     sizes,
     colors,
     selectedCategoryId,
+    search,
     loading,
     error,
     page,
@@ -95,6 +102,7 @@ export const useProductsStore = defineStore('products', () => {
     pageSize,
     fetchCatalog,
     filterByCategory,
+    filterBySearch,
     loadCategories,
     loadSizes,
     loadColors,

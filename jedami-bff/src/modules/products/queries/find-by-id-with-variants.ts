@@ -1,3 +1,5 @@
+import { PRICE_MODES } from '../../../lib/constants.js';
+
 export const FIND_PRODUCT_BY_ID_WITH_VARIANTS = `
   SELECT
     p.id                      AS product_id,
@@ -19,14 +21,14 @@ export const FIND_PRODUCT_BY_ID_WITH_VARIANTS = `
   LEFT JOIN (
     SELECT pp.product_id, pp.price
     FROM product_prices pp
-    JOIN price_modes pm ON pm.id = pp.price_mode_id AND pm.code = 'retail'
+    JOIN price_modes pm ON pm.id = pp.price_mode_id AND pm.code = '${PRICE_MODES.RETAIL}'
   ) rp ON rp.product_id = p.id
   LEFT JOIN (
     SELECT pp.product_id, pp.price
     FROM product_prices pp
-    JOIN price_modes pm ON pm.id = pp.price_mode_id AND pm.code = 'wholesale'
+    JOIN price_modes pm ON pm.id = pp.price_mode_id AND pm.code = '${PRICE_MODES.WHOLESALE}'
   ) wp ON wp.product_id = p.id
-  LEFT JOIN variants v ON v.product_id = p.id
+  LEFT JOIN variants v ON v.product_id = p.id AND v.active = TRUE
   LEFT JOIN sizes sz ON sz.id = v.size_id
   LEFT JOIN colors cl ON cl.id = v.color_id
   LEFT JOIN stock s ON s.variant_id = v.id

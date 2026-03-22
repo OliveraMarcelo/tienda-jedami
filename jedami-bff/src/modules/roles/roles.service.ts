@@ -2,6 +2,7 @@ import { pool } from '../../config/database.js';
 import { AppError } from '../../types/app-error.js';
 import * as rolesRepository from './roles.repository.js';
 import * as usersRepository from '../users/users.repository.js';
+import { ROLES } from '../../lib/constants.js';
 
 export async function assignRoleToUser(userId: number, roleId: number): Promise<{ userId: number; roleId: number }> {
   const user = await usersRepository.findById(userId);
@@ -23,7 +24,7 @@ export async function assignRoleToUser(userId: number, roleId: number): Promise<
       [userId, roleId],
     );
 
-    if (role.name === 'wholesale' || role.name === 'retail') {
+    if (role.name === ROLES.WHOLESALE || role.name === ROLES.RETAIL) {
       // Upsert: crea el perfil si no existe (ej. usuarios creados via seed)
       // o actualiza customer_type si ya existe
       await client.query(

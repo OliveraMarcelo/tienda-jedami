@@ -64,6 +64,7 @@ export const useOrdersStore = defineStore('orders', () => {
   }
 
   async function loadOrder(orderId: number) {
+    currentOrder.value = null
     loading.value = true
     error.value = null
     try {

@@ -1,6 +1,7 @@
 import { AppError } from '../../types/app-error.js';
 import * as productsRepository from './products.repository.js';
 import type { CatalogRow } from './products.repository.js';
+import { PRICE_MODES } from '../../lib/constants.js';
 
 // ─── Response Types ───────────────────────────────────────────────────────────
 
@@ -112,11 +113,11 @@ export async function updateProductPrices(
   if (!existing) {
     throw new AppError(404, 'Producto no encontrado', 'https://jedami.com/errors/product-not-found', `No existe producto con id ${productId}`);
   }
-  await productsRepository.upsertProductPrice(productId, 'retail', dto.retailPrice);
+  await productsRepository.upsertProductPrice(productId, PRICE_MODES.RETAIL, dto.retailPrice);
   if (dto.wholesalePrice != null) {
-    await productsRepository.upsertProductPrice(productId, 'wholesale', dto.wholesalePrice);
+    await productsRepository.upsertProductPrice(productId, PRICE_MODES.WHOLESALE, dto.wholesalePrice);
   } else {
-    await productsRepository.deleteProductPrice(productId, 'wholesale');
+    await productsRepository.deleteProductPrice(productId, PRICE_MODES.WHOLESALE);
   }
 }
 
@@ -171,8 +172,32 @@ export async function listSizes() {
   return productsRepository.getSizes();
 }
 
+export async function createSize(label: string, sortOrder: number) {
+  return productsRepository.insertSize(label, sortOrder);
+}
+
+export async function deleteSize(id: number) {
+  return productsRepository.removeSize(id);
+}
+
+export async function updateSize(id: number, active: boolean) {
+  return productsRepository.updateSizeActive(id, active);
+}
+
 export async function listColors() {
   return productsRepository.getColors();
+}
+
+export async function createColor(name: string, hexCode: string | null) {
+  return productsRepository.insertColor(name, hexCode);
+}
+
+export async function deleteColor(id: number) {
+  return productsRepository.removeColor(id);
+}
+
+export async function updateColor(id: number, active: boolean) {
+  return productsRepository.updateColorActive(id, active);
 }
 
 // ─── Product Images ───────────────────────────────────────────────────────────
@@ -216,13 +241,24 @@ export async function findById(id: number) {
   return { id: product.id, name: product.name, description: product.description, categoryId: product.category_id ?? null };
 }
 
-export async function getCatalog(page: number, pageSize: number, categoryId?: number | null) {
+export async function getCatalog(page: number, pageSize: number, categoryId?: number | null, search?: string | null) {
   const offset = (page - 1) * pageSize;
   const [rows, total] = await Promise.all([
-    productsRepository.findAllWithVariants(pageSize, offset, categoryId),
-    productsRepository.countProducts(categoryId),
+    productsRepository.findAllWithVariants(pageSize, offset, categoryId, search),
+    productsRepository.countProducts(categoryId, search),
   ]);
   return { products: groupRowsIntoProducts(rows), total };
+}
+
+export async function reorderProductImages(productId: number, items: { id: number; position: number }[]) {
+  try {
+    await productsRepository.reorderImages(productId, items);
+  } catch (err: any) {
+    if (err?._invalidIds) {
+      throw new AppError(400, 'IDs inválidos', 'https://jedami.com/errors/validation', 'IDs de imágenes inválidos para este producto');
+    }
+    throw err;
+  }
 }
 
 export async function deleteProduct(id: number) {

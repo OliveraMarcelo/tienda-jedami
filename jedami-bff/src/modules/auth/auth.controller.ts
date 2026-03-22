@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../../types/app-error.js';
 import { JwtUserPayload } from './jwt-payload.js';
 import * as authService from './auth.service.js';
+import { CUSTOMER_TYPES } from '../../lib/constants.js';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -16,7 +17,7 @@ export async function register(req: Request, res: Response, next: NextFunction):
       next(new AppError(400, 'Email inválido', 'https://jedami.com/errors/validation', 'El email no tiene un formato válido'));
       return;
     }
-    const type = customerType === 'wholesale' ? 'wholesale' : 'retail';
+    const type = customerType === CUSTOMER_TYPES.WHOLESALE ? CUSTOMER_TYPES.WHOLESALE : CUSTOMER_TYPES.RETAIL;
     const user = await authService.register(email, password, type);
     res.status(201).json({ data: user });
   } catch (err) {

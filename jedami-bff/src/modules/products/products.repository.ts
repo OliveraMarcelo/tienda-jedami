@@ -57,13 +57,14 @@ export const findAllWithVariants = async (
   pageSize: number,
   offset: number,
   categoryId?: number | null,
+  search?: string | null,
 ): Promise<CatalogRow[]> => {
-  const result = await pool.query(FIND_ALL_WITH_VARIANTS, [pageSize, offset, categoryId ?? null]);
+  const result = await pool.query(FIND_ALL_WITH_VARIANTS, [pageSize, offset, categoryId ?? null, search ?? null]);
   return result.rows;
 };
 
-export const countProducts = async (categoryId?: number | null): Promise<number> => {
-  const result = await pool.query(COUNT_PRODUCTS, [categoryId ?? null]);
+export const countProducts = async (categoryId?: number | null, search?: string | null): Promise<number> => {
+  const result = await pool.query(COUNT_PRODUCTS, [categoryId ?? null, search ?? null]);
   return result.rows[0].total;
 };
 
@@ -115,7 +116,7 @@ export const deleteProduct = async (id: number): Promise<boolean> => {
 
 export const deleteVariant = async (variantId: number, productId: number): Promise<boolean> => {
   const result = await pool.query(
-    'DELETE FROM variants WHERE id = $1 AND product_id = $2',
+    'UPDATE variants SET active = FALSE WHERE id = $1 AND product_id = $2 AND active = TRUE',
     [variantId, productId],
   );
   return (result.rowCount ?? 0) > 0;
@@ -160,6 +161,30 @@ export const getColors = async (): Promise<Color[]> => {
   return result.rows;
 };
 
+export const insertSize = async (label: string, sortOrder: number): Promise<Size> => {
+  const result = await pool.query(
+    'INSERT INTO sizes (label, sort_order) VALUES ($1, $2) RETURNING id, label, sort_order',
+    [label, sortOrder],
+  );
+  return result.rows[0];
+};
+
+export const removeSize = async (id: number): Promise<void> => {
+  await pool.query('DELETE FROM sizes WHERE id = $1', [id]);
+};
+
+export const insertColor = async (name: string, hexCode: string | null): Promise<Color> => {
+  const result = await pool.query(
+    'INSERT INTO colors (name, hex_code) VALUES ($1, $2) RETURNING id, name, hex_code',
+    [name, hexCode],
+  );
+  return result.rows[0];
+};
+
+export const removeColor = async (id: number): Promise<void> => {
+  await pool.query('DELETE FROM colors WHERE id = $1', [id]);
+};
+
 export const findSizeById = async (id: number): Promise<Size | null> => {
   const result = await pool.query('SELECT id, label, sort_order FROM sizes WHERE id = $1', [id]);
   return result.rows[0] ?? null;
@@ -168,6 +193,46 @@ export const findSizeById = async (id: number): Promise<Size | null> => {
 export const findColorById = async (id: number): Promise<Color | null> => {
   const result = await pool.query('SELECT id, name, hex_code FROM colors WHERE id = $1', [id]);
   return result.rows[0] ?? null;
+};
+
+export const updateSizeActive = async (id: number, active: boolean): Promise<Size | null> => {
+  const result = await pool.query(
+    'UPDATE sizes SET active = $2 WHERE id = $1 RETURNING id, label, sort_order, active',
+    [id, active],
+  );
+  return result.rows[0] ?? null;
+};
+
+export const updateColorActive = async (id: number, active: boolean): Promise<Color | null> => {
+  const result = await pool.query(
+    'UPDATE colors SET active = $2 WHERE id = $1 RETURNING id, name, hex_code, active',
+    [id, active],
+  );
+  return result.rows[0] ?? null;
+};
+
+export const reorderImages = async (productId: number, items: { id: number; position: number }[]): Promise<void> => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const ids = items.map(i => i.id);
+    const check = await client.query(
+      'SELECT id FROM product_images WHERE product_id = $1 AND id = ANY($2::int[])',
+      [productId, ids],
+    );
+    if (check.rows.length !== ids.length) {
+      throw Object.assign(new Error('IDs de imágenes inválidos para este producto'), { _invalidIds: true });
+    }
+    for (const item of items) {
+      await client.query('UPDATE product_images SET position = $1 WHERE id = $2', [item.position, item.id]);
+    }
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 };
 
 export const upsertProductPrice = async (productId: number, modeCode: string, price: number): Promise<void> => {
