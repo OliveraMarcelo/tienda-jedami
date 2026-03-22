@@ -18,6 +18,43 @@ export async function checkout(req: Request, res: Response, next: NextFunction):
   }
 }
 
+export async function processPaymentHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const user = req.user as JwtUserPayload;
+    const orderId = parseInt(req.params.orderId, 10);
+    if (isNaN(orderId) || orderId <= 0) {
+      next(new AppError(400, 'ID inválido', 'https://jedami.com/errors/validation', 'El id del pedido debe ser un entero positivo'));
+      return;
+    }
+    // El formData viene directamente del CardPaymentBrick de MP (snake_case + payer anidado)
+    const { token, payment_method_id, installments, payer } = req.body;
+    if (!token || !payment_method_id || installments == null || !payer?.email || !payer?.identification?.number || !payer?.identification?.type) {
+      next(new AppError(400, 'Datos incompletos', 'https://jedami.com/errors/validation', 'Faltan campos requeridos para procesar el pago'));
+      return;
+    }
+    const result = await paymentsService.processPayment(orderId, user.id, req.body);
+    res.status(200).json({ data: result });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function retryPaymentHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const user = req.user as JwtUserPayload;
+    const orderId = parseInt(req.params.orderId, 10);
+    if (isNaN(orderId) || orderId <= 0) {
+      next(new AppError(400, 'ID inválido', 'https://jedami.com/errors/validation', 'El id del pedido debe ser un entero positivo'));
+      return;
+    }
+    const isAdmin = user.roles?.includes('admin') ?? false;
+    const result = await paymentsService.retryPayment(orderId, user.id, isAdmin);
+    res.status(200).json({ data: result });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function webhook(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     // Usar el raw buffer guardado por el verify callback de express.json()

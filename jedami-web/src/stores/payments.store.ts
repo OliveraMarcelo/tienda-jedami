@@ -13,8 +13,10 @@ export const usePaymentsStore = defineStore('payments', () => {
     error.value = null
     try {
       const result = await initiateCheckout(orderId)
-      // Redirigir al checkout de Mercado Pago
-      window.location.href = result.checkoutUrl
+      // Redirigir al checkout de Mercado Pago (checkout_pro)
+      if (result.type === 'redirect') {
+        window.location.href = result.checkoutUrl
+      }
     } catch (err: unknown) {
       const e = err as { response?: { data?: { detail?: string } } }
       error.value = e.response?.data?.detail ?? 'Error al iniciar el pago'
