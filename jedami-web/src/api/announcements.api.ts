@@ -1,21 +1,26 @@
 import apiClient from './client'
 
-export interface Announcement {
+// Respuesta del endpoint público — solo campos que devuelve /config/announcements
+export interface PublicAnnouncement {
   id: number
   title: string
   body: string | null
   imageUrl: string | null
   linkUrl: string | null
   linkLabel: string | null
+  sortOrder: number
+}
+
+// Respuesta completa del admin — incluye estado, audiencia y vigencia
+export interface Announcement extends PublicAnnouncement {
   targetAudience: 'all' | 'authenticated' | 'wholesale' | 'retail'
   active: boolean
   validFrom: string | null
   validUntil: string | null
-  sortOrder: number
 }
 
-export async function fetchAnnouncements(audience: 'all' | 'wholesale' | 'retail'): Promise<Announcement[]> {
-  const res = await apiClient.get<{ data: Announcement[] }>(`/config/announcements?audience=${audience}`)
+export async function fetchAnnouncements(audience: 'all' | 'wholesale' | 'retail'): Promise<PublicAnnouncement[]> {
+  const res = await apiClient.get<{ data: PublicAnnouncement[] }>(`/config/announcements?audience=${audience}`)
   return res.data.data
 }
 

@@ -15,6 +15,7 @@ import { MODES, PURCHASE_TYPES } from '@/lib/constants'
 
 const route = useRoute()
 const router = useRouter()
+const showSidebar = ref(true) // true durante la carga para mostrar skeleton; false si no hay anuncios
 const productsStore = useProductsStore()
 const authStore = useAuthStore()
 const ordersStore = useOrdersStore()
@@ -404,8 +405,8 @@ async function handleCantidadConfirm() {
       </div>
     </div>
 
-  <template #sidebar>
-    <AnnouncementSidebar />
+  <template v-if="showSidebar" #sidebar>
+    <AnnouncementSidebar @has-content="showSidebar = $event" />
   </template>
   </AppLayout>
 </template>

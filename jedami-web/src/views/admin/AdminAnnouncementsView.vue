@@ -80,6 +80,7 @@ async function submitCreate() {
 
 // ─── Carga inicial ────────────────────────────────────────────────────────────
 onMounted(async () => {
+  if (!authStore.isAdmin) return
   try {
     items.value = await fetchAllAnnouncements()
   } catch {

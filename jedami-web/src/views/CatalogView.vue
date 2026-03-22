@@ -12,6 +12,7 @@ const productsStore = useProductsStore()
 const authStore = useAuthStore()
 const route = useRoute()
 const router = useRouter()
+const showSidebar = ref(true) // true durante la carga para mostrar skeleton; false si no hay anuncios
 
 const searchInput = ref('')
 let debounceTimer: ReturnType<typeof setTimeout>
@@ -203,8 +204,8 @@ function loadMore() {
       </button>
     </div>
 
-  <template #sidebar>
-    <AnnouncementSidebar />
+  <template v-if="showSidebar" #sidebar>
+    <AnnouncementSidebar @has-content="showSidebar = $event" />
   </template>
   </AppLayout>
 </template>

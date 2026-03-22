@@ -1,6 +1,6 @@
 # Story web-13.3: Anuncios Personalizados — WEB
 
-Status: review
+Status: done
 
 ## Story
 

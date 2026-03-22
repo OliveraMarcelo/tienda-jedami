@@ -2,12 +2,14 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
-import { fetchAnnouncements, type Announcement } from '@/api/announcements.api'
+import { fetchAnnouncements, type PublicAnnouncement } from '@/api/announcements.api'
+
+const emit = defineEmits<{ hasContent: [value: boolean] }>()
 
 const authStore = useAuthStore()
 const router = useRouter()
 
-const announcements = ref<Announcement[]>([])
+const announcements = ref<PublicAnnouncement[]>([])
 const loading = ref(true)
 
 const audience = computed<'all' | 'wholesale' | 'retail'>(() => {
@@ -23,10 +25,11 @@ onMounted(async () => {
     // Anuncios no críticos — ignorar error
   } finally {
     loading.value = false
+    emit('hasContent', announcements.value.length > 0)
   }
 })
 
-function handleClick(announcement: Announcement) {
+function handleClick(announcement: PublicAnnouncement) {
   if (!announcement.linkUrl) return
   if (announcement.linkUrl.startsWith('/')) {
     router.push(announcement.linkUrl)

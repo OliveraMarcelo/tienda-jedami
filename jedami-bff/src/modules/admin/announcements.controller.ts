@@ -100,25 +100,36 @@ export async function createAnnouncement(req: Request, res: Response, next: Next
     // Imagen: si se subió un archivo, guardamos el filename; si no, NULL
     const imageUrl: string | null = req.file ? req.file.filename : null;
 
-    const sortRes = await pool.query('SELECT COALESCE(MAX(sort_order), 0) + 1 AS next FROM announcements');
-    const sortOrder = Number(sortRes.rows[0].next);
-
-    const result = await pool.query(
-      `INSERT INTO announcements (title, body, image_url, link_url, link_label, target_audience, valid_from, valid_until, sort_order)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       RETURNING id, title, body, image_url, link_url, link_label, target_audience, active, valid_from, valid_until, sort_order`,
-      [
-        title.trim(),
-        body ?? null,
-        imageUrl,
-        linkUrl ?? null,
-        linkLabel ?? null,
-        audience,
-        validFrom ?? null,
-        validUntil ?? null,
-        sortOrder,
-      ],
-    );
+    const client = await pool.connect();
+    let result;
+    try {
+      await client.query('BEGIN');
+      const sortRes = await client.query('SELECT COALESCE(MAX(sort_order), 0) + 1 AS next FROM announcements FOR UPDATE');
+      const sortOrder = Number(sortRes.rows[0].next);
+      result = await client.query(
+        `INSERT INTO announcements (title, body, image_url, link_url, link_label, target_audience, valid_from, valid_until, sort_order)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         RETURNING id, title, body, image_url, link_url, link_label, target_audience, active, valid_from, valid_until, sort_order`,
+        [
+          title.trim(),
+          body ?? null,
+          imageUrl,
+          linkUrl ?? null,
+          linkLabel ?? null,
+          audience,
+          validFrom ?? null,
+          validUntil ?? null,
+          sortOrder,
+        ],
+      );
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      next(err);
+      return;
+    } finally {
+      client.release();
+    }
 
     res.status(201).json({ data: mapRow(result.rows[0]) });
   } catch (err) { next(err); }
@@ -161,6 +172,12 @@ export async function updateAnnouncement(req: Request, res: Response, next: Next
     }
 
     const { active, linkUrl, linkLabel, title, body, targetAudience, validFrom, validUntil } = req.body;
+
+    const validAudiences: Audience[] = ['all', 'authenticated', 'wholesale', 'retail'];
+    if (targetAudience !== undefined && !validAudiences.includes(targetAudience)) {
+      next(new AppError(400, 'Audiencia inválida', 'https://jedami.com/errors/validation', `target_audience debe ser uno de: ${validAudiences.join(', ')}`));
+      return;
+    }
 
     const fields: string[] = [];
     const values: unknown[] = [];
