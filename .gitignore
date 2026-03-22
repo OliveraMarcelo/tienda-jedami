@@ -17,3 +17,9 @@ jedami-mobile/.flutter-plugins-dependencies
 # General
 .DS_Store
 *.log
+
+# Uploads (archivos subidos por usuarios)
+jedami-bff/uploads/
+
+# Flutter DevTools
+jedami-mobile/devtools_options.yaml
