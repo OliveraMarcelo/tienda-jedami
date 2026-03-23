@@ -4,12 +4,31 @@ on:
   push:
     branches: [main]
 
-# Solo se ejecuta si el job de CI pasa (workflow_run) ó directamente en push.
-# Usamos `needs` entre jobs dentro del mismo workflow para garantizar el orden.
 jobs:
-  # ─── CI gate ──────────────────────────────────────────────────────────────
-  ci:
-    name: CI gate (lint + type-check)
+  # ─── Detectar qué cambió ──────────────────────────────────────────────────
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      bff: ${{ steps.filter.outputs.bff }}
+      web: ${{ steps.filter.outputs.web }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            bff:
+              - 'jedami-bff/**'
+              - 'render.yaml'
+            web:
+              - 'jedami-web/**'
+
+  # ─── CI del BFF (solo si cambió) ──────────────────────────────────────────
+  ci-bff:
+    name: BFF — lint + type-check
+    needs: changes
+    if: needs.changes.outputs.bff == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -18,22 +37,21 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           cache: npm
           cache-dependency-path: jedami-bff/package-lock.json
       - run: npm ci
       - run: npm run lint
       - run: npm run build
 
-  # ─── Build & push imagen Docker a GHCR ───────────────────────────────────
-  build-and-push:
+  # ─── Build & push imagen BFF → GHCR ───────────────────────────────────────
+  build-bff:
     name: Build BFF image → GHCR
-    needs: ci
+    needs: ci-bff
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write         # necesario para pushear a ghcr.io
-
+      packages: write
     steps:
       - uses: actions/checkout@v4
 
@@ -53,25 +71,46 @@ jobs:
           context: ./jedami-bff
           file: ./jedami-bff/Dockerfile
           push: true
-          # Etiquetas: latest + SHA del commit para rollback
           tags: |
             ghcr.io/${{ github.repository_owner }}/jedami-bff:latest
             ghcr.io/${{ github.repository_owner }}/jedami-bff:${{ github.sha }}
-          # Cache entre builds para acelerar
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # ─── Deploy en Render via Deploy Hook ─────────────────────────────────────
-  deploy-render:
+  # ─── Deploy BFF → Render ──────────────────────────────────────────────────
+  deploy-bff:
     name: Deploy BFF → Render
-    needs: build-and-push
+    needs: build-bff
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Render deploy
+      - name: Trigger Render deploy hook
         run: |
           curl -s --fail-with-body \
             "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" \
             -X POST
-        # RENDER_DEPLOY_HOOK_URL se obtiene en:
-        # Render Dashboard → jedami-bff service → Settings → Deploy Hook → copiar la URL
-        # Guardarla como secret en GitHub → repo Settings → Secrets → RENDER_DEPLOY_HOOK_URL
+
+  # ─── Deploy Web → Vercel ──────────────────────────────────────────────────
+  # Vercel también auto-despliega via su GitHub App en cada push a main.
+  # Este job existe para tener visibilidad del deploy en el pipeline de GH Actions
+  # y para poder bloquear el deploy web si el BFF falló (añadir needs: deploy-bff).
+  deploy-web:
+    name: Deploy Web → Vercel
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Deploy to Vercel
+        run: |
+          vercel deploy \
+            --token=${{ secrets.VERCEL_TOKEN }} \
+            --prod \
+            --yes \
+            --cwd jedami-web
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
