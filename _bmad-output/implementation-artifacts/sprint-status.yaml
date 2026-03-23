@@ -301,6 +301,8 @@ development_status:
   14-3-normalizar-timestamps: backlog          # users.created_at TIMESTAMP → TIMESTAMPTZ
   14-4-limpiar-order-items-nullables: backlog  # CHECK constraint + limpiar product_id redundante en order_items
   14-5-payment-gateway-config: backlog         # extraer payment_gateway de branding → tabla system_config key-value
+  14-6-media-service: backlog                  # microservicio jedami-media — upload/serve/delete imágenes (depende de 14-1)
+  14-7-payment-service: backlog                # microservicio jedami-payments — checkout MP + webhook + bank_transfer
 
   # ─────────────────────────────────────────────────────────
   # EPIC 15: Medios de Pago Adicionales
