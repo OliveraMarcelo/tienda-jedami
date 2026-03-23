@@ -53,6 +53,7 @@ services:
     name: jedami-redis
     plan: free
     maxmemoryPolicy: allkeys-lru
+    ipAllowList: []             # solo acceso interno desde otros servicios de Render
 
 # ─── PostgreSQL ─────────────────────────────────────────────────────────────
 databases:
