@@ -1,0 +1,62 @@
+## render.yaml — Render.com Infrastructure as Code
+## Documentación: https://render.com/docs/blueprint-spec
+##
+## Cómo usar:
+##   1. En el dashboard de Render: New → Blueprint → conectar este repo
+##   2. Render crea todos los servicios automáticamente
+##   3. Completar los secrets marcados con `generateValue: false` en el dashboard
+
+services:
+  # ─── BFF (jedami-bff) ─────────────────────────────────────────────────────
+  - type: web
+    name: jedami-bff
+    runtime: docker
+    dockerfilePath: ./jedami-bff/Dockerfile
+    dockerContext: ./jedami-bff
+    # El Dockerfile ya incluye npm run build — Render lo buildea desde código fuente.
+    # Alternativa: usar una imagen pre-buildeada desde GHCR (ver deploy.yml)
+    plan: free                          # cambiar a "starter" en producción real
+    healthCheckPath: /api/v1/health
+    autoDeploy: false                   # el deploy lo dispara GitHub Actions via deploy hook
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: jedami-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: jedami-redis
+          property: connectionString
+      # Secrets — completar en el dashboard de Render (Env Vars → Add Secret File / Add Secret)
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: MP_ACCESS_TOKEN
+        sync: false
+      - key: MP_PUBLIC_KEY
+        sync: false
+      - key: MP_WEBHOOK_SECRET
+        sync: false
+      - key: MP_WEBHOOK_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+
+  # ─── Redis ────────────────────────────────────────────────────────────────
+  - type: redis
+    name: jedami-redis
+    plan: free
+    maxmemoryPolicy: allkeys-lru
+
+# ─── PostgreSQL ─────────────────────────────────────────────────────────────
+databases:
+  - name: jedami-db
+    databaseName: jedami
+    user: jedami
+    plan: free                          # free tier: 1 GB, expira a los 90 días
