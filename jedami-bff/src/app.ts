@@ -15,7 +15,7 @@ export function createApp() {
 
   // CORS — antes de cualquier ruta
   app.use(cors({
-    origin: ENV.CORS_ORIGIN,
+    origin: ENV.CORS_ORIGINS.length === 1 ? ENV.CORS_ORIGINS[0] : ENV.CORS_ORIGINS,
     credentials: true,
   }));
 
