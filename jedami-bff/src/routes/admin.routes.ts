@@ -1,8 +1,10 @@
 import { Router } from 'express';
-import { getDashboard, getAdminPayments, getAdminUsers, getPendingFulfillment, fulfillOrderItem, dispatchOrder, decrementItemStock, confirmBankTransfer } from '../modules/admin/admin.controller.js';
+import { getDashboard, getAdminPayments, getAdminUsers, getPendingFulfillment, fulfillOrderItem, dispatchOrder, decrementItemStock, confirmBankTransfer, updateVariantStock } from '../modules/admin/admin.controller.js';
 import { getAllBanners, uploadBanner, reorderBanners, updateBanner, deleteBanner } from '../modules/admin/banners.controller.js';
 import { getAllAnnouncements, createAnnouncement, reorderAnnouncements, updateAnnouncement, deleteAnnouncement } from '../modules/admin/announcements.controller.js';
 import { uploadBannersMiddleware, uploadAnnouncementsMiddleware } from '../config/upload.js';
+import discountsAdminRouter from './discounts.routes.js';
+import { updateMinQuantityHandler } from '../modules/discounts/discounts.controller.js';
 
 const router = Router();
 
@@ -216,6 +218,13 @@ router.patch('/orders/:orderId/items/:itemId/decrement-stock', decrementItemStoc
  *             schema: { $ref: '#/components/schemas/Error' }
  */
 router.post('/orders/:id/confirm-transfer', confirmBankTransfer);
+
+// Descuentos por volumen — escalones y mínimo de compra por producto
+router.use('/products/:id/discount-rules', discountsAdminRouter);
+router.patch('/products/:id/min-quantity', updateMinQuantityHandler);
+
+// Ajuste de stock desde app desktop
+router.patch('/products/:productId/variants/:variantId/stock', updateVariantStock);
 
 /**
  * @swagger

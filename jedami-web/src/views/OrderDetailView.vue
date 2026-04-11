@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { onMounted, computed, ref, nextTick } from 'vue'
+import { onMounted, computed, ref, watch, nextTick } from 'vue'
 import { PURCHASE_TYPES } from '@/lib/constants'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { useOrdersStore } from '@/stores/orders.store'
 import { usePaymentsStore } from '@/stores/payments.store'
 import { useConfigStore } from '@/stores/config.store'
-import { initiateCheckout, processPayment, type BankDetails } from '@/api/payments.api'
+import { processPayment } from '@/api/payments.api'
+import PaymentMethodSelector from '@/components/features/checkout/PaymentMethodSelector.vue'
 import type { OrderStatus } from '@/api/orders.api'
 
 const route = useRoute()
@@ -21,16 +22,12 @@ onMounted(async () => {
     router.replace('/pedidos')
     return
   }
+  paymentsStore.resetCheckoutState()
   await ordersStore.loadOrder(id)
-  if (
-    ordersStore.currentOrder?.status === 'pending' &&
-    configStore.config.paymentGateway === 'bank_transfer'
-  ) {
-    await startBankTransfer()
-  }
 })
 
 const order = computed(() => ordersStore.currentOrder)
+const bankDetails = computed(() => paymentsStore.bankDetails)
 
 const statusConfig: Record<OrderStatus, { label: string; classes: string }> = {
   pending:   { label: 'Pendiente de pago', classes: 'bg-amber-50 text-amber-700 border-amber-200' },
@@ -39,22 +36,15 @@ const statusConfig: Record<OrderStatus, { label: string; classes: string }> = {
   cancelled: { label: 'Cancelado',         classes: 'bg-gray-50 text-gray-500 border-gray-200' },
 }
 
-// ─── Bank Transfer ────────────────────────────────────────────────────────────
-const bankDetails = ref<BankDetails | null>(null)
-const bankTransferLoading = ref(false)
-const copied = ref<Record<string, boolean>>({})
-
-async function startBankTransfer() {
+// ─── Smart Checkout ────────────────────────────────────────────────────────────
+async function startPayment() {
   if (!order.value) return
-  bankTransferLoading.value = true
-  try {
-    const result = await initiateCheckout(order.value.id)
-    if (result.type === 'bank_transfer') {
-      bankDetails.value = result.bankDetails
-    }
-  } catch { /* el usuario puede reintentar */ } finally {
-    bankTransferLoading.value = false
-  }
+  await paymentsStore.initiateSmartCheckout(order.value.id)
+}
+
+async function onGatewaySelected(gateway: string) {
+  if (!order.value) return
+  await paymentsStore.selectGateway(order.value.id, gateway)
 }
 
 async function copyToClipboard(text: string | null, key: string) {
@@ -65,6 +55,8 @@ async function copyToClipboard(text: string | null, key: string) {
     setTimeout(() => { copied.value[key] = false }, 2000)
   } catch { /* sin soporte */ }
 }
+
+const copied = ref<Record<string, boolean>>({})
 
 function openWhatsApp() {
   const number = configStore.branding.whatsappNumber
@@ -104,21 +96,17 @@ function loadMpSdk(): Promise<void> {
   })
 }
 
-async function openCardBrick() {
-  if (!order.value) return
+async function mountBrick(publicKey: string) {
   brickLoading.value = true
   brickError.value = ''
   try {
-    const result = await initiateCheckout(order.value.id)
-    if (result.type !== 'preference') return
-    const { publicKey } = result
     brickVisible.value = true
     await nextTick()
     await loadMpSdk()
     const mp = new (window as any).MercadoPago(publicKey, { locale: 'es-AR' })
     const bricksBuilder = mp.bricks()
     await bricksBuilder.create('cardPayment', 'mp-brick-detail', {
-      initialization: { amount: order.value.totalAmount },
+      initialization: { amount: order.value!.totalAmount },
       customization: {
         paymentMethods: { types: { excluded: ['credit_card'] }, maxInstallments: 1 },
       },
@@ -154,6 +142,11 @@ async function openCardBrick() {
     brickLoading.value = false
   }
 }
+
+// Montar brick cuando el store recibe la publicKey
+watch(() => paymentsStore.checkoutPublicKey, async (newKey) => {
+  if (newKey) await mountBrick(newKey)
+})
 </script>
 
 <template>
@@ -234,7 +227,20 @@ async function openCardBrick() {
                   </template>
                 </td>
                 <td class="px-5 py-3 text-right text-gray-700">{{ item.quantity }}</td>
-                <td class="px-5 py-3 text-right text-gray-700">${{ Number(item.unitPrice).toLocaleString('es-AR') }}</td>
+                <td class="px-5 py-3 text-right text-gray-700">
+                  <template v-if="item.discountPct > 0 && item.originalUnitPrice">
+                    <span class="line-through text-gray-400 text-xs mr-1">
+                      ${{ Number(item.originalUnitPrice).toLocaleString('es-AR') }}
+                    </span>
+                    <span class="text-green-700 font-semibold">${{ Number(item.unitPrice).toLocaleString('es-AR') }}</span>
+                    <span class="ml-1 inline-block rounded-full bg-green-50 border border-green-200 text-green-700 text-xs font-semibold px-1.5 py-0.5">
+                      -{{ item.discountPct }}%
+                    </span>
+                  </template>
+                  <template v-else>
+                    ${{ Number(item.unitPrice).toLocaleString('es-AR') }}
+                  </template>
+                </td>
                 <td class="px-5 py-3 text-right font-semibold text-gray-900">
                   ${{ (item.quantity * Number(item.unitPrice)).toLocaleString('es-AR') }}
                 </td>
@@ -244,54 +250,56 @@ async function openCardBrick() {
         </div>
 
         <!-- Total y CTA -->
-        <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5 flex items-center justify-between gap-4">
-          <div>
-            <p class="text-xs text-gray-400 uppercase tracking-wide font-semibold mb-0.5">Total del pedido</p>
-            <p class="text-2xl font-bold text-gray-900">${{ order.totalAmount?.toLocaleString('es-AR') ?? '—' }}</p>
+        <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+          <div class="flex items-center justify-between gap-4 mb-4">
+            <div>
+              <p class="text-xs text-gray-400 uppercase tracking-wide font-semibold mb-0.5">Total del pedido</p>
+              <p class="text-2xl font-bold text-gray-900">${{ order.totalAmount?.toLocaleString('es-AR') ?? '—' }}</p>
+            </div>
+
+            <template v-if="order.status === 'pending' && order.totalAmount > 0">
+              <!-- Selector de medios de pago -->
+              <template v-if="paymentsStore.pendingSelection">
+                <!-- placeholder: el selector se renderiza abajo -->
+              </template>
+              <!-- Botón de pago unificado -->
+              <template v-else-if="!bankDetails && !paymentsStore.checkoutPublicKey && !brickVisible">
+                <button
+                  :disabled="paymentsStore.loading"
+                  @click="startPayment"
+                  class="inline-flex items-center gap-2 rounded-xl bg-[#009EE3] text-white px-5 py-2.5 text-sm font-semibold hover:opacity-90 transition-opacity shadow disabled:opacity-50 disabled:pointer-events-none"
+                >
+                  <svg v-if="paymentsStore.loading" class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                  </svg>
+                  <span>{{ paymentsStore.loading ? 'Procesando…' : 'Pagar' }}</span>
+                </button>
+              </template>
+              <!-- Botón cancelar brick -->
+              <template v-else-if="brickVisible">
+                <button
+                  @click="brickVisible = false; brickError = ''; paymentsStore.resetCheckoutState()"
+                  class="text-sm text-gray-400 hover:text-gray-600"
+                >Cancelar</button>
+              </template>
+            </template>
           </div>
 
-          <template v-if="order.status === 'pending' && order.totalAmount > 0">
-            <!-- Transferencia bancaria: cargando datos -->
-            <template v-if="configStore.config.paymentGateway === 'bank_transfer'">
-              <div v-if="bankTransferLoading" class="flex items-center gap-2 text-sm text-indigo-600">
-                <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-                </svg>
-                Cargando datos bancarios…
-              </div>
-            </template>
-            <!-- Checkout Pro -->
-            <template v-else-if="configStore.config.paymentGateway !== 'checkout_api'">
-              <button
-                :disabled="paymentsStore.loading"
-                @click="paymentsStore.startCheckout(order.id)"
-                class="inline-flex items-center gap-2 rounded-xl bg-[#009EE3] text-white px-5 py-2.5 text-sm font-semibold hover:opacity-90 transition-opacity shadow disabled:opacity-50 disabled:pointer-events-none"
-              >
-                <svg v-if="paymentsStore.loading" class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-                </svg>
-                <span>{{ paymentsStore.loading ? 'Redirigiendo…' : 'Pagar con Mercado Pago' }}</span>
-              </button>
-            </template>
-            <!-- Checkout API -->
-            <template v-else>
-              <button
-                v-if="!brickVisible"
-                :disabled="brickLoading"
-                @click="openCardBrick"
-                class="inline-flex items-center gap-2 rounded-xl bg-[#009EE3] text-white px-5 py-2.5 text-sm font-semibold hover:opacity-90 transition-opacity shadow disabled:opacity-50 disabled:pointer-events-none"
-              >
-                <svg v-if="brickLoading" class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-                </svg>
-                <span>{{ brickLoading ? 'Preparando…' : 'Pagar con tarjeta' }}</span>
-              </button>
-            </template>
-          </template>
+          <!-- Selector de medios de pago (múltiples gateways) -->
+          <div v-if="order.status === 'pending' && paymentsStore.pendingSelection" class="border-t border-gray-100 pt-4">
+            <PaymentMethodSelector
+              :gateways="paymentsStore.availableGateways"
+              :loading="paymentsStore.loading"
+              @gateway-selected="onGatewaySelected"
+            />
+          </div>
         </div>
+
+        <!-- Error de pago -->
+        <p v-if="paymentsStore.error" class="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mt-4">
+          {{ paymentsStore.error }}
+        </p>
 
         <!-- Datos de transferencia bancaria -->
         <div v-if="bankDetails" class="rounded-xl border border-indigo-200 bg-indigo-50 p-4 space-y-2 mt-4">
@@ -350,18 +358,20 @@ async function openCardBrick() {
 
         <!-- CardPaymentBrick (checkout_api) -->
         <div v-if="brickVisible" class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 mt-4">
+          <div v-if="brickLoading" class="flex items-center gap-2 text-sm text-gray-500 py-4 justify-center">
+            <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+            </svg>
+            Preparando formulario…
+          </div>
           <div id="mp-brick-detail"></div>
           <p v-if="brickError" class="text-xs text-red-500 mt-2">{{ brickError }}</p>
           <button
-            @click="brickVisible = false; brickError = ''"
+            @click="brickVisible = false; brickError = ''; paymentsStore.resetCheckoutState()"
             class="text-xs text-gray-400 hover:text-gray-600 mt-2"
           >Cancelar</button>
         </div>
-
-        <!-- Error de pago (checkout pro) -->
-        <p v-if="paymentsStore.error" class="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mt-4">
-          {{ paymentsStore.error }}
-        </p>
       </div>
     </div>
   </AppLayout>

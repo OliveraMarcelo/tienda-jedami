@@ -19,4 +19,6 @@ export interface OrderItem {
   product_id: number | null;
   quantity: number;
   unit_price: string;
+  discount_pct: string;
+  original_unit_price: string | null;
 }

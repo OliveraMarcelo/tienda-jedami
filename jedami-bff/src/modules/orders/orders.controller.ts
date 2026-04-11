@@ -47,7 +47,7 @@ export async function addItems(req: Request, res: Response, next: NextFunction):
     const user = req.user as JwtUserPayload;
     const orderId = parseOrderId(req.params.orderId);
     const result = await ordersService.addItems(orderId, req.body, user.id);
-    res.status(200).json({ data: result });
+    res.status(201).json({ data: result });
   } catch (err) {
     next(err);
   }

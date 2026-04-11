@@ -4,6 +4,7 @@ import { cacheDel } from '../../config/redis.js';
 import * as ordersRepository from './orders.repository.js';
 import * as customersRepository from '../customers/customers.repository.js';
 import * as productsRepository from '../products/products.repository.js';
+import * as discountsService from '../discounts/discounts.service.js';
 import { PRICE_MODES, PURCHASE_TYPES } from '../../lib/constants.js';
 import { WholesalePurchaseType } from './orders.entity.js';
 
@@ -243,13 +244,23 @@ export async function addCurvaItems(orderId: number, productId: number, curves: 
     const items: { id: number; sizeId: number; size: string; quantity: number; unitPrice: number }[] = [];
     let itemsTotal = 0;
 
+    // Aplicar descuento por curva si corresponde
+    const wholesalePriceForDiscount = sizesRes.rows[0]?.wholesale_price != null
+      ? Number(sizesRes.rows[0].wholesale_price)
+      : Number(sizesRes.rows[0]?.retail_price ?? 0);
+    const curvaDiscount = await discountsService.applyCurvaDiscount(productId, curves, wholesalePriceForDiscount);
+
     // 1 ítem por talle — sin variante asignada, sin deducción de stock.
     // El admin asigna el color y deduce stock al despachar el pedido pagado.
     for (const size of sizesRes.rows) {
-      const unitPrice = size.wholesale_price != null ? Number(size.wholesale_price) : Number(size.retail_price);
+      const basePrice = size.wholesale_price != null ? Number(size.wholesale_price) : Number(size.retail_price);
+      const unitPrice = curvaDiscount ? curvaDiscount.finalPrice : basePrice;
+      const discountPct = curvaDiscount ? curvaDiscount.discountPct : 0;
+      const originalUnitPrice = curvaDiscount ? basePrice : null;
+
       const res = await client.query(
-        'INSERT INTO order_items (order_id, product_id, size_id, quantity, unit_price) VALUES ($1, $2, $3, $4, $5) RETURNING id, size_id, quantity, unit_price',
-        [orderId, productId, size.size_id, curves, unitPrice],
+        'INSERT INTO order_items (order_id, product_id, size_id, quantity, unit_price, discount_pct, original_unit_price) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, size_id, quantity, unit_price, discount_pct, original_unit_price',
+        [orderId, productId, size.size_id, curves, unitPrice, discountPct, originalUnitPrice],
       );
       const item = res.rows[0];
       items.push({ id: item.id, sizeId: item.size_id, size: size.size_label, quantity: item.quantity, unitPrice: Number(item.unit_price) });
@@ -295,6 +306,11 @@ export async function addCantidadItems(orderId: number, productId: number, quant
     throw new AppError(404, 'Producto no encontrado', 'https://jedami.com/errors/product-not-found', `No existe producto con id ${productId}`);
   }
 
+  // Validar mínimo de compra
+  if (product.min_quantity_purchase && quantity < product.min_quantity_purchase) {
+    throw new AppError(422, `Cantidad mínima de compra: ${product.min_quantity_purchase} unidades`, 'https://jedami.com/errors/min-quantity', `La cantidad mínima de compra para este producto es ${product.min_quantity_purchase} unidades`);
+  }
+
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -325,11 +341,18 @@ export async function addCantidadItems(orderId: number, productId: number, quant
 
     // Precio real basado en las deducciones concretas (no promedio ponderado)
     const totalAddition = deductions.reduce((sum, d) => sum + d.amount * d.unitPrice, 0);
-    const unitPrice = quantity > 0 ? totalAddition / quantity : 0;
+    const baseUnitPrice = quantity > 0 ? totalAddition / quantity : 0;
+
+    // Aplicar descuento por cantidad si corresponde
+    const quantityDiscount = await discountsService.applyQuantityDiscount(productId, quantity, baseUnitPrice);
+    const unitPrice = quantityDiscount ? quantityDiscount.finalPrice : baseUnitPrice;
+    const discountPct = quantityDiscount ? quantityDiscount.discountPct : 0;
+    const originalUnitPrice = quantityDiscount ? baseUnitPrice : null;
+    const totalWithDiscount = quantity * unitPrice;
 
     const res = await client.query(
-      'INSERT INTO order_items (order_id, product_id, quantity, unit_price) VALUES ($1, $2, $3, $4) RETURNING id, product_id, quantity, unit_price',
-      [orderId, productId, quantity, unitPrice],
+      'INSERT INTO order_items (order_id, product_id, quantity, unit_price, discount_pct, original_unit_price) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, product_id, quantity, unit_price, discount_pct, original_unit_price',
+      [orderId, productId, quantity, unitPrice, discountPct, originalUnitPrice],
     );
     const item = res.rows[0];
 
@@ -347,7 +370,7 @@ export async function addCantidadItems(orderId: number, productId: number, quant
 
     const updatedOrderRes = await client.query(
       'UPDATE orders SET total_amount = total_amount + $1 WHERE id = $2 RETURNING total_amount',
-      [totalAddition, orderId],
+      [totalWithDiscount, orderId],
     );
 
     await client.query('COMMIT');
@@ -360,6 +383,8 @@ export async function addCantidadItems(orderId: number, productId: number, quant
         productId: item.product_id,
         quantity: item.quantity,
         unitPrice: Number(item.unit_price),
+        discountPct: Number(item.discount_pct),
+        originalUnitPrice: item.original_unit_price ? Number(item.original_unit_price) : null,
       }],
       totalAmount: Number(updatedOrderRes.rows[0].total_amount),
     };
@@ -494,6 +519,8 @@ export async function getOrderById(orderId: number, userId: number) {
       color: i.variant_color ?? null,
       quantity: i.quantity,
       unitPrice: Number(i.unit_price),
+      discountPct: Number(i.discount_pct ?? 0),
+      originalUnitPrice: i.original_unit_price ? Number(i.original_unit_price) : null,
     })),
   };
 }

@@ -6,12 +6,15 @@ import AnnouncementSidebar from '@/components/features/catalog/AnnouncementSideb
 import VariantSelector from '@/components/features/catalog/VariantSelector.vue'
 import CurvaCalculator from '@/components/features/catalog/CurvaCalculator.vue'
 import SoftRegistrationGate from '@/components/features/catalog/SoftRegistrationGate.vue'
+import DiscountRulesTable from '@/components/features/catalog/DiscountRulesTable.vue'
 import { useProductsStore } from '@/stores/products.store'
 import { useAuthStore } from '@/stores/auth.store'
 import { useOrdersStore } from '@/stores/orders.store'
 import { useConfigStore } from '@/stores/config.store'
 import { useRouter } from 'vue-router'
 import { MODES, PURCHASE_TYPES } from '@/lib/constants'
+import { getPublicDiscountRules } from '@/api/discounts.api'
+import type { QuantityDiscountRule, CurvaDiscountRule } from '@/types/api'
 
 const route = useRoute()
 const router = useRouter()
@@ -41,6 +44,31 @@ const orderError = ref('')
 const toastMessage = ref('')
 let toastTimer: ReturnType<typeof setTimeout> | null = null
 
+// Escalones de descuento
+const quantityRules = ref<QuantityDiscountRule[]>([])
+const curvaRules = ref<CurvaDiscountRule[]>([])
+const minQuantityPurchase = ref<number | null>(null)
+
+// Hint dinámico: escalón que se activaría con la cantidad actual
+const activeQuantityHint = computed(() => {
+  if (!quantityRules.value.length) return null
+  const qty = cantidadInput.value
+  // Tomar el escalón de mayor min_quantity que sea <= qty
+  const applicable = quantityRules.value
+    .filter(r => r.min_quantity <= qty)
+    .sort((a, b) => b.min_quantity - a.min_quantity)[0]
+  return applicable ?? null
+})
+
+// Próximo escalón que aún no se alcanzó
+const nextQuantityHint = computed(() => {
+  if (!quantityRules.value.length) return null
+  const qty = cantidadInput.value
+  return quantityRules.value
+    .filter(r => r.min_quantity > qty)
+    .sort((a, b) => a.min_quantity - b.min_quantity)[0] ?? null
+})
+
 // Retail
 const showGate = ref(false)
 const retailQuantity = ref(1)
@@ -55,10 +83,20 @@ function showToast(msg: string) {
 
 onMounted(async () => {
   try {
-    await productsStore.loadProduct(Number(route.params.id))
+    const productId = Number(route.params.id)
+    await productsStore.loadProduct(productId)
     const variants = productsStore.currentProduct?.variants ?? []
     if (variants.length && variants[0]) {
       selectedColor.value = variants[0].color
+    }
+    // Cargar escalones de descuento — independiente del producto
+    try {
+      const rules = await getPublicDiscountRules(productId)
+      quantityRules.value = rules.quantityRules
+      curvaRules.value = rules.curvaRules
+      minQuantityPurchase.value = rules.minQuantityPurchase ?? null
+    } catch {
+      // Si fallan los escalones el producto sigue visible
     }
   } catch {
     notFound.value = true
@@ -292,15 +330,28 @@ async function handleCantidadConfirm() {
             </div>
 
             <!-- Tab: Curva -->
-            <CurvaCalculator
-              v-if="wholesaleTab === 'curva'"
-              :product="product"
-              @confirm="handleCurvaConfirm"
-            />
+            <template v-if="wholesaleTab === 'curva'">
+              <CurvaCalculator
+                :product="product"
+                @confirm="handleCurvaConfirm"
+              />
+              <!-- Escalones de curva -->
+              <DiscountRulesTable
+                :quantity-rules="[]"
+                :curva-rules="curvaRules"
+              />
+            </template>
 
             <!-- Tab: Cantidad -->
             <div v-else-if="wholesaleTab === 'cantidad'" class="space-y-4">
               <p class="text-sm text-gray-500">Las unidades se distribuirán automáticamente entre las variantes disponibles.</p>
+
+              <!-- Escalones de descuento por cantidad -->
+              <DiscountRulesTable
+                :quantity-rules="quantityRules"
+                :curva-rules="[]"
+                :min-quantity-purchase="minQuantityPurchase"
+              />
 
               <div class="flex items-center gap-3">
                 <label class="text-sm font-semibold text-gray-700">Cantidad total</label>
@@ -318,6 +369,20 @@ async function handleCantidadConfirm() {
                   >+</button>
                 </div>
               </div>
+
+              <!-- Hint dinámico -->
+              <p
+                v-if="activeQuantityHint"
+                class="text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2 font-semibold"
+              >
+                ✓ Con {{ cantidadInput }} uds. obtenés {{ activeQuantityHint.discount_pct }}% off
+              </p>
+              <p
+                v-else-if="nextQuantityHint"
+                class="text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2"
+              >
+                Con {{ nextQuantityHint.min_quantity }} uds. obtenés {{ nextQuantityHint.discount_pct }}% off
+              </p>
 
               <button
                 :disabled="!cantidadInput || cantidadInput <= 0 || ordersStore.loading"

@@ -4,6 +4,7 @@ import AppLayout from '@/layouts/AppLayout.vue'
 import ProductFormDialog from '@/components/features/admin/ProductFormDialog.vue'
 import VariantFormDialog from '@/components/features/admin/VariantFormDialog.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
+import AdminProductDiscounts from '@/components/features/admin/AdminProductDiscounts.vue'
 import { useAdminProductsStore } from '@/stores/admin.products.store'
 import { useProductsStore } from '@/stores/products.store'
 import type { Product } from '@/types/api'
@@ -18,7 +19,25 @@ const variantProductId = ref<number>(0)
 const actionError = ref<string | null>(null)
 
 const expandedProducts = ref<Set<number>>(new Set())
+const expandedDiscounts = ref<Set<number>>(new Set())
 const editMap = reactive<Map<number, { stock: number }>>(new Map())
+
+// Toast
+const toastMessage = ref('')
+let toastTimer: ReturnType<typeof setTimeout> | null = null
+function showToast(msg: string) {
+  toastMessage.value = msg
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => { toastMessage.value = '' }, 3000)
+}
+
+function toggleDiscounts(productId: number) {
+  if (expandedDiscounts.value.has(productId)) {
+    expandedDiscounts.value.delete(productId)
+  } else {
+    expandedDiscounts.value.add(productId)
+  }
+}
 
 // Confirm dialog
 const confirmOpen = ref(false)
@@ -129,6 +148,24 @@ async function handleDeleteVariant(productId: number, variantId: number, label: 
   })
 }
 
+const creatingCell = reactive<Set<string>>(new Set())
+
+async function handleAddVariantFromCell(productId: number, sizeId: number, colorId: number) {
+  const key = `${productId}-${sizeId}-${colorId}`
+  if (creatingCell.has(key)) return
+  creatingCell.add(key)
+  actionError.value = null
+  try {
+    const newVariant = await adminStore.createVariant(productId, { sizeId, colorId, initialStock: 0 })
+    editMap.set(newVariant.id, { stock: 0 })
+  } catch (err: unknown) {
+    const e = err as { response?: { data?: { detail?: string } } }
+    actionError.value = e.response?.data?.detail ?? 'Error al agregar la variante.'
+  } finally {
+    creatingCell.delete(key)
+  }
+}
+
 async function handleSaveVariantStock(productId: number, variantId: number) {
   const entry = editMap.get(variantId)
   if (!entry) return
@@ -154,14 +191,16 @@ async function handleProductSaved(data: { name: string; description: string; cat
         retailPrice: data.retailPrice,
         wholesalePrice: data.wholesalePrice,
       })
+      showProductDialog.value = false
     } else {
       const newProduct = await adminStore.createProduct(data.name, data.description || undefined, data.categoryId)
       await adminStore.updateProductPrices(newProduct.id, {
         retailPrice: data.retailPrice,
         wholesalePrice: data.wholesalePrice,
       })
+      // El diálogo se queda abierto — pasar a modo edición para que el usuario pueda subir fotos
+      editingProduct.value = adminStore.products.find(p => p.id === newProduct.id)
     }
-    showProductDialog.value = false
   } catch (err: unknown) {
     const e = err as { response?: { data?: { detail?: string } } }
     actionError.value = e.response?.data?.detail ?? 'Error al guardar el producto.'
@@ -183,6 +222,14 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
 
 <template>
   <AppLayout>
+    <!-- Toast -->
+    <div
+      v-if="toastMessage"
+      class="fixed bottom-6 right-6 z-50 bg-green-50 border border-green-200 text-green-900 rounded-xl px-4 py-3 shadow-lg text-sm font-semibold flex items-center gap-2"
+    >
+      <span class="text-green-600">✓</span> {{ toastMessage }}
+    </div>
+
     <div class="flex items-center justify-between mb-6">
       <h1 class="text-2xl font-bold text-gray-900">Productos</h1>
       <button
@@ -271,6 +318,12 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
                   >
                     {{ expandedProducts.has(product.id) ? '▲' : '▶' }} Variantes ({{ product.variants.length }})
                   </button>
+                  <button
+                    @click="toggleDiscounts(product.id)"
+                    class="px-3 py-1 rounded-lg border border-green-300 text-xs font-medium text-green-700 hover:bg-green-50 transition-colors"
+                  >
+                    {{ expandedDiscounts.has(product.id) ? '▲' : '▶' }} Descuentos
+                  </button>
                   <span
                     v-if="hasActiveStock(product)"
                     class="px-3 py-1 rounded-lg border border-gray-200 text-xs font-medium text-gray-400 cursor-not-allowed"
@@ -344,7 +397,15 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
                                 title="Eliminar variante"
                               >×</button>
                             </div>
-                            <span v-else class="text-gray-300">—</span>
+                            <button
+                              v-else
+                              @click="handleAddVariantFromCell(product.id, size.id, color.id)"
+                              :disabled="creatingCell.has(`${product.id}-${size.id}-${color.id}`)"
+                              class="w-14 h-6 rounded border border-dashed border-gray-300 text-gray-400 text-xs hover:border-[#E91E8C] hover:text-[#E91E8C] transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                              title="Agregar esta combinación con stock 0"
+                            >
+                              {{ creatingCell.has(`${product.id}-${size.id}-${color.id}`) ? '…' : '+' }}
+                            </button>
                           </td>
                         </tr>
                       </tbody>
@@ -370,6 +431,22 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
                     >
                       Guardar cambios
                     </button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            <!-- Panel de descuentos (expandido) -->
+            <tr v-if="expandedDiscounts.has(product.id)" class="bg-green-50/40">
+              <td colspan="7" class="px-6 py-3">
+                <div class="rounded-xl border border-green-100 bg-white overflow-hidden">
+                  <div class="px-4 py-2 bg-green-50 border-b border-green-100">
+                    <p class="text-xs font-semibold text-green-800">Descuentos por volumen — {{ product.name }}</p>
+                  </div>
+                  <div class="px-4">
+                    <AdminProductDiscounts
+                      :product-id="product.id"
+                      @toast="showToast"
+                    />
                   </div>
                 </div>
               </td>

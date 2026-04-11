@@ -13,6 +13,8 @@ export const FIND_ORDER_ITEMS = `
     oi.size_id,
     oi.quantity,
     oi.unit_price,
+    oi.discount_pct,
+    oi.original_unit_price,
     COALESCE(sz_v.label, sz_i.label) AS variant_size,
     cl.name                          AS variant_color
   FROM order_items oi
