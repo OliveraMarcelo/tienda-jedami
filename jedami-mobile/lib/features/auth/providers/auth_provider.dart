@@ -35,7 +35,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final token = _prefs.getString(kAuthTokenKey);
     if (token == null) return;
 
-    // Validar expiración del JWT antes de restaurar la sesión
+    // Validar expiración Y rol admin del JWT antes de restaurar la sesión
     try {
       final parts = token.split('.');
       if (parts.length != 3) {
@@ -48,6 +48,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final exp = payload['exp'] as int?;
       if (exp == null ||
           DateTime.fromMillisecondsSinceEpoch(exp * 1000).isBefore(DateTime.now())) {
+        _prefs.remove(kAuthTokenKey);
+        _prefs.remove(_kRefreshTokenKey);
+        return;
+      }
+      final roles = (payload['roles'] as List<dynamic>?)?.cast<String>() ?? [];
+      if (!roles.contains('admin')) {
         _prefs.remove(kAuthTokenKey);
         _prefs.remove(_kRefreshTokenKey);
         return;
@@ -72,6 +78,28 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
     await _prefs.setString(kAuthTokenKey, token);
     if (refreshToken != null) await _prefs.setString(_kRefreshTokenKey, refreshToken);
+
+    // Validar que el usuario tenga rol admin antes de confirmar la sesión
+    try {
+      final parts = token.split('.');
+      if (parts.length == 3) {
+        final normalized = base64Url.normalize(parts[1]);
+        final payload = jsonDecode(
+          utf8.decode(base64Url.decode(normalized)),
+        ) as Map<String, dynamic>;
+        final roles = (payload['roles'] as List<dynamic>?)?.cast<String>() ?? [];
+        if (!roles.contains('admin')) {
+          await _prefs.remove(kAuthTokenKey);
+          if (refreshToken != null) await _prefs.remove(_kRefreshTokenKey);
+          throw Exception('Acceso restringido a administradores');
+        }
+      }
+    } on Exception {
+      rethrow;
+    } catch (_) {
+      // Error parseando JWT — el servidor ya validó, continuar
+    }
+
     state = AuthState(token: token, isAuthenticated: true);
   }
 

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'core/platform.dart';
 import 'features/auth/providers/auth_provider.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/products/screens/products_screen.dart';
+import 'features/stock/screens/stock_management_screen.dart';
 
 // Listenable que GoRouter usa para re-evaluar el redirect cuando cambia auth
 class _AuthRouterNotifier extends ChangeNotifier {
@@ -48,7 +50,7 @@ class _JedamiAppState extends ConsumerState<JedamiApp> {
         final isLogin = state.matchedLocation == '/login';
 
         if (!isAuth && !isLogin) return '/login';
-        if (isAuth && isLogin) return '/admin/productos';
+        if (isAuth && isLogin) return isDesktop ? '/desktop/stock' : '/admin/productos';
         return null;
       },
       routes: [
@@ -59,6 +61,10 @@ class _JedamiAppState extends ConsumerState<JedamiApp> {
         GoRoute(
           path: '/admin/productos',
           builder: (context, state) => const ProductsScreen(),
+        ),
+        GoRoute(
+          path: '/desktop/stock',
+          builder: (context, state) => const StockManagementScreen(),
         ),
       ],
     );

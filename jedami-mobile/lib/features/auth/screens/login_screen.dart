@@ -42,9 +42,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       setState(() {
         _serverError = detail ?? 'Error inesperado. Intente nuevamente.';
       });
-    } catch (_) {
+    } catch (e) {
       setState(() {
-        _serverError = 'Error inesperado. Intente nuevamente.';
+        if (e is Exception) {
+          final msg = e.toString();
+          _serverError = msg.startsWith('Exception: ')
+              ? msg.substring('Exception: '.length)
+              : msg;
+        } else {
+          _serverError = 'Error inesperado. Intente nuevamente.';
+        }
       });
     } finally {
       if (mounted) setState(() => _loading = false);

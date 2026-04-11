@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { pool } from '../../config/database.js';
 import { cacheGet, cacheSet } from '../../config/redis.js';
 import { AppError } from '../../types/app-error.js';
+import { JwtUserPayload } from '../auth/jwt-payload.js';
 import { DASHBOARD_QUERY, RECENT_ORDERS_QUERY } from './queries/dashboard.js';
 import { ADMIN_PAYMENTS_QUERY, ADMIN_PAYMENTS_COUNT_QUERY } from './queries/payments.js';
 import { ADMIN_USERS_QUERY, ADMIN_USERS_COUNT_QUERY } from './queries/users.js';
@@ -345,4 +346,51 @@ export async function getAdminUsers(req: Request, res: Response) {
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     },
   });
+}
+
+// ─── Stock adjustment ─────────────────────────────────────────────────────────
+
+export async function updateVariantStock(req: Request, res: Response): Promise<void> {
+  const productId = parseInt(req.params.productId, 10);
+  const variantId = parseInt(req.params.variantId, 10);
+  const quantity  = parseInt(req.body.quantity,   10);
+  const user      = req.user as JwtUserPayload;
+
+  if (isNaN(productId) || isNaN(variantId)) throw new AppError(400, 'IDs inválidos', 'https://jedami.com/errors/validation', 'productId y variantId deben ser enteros positivos');
+  if (isNaN(quantity) || quantity < 0)      throw new AppError(400, 'quantity inválido', 'https://jedami.com/errors/validation', 'quantity debe ser un entero >= 0');
+
+  // Verificar que la variante pertenece al producto
+  const check = await pool.query(
+    'SELECT v.id FROM variants v WHERE v.id = $1 AND v.product_id = $2',
+    [variantId, productId],
+  );
+  if (check.rows.length === 0) throw new AppError(404, 'Variante no encontrada', 'https://jedami.com/errors/not-found', 'La variante no existe en este producto');
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const oldResult = await client.query(
+      'SELECT quantity FROM stock WHERE variant_id = $1',
+      [variantId],
+    );
+    const oldQuantity: number = oldResult.rows[0]?.quantity ?? 0;
+
+    await client.query(
+      'UPDATE stock SET quantity = $1 WHERE variant_id = $2',
+      [quantity, variantId],
+    );
+    await client.query(
+      'INSERT INTO stock_adjustments (variant_id, user_id, old_quantity, new_quantity) VALUES ($1, $2, $3, $4)',
+      [variantId, user.id, oldQuantity, quantity],
+    );
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+
+  res.status(200).json({ data: { variantId, newQuantity: quantity } });
 }
