@@ -1,6 +1,6 @@
 # Story 8.1: Flutter Desktop — Setup y Login
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -33,22 +33,22 @@ para gestionar el stock de manera segura.
 
 ## Tasks / Subtasks
 
-- [ ] Verificar y configurar soporte Desktop en `jedami-mobile` (AC: 1)
-  - [ ] Confirmar que `linux/` folder existe (YA EXISTE — verificado)
-  - [ ] Agregar `window_size` o `window_manager` package para dimensiones mínimas de ventana
-  - [ ] Configurar `CMakeLists.txt` si es necesario para el package elegido
-- [ ] Detectar plataforma en `app.dart` para enrutar a layout correcto (AC: 4)
-  - [ ] Importar `import 'package:flutter/foundation.dart'` y usar `defaultTargetPlatform`
-  - [ ] O usar `kIsWeb` + `Platform.isLinux` / `Platform.isMacOS`
-  - [ ] Constante `bool get isDesktop => !kIsWeb && (Platform.isLinux || Platform.isMacOS || Platform.isWindows)`
-- [ ] Agregar validación de rol admin en `AuthNotifier.login()` (AC: 3)
-  - [ ] Parsear payload JWT para verificar roles
-  - [ ] Si el token no tiene rol `admin`, hacer logout inmediato y lanzar excepción con mensaje descriptivo
-- [ ] Agregar route `/desktop/stock` en `app.dart` que redirige al `StockManagementScreen` (AC: 2, 4)
-  - [ ] En redirect de GoRouter: si `isDesktop && isAuth` → `/desktop/stock`; si `!isDesktop && isAuth` → `/admin/productos`
-- [ ] Crear `lib/features/stock/screens/stock_management_screen.dart` como placeholder (AC: 2, 4)
-  - [ ] Solo scaffold con AppBar "Gestión de Stock" y mensaje "Próximamente" (la implementación real es Story 8.2)
-- [ ] Actualizar `LoginScreen` para manejar el nuevo error de "no es admin" (AC: 3)
+- [x] Verificar y configurar soporte Desktop en `jedami-mobile` (AC: 1)
+  - [x] Confirmar que `linux/` folder existe (YA EXISTE — verificado)
+  - [x] Agregar `window_size` o `window_manager` package para dimensiones mínimas de ventana
+  - [x] Configurar `CMakeLists.txt` si es necesario para el package elegido
+- [x] Detectar plataforma en `app.dart` para enrutar a layout correcto (AC: 4)
+  - [x] Importar `import 'package:flutter/foundation.dart'` y usar `defaultTargetPlatform`
+  - [x] O usar `kIsWeb` + `Platform.isLinux` / `Platform.isMacOS`
+  - [x] Constante `bool get isDesktop => !kIsWeb && (Platform.isLinux || Platform.isMacOS || Platform.isWindows)`
+- [x] Agregar validación de rol admin en `AuthNotifier.login()` (AC: 3)
+  - [x] Parsear payload JWT para verificar roles
+  - [x] Si el token no tiene rol `admin`, hacer logout inmediato y lanzar excepción con mensaje descriptivo
+- [x] Agregar route `/desktop/stock` en `app.dart` que redirige al `StockManagementScreen` (AC: 2, 4)
+  - [x] En redirect de GoRouter: si `isDesktop && isAuth` → `/desktop/stock`; si `!isDesktop && isAuth` → `/admin/productos`
+- [x] Crear `lib/features/stock/screens/stock_management_screen.dart` como placeholder (AC: 2, 4)
+  - [x] Solo scaffold con AppBar "Gestión de Stock" y mensaje "Próximamente" (la implementación real es Story 8.2)
+- [x] Actualizar `LoginScreen` para manejar el nuevo error de "no es admin" (AC: 3)
 
 ## Dev Notes
 
@@ -135,9 +135,28 @@ jedami-mobile/lib/features/stock/
 ## Dev Agent Record
 
 ### Agent Model Used
+claude-sonnet-4-6
 
 ### Debug Log References
+Sin incidencias. `flutter analyze` sin issues. 6/6 tests unitarios pasando.
 
 ### Completion Notes List
+- `linux/` folder ya existía — soporte Desktop confirmado sin cambios a CMakeLists.txt
+- `window_manager 0.4.3` instalado; inicializado en `main.dart` con `setMinimumSize(900, 600)` condicionado a `isDesktop`
+- `lib/core/platform.dart` nuevo: getter `isDesktop` con guard `!kIsWeb`
+- `AuthNotifier.login()` ahora parsea el JWT y verifica `roles.contains('admin')` antes de confirmar la sesión. Si no tiene rol, limpia token y lanza `Exception('Acceso restringido a administradores')`
+- `AuthNotifier._restoreToken()` también valida el rol admin (fix code review — consistencia con login())
+- `LoginScreen` actualiza el `catch` genérico para mostrar el mensaje de la excepción en lugar del mensaje genérico
+- GoRouter redirect actualizado: `isDesktop ? '/desktop/stock' : '/admin/productos'`
+- 7 tests unitarios en `test/features/auth/auth_notifier_test.dart` (+ test restore con token no-admin añadido en code review)
 
 ### File List
+- `jedami-mobile/pubspec.yaml` (modificado — window_manager ^0.4.0)
+- `jedami-mobile/lib/core/platform.dart` (nuevo — getter isDesktop)
+- `jedami-mobile/lib/features/auth/providers/auth_provider.dart` (modificado — validación rol admin en login + restore)
+- `jedami-mobile/lib/features/auth/screens/login_screen.dart` (modificado — catch muestra mensaje de excepción)
+- `jedami-mobile/lib/features/stock/screens/stock_management_screen.dart` (nuevo)
+- `jedami-mobile/lib/app.dart` (modificado — route /desktop/stock + redirect desktop)
+- `jedami-mobile/lib/main.dart` (modificado — window_manager init)
+- `jedami-mobile/test/widget_test.dart` (modificado — reemplazado stale template)
+- `jedami-mobile/test/features/auth/auth_notifier_test.dart` (modificado — 7 tests unitarios, test frágil corregido)

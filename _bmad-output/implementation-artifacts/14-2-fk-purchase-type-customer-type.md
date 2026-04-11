@@ -44,7 +44,7 @@ para que agregar un nuevo tipo en la tabla de configuración lo habilite automá
   WHERE customer_type NOT IN (SELECT code FROM customer_types);
   ```
 
-- [ ] **Migration `0XX_fk_purchase_customer_types.sql`**:
+- [ ] **Migration `051_fk_purchase_customer_types.sql`** (después de migraciones Epic 12 044-047 y Epic 14 048-050):
   ```sql
   -- Eliminar CHECK constraints hardcodeadas
   ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_purchase_type_check;

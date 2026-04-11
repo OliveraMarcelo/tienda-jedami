@@ -24,3 +24,14 @@
 
 
 
+----
+eliminar producto bug
+{
+    "type": "https://jedami.com/errors/500",
+    "title": "Error interno del servidor",
+    "status": 500,
+    "detail": "update or delete on table \"products\" violates foreign key constraint \"order_items_product_id_fkey\" on table \"order_items\""
+}
+me gustaria que cuando nuevo producto que se pueda guardar las fotos.
+
+no puedo editar algunas variantes por ejemplo remera bebe de algodon 0-3, blanco me aparece - , y deberia aparecer 0 al menos para que pueda editar el stock

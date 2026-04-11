@@ -113,7 +113,7 @@ El media-service centraliza todo esto: recibe archivos, los guarda, los sirve, y
 
 - [ ] `jedami-media/Dockerfile`:
   ```dockerfile
-  FROM node:20-alpine
+  FROM node:24-alpine
   WORKDIR /app
   COPY package*.json ./
   RUN npm ci --omit=dev

@@ -85,8 +85,9 @@ El payment-service centraliza todo esto. El BFF deja de depender del SDK de Merc
 
 - [ ] `POST /checkout/:orderId` — initiateCheckout
   - Header `X-User-Id: <userId>` (número), `X-User-Roles: admin,wholesale` (csv)
-  - Lee gateway activo de tabla `branding`
-  - Retorna `{ data: { type, checkoutUrl? | publicKey? | bankDetails? } }`
+  - Lee gateways activos de `payment_gateway_rules` WHERE `customer_type = <tipo del usuario> AND active = TRUE` (con fallback a `branding.payment_gateway` si no hay reglas)
+  - Si 1 activo → proceder directo; si >1 → retornar `{ type: 'select', options: [...] }`; si 0 → 422
+  - Retorna `{ data: { type, checkoutUrl? | publicKey? | bankDetails? | options? } }`
 
 - [ ] `POST /checkout/:orderId/process` — processPayment (Checkout API)
   - Header `X-User-Id`
@@ -151,7 +152,7 @@ El payment-service centraliza todo esto. El BFF deja de depender del SDK de Merc
 
 - [ ] `jedami-payments/Dockerfile`:
   ```dockerfile
-  FROM node:20-alpine
+  FROM node:24-alpine
   WORKDIR /app
   COPY package*.json ./
   RUN npm ci --omit=dev

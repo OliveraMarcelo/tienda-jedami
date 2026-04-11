@@ -25,7 +25,7 @@ para garantizar consistencia y evitar bugs de timezone en queries que cruzan tab
 
 ## Tasks / Subtasks
 
-- [ ] **Migration `0XX_normalize_timestamps.sql`**:
+- [ ] **Migration `052_normalize_timestamps.sql`**:
   ```sql
   ALTER TABLE users
     ALTER COLUMN created_at TYPE TIMESTAMPTZ

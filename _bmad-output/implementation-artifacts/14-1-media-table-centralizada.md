@@ -52,7 +52,7 @@ para tener un punto único de gestión de archivos, poder detectar huérfanos y 
 ## Tasks / Subtasks
 
 ### Base de datos
-- [ ] **Migration `0XX_media_table.sql`**:
+- [ ] **Migration `048_media_table.sql`**:
   ```sql
   -- 1. Crear tabla media
   CREATE TABLE media (
@@ -74,7 +74,7 @@ para tener un punto único de gestión de archivos, poder detectar huérfanos y 
   ALTER TABLE branding ADD COLUMN IF NOT EXISTS logo_media_id INT REFERENCES media(id) ON DELETE SET NULL;
   ```
 
-- [ ] **Migration `0XX_media_data_migration.sql`**: poblar `media` con los archivos existentes y actualizar FKs
+- [ ] **Migration `049_media_data_migration.sql`**: poblar `media` con los archivos existentes y actualizar FKs
   ```sql
   -- Migrar imágenes de productos
   INSERT INTO media (filename, entity_type, created_at)
@@ -114,7 +114,7 @@ para tener un punto único de gestión de archivos, poder detectar huérfanos y 
     AND m.entity_type = 'branding';
   ```
 
-- [ ] **Migration `0XX_media_cleanup.sql`**: hacer NOT NULL las FKs y quitar columnas legacy (solo ejecutar tras verificar datos)
+- [ ] **Migration `050_media_cleanup.sql`**: hacer NOT NULL las FKs y quitar columnas legacy (solo ejecutar tras verificar datos)
   ```sql
   -- Solo tras verificar que todos los registros tienen media_id
   -- ALTER TABLE product_images DROP COLUMN image_url;
@@ -159,13 +159,19 @@ para tener un punto único de gestión de archivos, poder detectar huérfanos y 
 
 ## Dev Notes
 
+### Numeración de migración
+- 048: schema (`media` table + ADD COLUMN media_id en product_images, banners, branding)
+- 049: data migration (poblar media + actualizar FKs)
+- 050: cleanup (DROP COLUMN legacy — solo tras verificación en producción)
+- Las migraciones 044-047 están reservadas para Epic 12 (multi-tenant)
+
 ### Estrategia de migración sin downtime
-1. Ejecutar migration de schema (ADD COLUMN media_id)
-2. Ejecutar migration de datos (poblar media + actualizar FKs)
+1. Ejecutar migration de schema (ADD COLUMN media_id) → `048_media_table.sql`
+2. Ejecutar migration de datos (poblar media + actualizar FKs) → `049_media_data_migration.sql`
 3. Correr script de mover archivos físicos
 4. Deployar nuevo código que usa `media_id` y `/uploads/` raíz
 5. Verificar en producción que todas las imágenes cargan
-6. Ejecutar cleanup migration (DROP COLUMN legacy) solo tras verificación
+6. Ejecutar cleanup migration (DROP COLUMN legacy) solo tras verificación → `050_media_cleanup.sql`
 
 ### Sin colisiones de filename
 Los filenames son UUIDs generados por `randomUUID()`, garantizando unicidad incluso al mezclar los tres directorios en uno.

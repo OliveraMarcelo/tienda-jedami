@@ -1,6 +1,6 @@
 # Story 8.2: Flutter Desktop — Gestión de Stock
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -31,27 +31,27 @@ para mantener el inventario actualizado en tiempo real.
 ## Tasks / Subtasks
 
 **BFF — Endpoint y migración:**
-- [ ] Migración `020_stock_adjustments.sql`: tabla `stock_adjustments (id, variant_id, user_id, old_quantity, new_quantity, adjusted_at)` (AC: 3)
-- [ ] Handler `PATCH /admin/products/:productId/variants/:variantId/stock` en BFF (AC: 2, 3)
-  - [ ] Validar que el productId y variantId coincidan
-  - [ ] Actualizar `stock.quantity` WHERE `variant_id = $1`
-  - [ ] Insertar registro en `stock_adjustments`
-  - [ ] Retornar `{ variantId, newQuantity }`
-  - [ ] Requiere auth + rol admin
-- [ ] Agregar la ruta en `routes/admin.routes.ts`
+- [x] Migración `039_stock_adjustments.sql`: tabla `stock_adjustments (id, variant_id, user_id, old_quantity, new_quantity, adjusted_at)` (AC: 3)
+- [x] Handler `PATCH /admin/products/:productId/variants/:variantId/stock` en BFF (AC: 2, 3)
+  - [x] Validar que el productId y variantId coincidan
+  - [x] Actualizar `stock.quantity` WHERE `variant_id = $1`
+  - [x] Insertar registro en `stock_adjustments`
+  - [x] Retornar `{ variantId, newQuantity }`
+  - [x] Requiere auth + rol admin
+- [x] Agregar la ruta en `routes/admin.routes.ts`
 
 **Flutter Desktop — UI:**
-- [ ] Provider `stock_provider.dart` con Riverpod (AC: 1, 2)
-  - [ ] `fetchProducts()` → `GET /api/v1/products?page=1&limit=100` para listar todos
-  - [ ] `updateStock(productId, variantId, quantity)` → `PATCH /api/v1/admin/products/:productId/variants/:variantId/stock`
-  - [ ] Estado: `AsyncValue<List<StockProduct>>`
-- [ ] Modelo `stock_item.dart`: `StockProduct { id, name, variants: List<StockVariant> }`, `StockVariant { id, size, color, stock }` (AC: 1)
-- [ ] Vista `StockManagementScreen` con layout de dos paneles (AC: 1, 2)
-  - [ ] Lista de productos con `ExpansionTile` por producto
-  - [ ] Dentro de cada tile: tabla de variantes (talle | color | stock | acción)
-  - [ ] Campo editable de stock con `TextEditingController` + botón "Guardar"
-  - [ ] Feedback visual: loading spinner por variante + mensaje de éxito/error (AC: 4)
-- [ ] Actualizar route placeholder creado en Story 8.1 con la vista real (AC: 1)
+- [x] Provider `stock_provider.dart` con Riverpod (AC: 1, 2)
+  - [x] `fetchProducts()` → `GET /api/v1/products?page=1&pageSize=200` para listar todos
+  - [x] `updateStock(productId, variantId, quantity)` → `PATCH /api/v1/admin/products/:productId/variants/:variantId/stock`
+  - [x] Estado: `AsyncValue<List<StockProduct>>`
+- [x] Modelo `stock_item.dart`: `StockProduct { id, name, variants: List<StockVariant> }`, `StockVariant { id, size, color, stock }` (AC: 1)
+- [x] Vista `StockManagementScreen` con layout de dos paneles (AC: 1, 2)
+  - [x] Lista de productos con `ExpansionTile` por producto
+  - [x] Dentro de cada tile: tabla de variantes (talle | color | stock | acción)
+  - [x] Campo editable de stock con `TextEditingController` + botón "Guardar"
+  - [x] Feedback visual: loading spinner por variante + mensaje de éxito/error (AC: 4)
+- [x] Actualizar route placeholder creado en Story 8.1 con la vista real (AC: 1)
 
 ## Dev Notes
 
@@ -83,7 +83,7 @@ export async function updateVariantStock(req: Request, res: Response) {
 }
 ```
 
-### Migración 020 — tabla stock_adjustments
+### Migración 039 — tabla stock_adjustments
 ```sql
 CREATE TABLE stock_adjustments (
   id           SERIAL PRIMARY KEY,
@@ -101,7 +101,7 @@ CREATE INDEX idx_stock_adjustments_user    ON stock_adjustments(user_id);
 ```dart
 // stock_provider.dart
 final stockProductsProvider = StateNotifierProvider<StockNotifier, AsyncValue<List<StockProduct>>>(
-  (ref) => StockNotifier(ref.read(dioClientProvider)),
+  (ref) => StockNotifier(ref.read(_stockDioProvider)),
 );
 
 class StockNotifier extends StateNotifier<AsyncValue<List<StockProduct>>> {
@@ -167,10 +167,9 @@ jedami-mobile/lib/features/stock/
 
 jedami-bff/src/modules/admin/
   admin.controller.ts                    ← agregar updateVariantStock
-  queries/update-stock.ts                ← query SQL (opcional separar)
 
 jedami-bff/src/database/migrations/
-  020_stock_adjustments.sql              ← nueva migración
+  039_stock_adjustments.sql              ← nueva migración
 ```
 
 ### Referencias
@@ -183,9 +182,25 @@ jedami-bff/src/database/migrations/
 ## Dev Agent Record
 
 ### Agent Model Used
+claude-sonnet-4-6
 
 ### Debug Log References
+- `Future.microtask(() {})` insuficiente para esperar fetch() async en tests → reemplazado por `pumpEventQueue()`
+- Import `auth_provider.dart` en `stock_provider.dart` era unused (AuthInterceptor está en `client.dart`) → eliminado
+- **[Code Review]** `pool.query('BEGIN')` no garantiza misma conexión → reemplazado por `pool.connect()` + `client.release()` en `finally`
+- **[Code Review]** `json['size'] as String` y `json['color'] as String` lanzaban TypeError si API retorna null → cambiados a `(json['x'] as String?) ?? ''`
+- **[Code Review]** Test `updateStock lanza excepción` usaba `expect(() => ..., throwsA(...))` sin await → `await expectLater(...)`
 
 ### Completion Notes List
+- Migración numerada `039_` (no `020_` como indicaba la story) — el directorio ya tenía hasta `038_`
+- `pageSize=200` en lugar de `limit=100` para alinearse con la paginación del BFF existente
+- `_StockCell` implementado como `ConsumerStatefulWidget` con `TextEditingController` local, `didUpdateWidget` para sincronizar valores en refresh externo, y revert automático del campo en caso de error
 
 ### File List
+- `jedami-bff/src/database/migrations/039_stock_adjustments.sql` (nuevo)
+- `jedami-bff/src/modules/admin/admin.controller.ts` (modificado — added updateVariantStock)
+- `jedami-bff/src/routes/admin.routes.ts` (modificado — added PATCH route)
+- `jedami-mobile/lib/features/stock/models/stock_item.dart` (nuevo)
+- `jedami-mobile/lib/features/stock/providers/stock_provider.dart` (nuevo)
+- `jedami-mobile/lib/features/stock/screens/stock_management_screen.dart` (reemplazado placeholder)
+- `jedami-mobile/test/features/stock/stock_notifier_test.dart` (nuevo — 9 unit tests)

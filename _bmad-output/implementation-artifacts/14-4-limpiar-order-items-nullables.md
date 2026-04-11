@@ -60,7 +60,7 @@ para eliminar NULLs innecesarios, reducir redundancia y hacer las queries más s
   SELECT * FROM order_items WHERE variant_id IS NULL AND product_id IS NULL;
   ```
 
-### Migration `0XX_order_items_cleanup.sql`
+### Migration `053_order_items_cleanup.sql`
 - [ ] Limpiar `product_id` redundante en ítems que ya tienen `variant_id`:
   ```sql
   -- product_id es redundante cuando variant_id está presente

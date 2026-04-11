@@ -90,10 +90,10 @@ development_status:
   web-2-6-admin-despacho-curva: done               # AdminFulfillmentView.vue — asignar color y confirmar despacho
 
   # Descuentos por volumen (idea documentada, pendiente de implementar)
-  2-7-descuentos-por-volumen-cantidad: backlog     # mínimo de compra + escalones de descuento por volumen y curvas, por producto
+  2-7-descuentos-por-volumen-cantidad: done   # mínimo de compra + escalones de descuento por volumen y curvas, por producto
 
   # WEB Track (depende de 2-7 done)
-  web-2-7-descuentos-por-volumen-cantidad: backlog
+  web-2-7-descuentos-por-volumen-cantidad: done
 
   epic-2-retrospective: optional
 
@@ -183,11 +183,11 @@ development_status:
   # EPIC 8: App Flutter Desktop — Gestión de Stock
   # FRs: RF-18
   # ─────────────────────────────────────────────────────────
-  epic-8: backlog
+  epic-8: done
 
   # DESKTOP Track — jedami-mobile (Flutter Desktop)
-  desktop-8-1-flutter-desktop-setup-y-login: ready-for-dev
-  desktop-8-2-flutter-desktop-gestion-de-stock: ready-for-dev  # depende de: 8-1 done
+  desktop-8-1-flutter-desktop-setup-y-login: done
+  desktop-8-2-flutter-desktop-gestion-de-stock: done         # depende de: 8-1 done
 
   epic-8-retrospective: optional
 
@@ -233,16 +233,16 @@ development_status:
   # EPIC 11: Pago Presencial con Mercado Pago Point
   # Extiende Épica 3 y 10 — agrega canal de pago físico POS
   # ─────────────────────────────────────────────────────────
-  epic-11: backlog
+  epic-11: done
 
   # BFF Track — jedami-bff
-  11-1-point-modelo-datos: backlog             # payment_method en payments + point_device_id en branding
-  11-2-point-iniciar-pago: backlog             # POST /admin/orders/:id/point/initiate → intent en device
-  11-3-point-webhook: backlog                  # webhook automático MP Point → paid + stock
-  11-4-point-confirmar-manual: backlog         # PATCH /admin/orders/:id/point/confirm → fallback manual
+  11-1-point-modelo-datos: done                # pos_devices + pos_payment_intents + constraints mp_point + endpoints gestión devices
+  11-2-point-iniciar-pago: done                # POST/GET/DELETE /pos/orders/:id/intent → intent en device
+  11-3-point-webhook: done                     # webhook automático MP Point → paid + stock
+  11-4-point-confirmar-manual: done            # PATCH /pos/orders/:id/confirm → fallback manual sin webhook
 
   # WEB Track — jedami-web (depende de 11-1..4 done)
-  web-11-1-point-admin-ui: backlog             # panel admin: iniciar cobro Point + confirmación manual + config device
+  web-11-1-point-admin-ui: done                # panel admin: iniciar cobro Point + confirmación manual + config device
 
   # ─────────────────────────────────────────────────────────
   # EPIC 12: Plataforma Multi-Tenant — Jedami como SaaS
@@ -273,7 +273,7 @@ development_status:
   # ─────────────────────────────────────────────────────────
   # EPIC 13: Mejoras de experiencia del comprador
   # ─────────────────────────────────────────────────────────
-  epic-13: backlog
+  epic-13: done
 
   # BFF Track — jedami-bff
   13-1-notas-del-comprador-en-pedido: done     # campo notes en orders + PATCH /orders/:id/notes
@@ -333,3 +333,16 @@ development_status:
 
   # WEB Track
   web-16-1-despacho-unificado: done                          # depende de: 16-1 done
+
+  # ─────────────────────────────────────────────────────────
+  # EPIC 17: Múltiples Medios de Pago por Tipo de Cliente
+  # Extiende Épicas 10 y 15 — gateway diferenciado por customer_type (retail/wholesale)
+  # ─────────────────────────────────────────────────────────
+  epic-17: done
+
+  # BFF Track — jedami-bff
+  17-1-multiples-medios-pago-por-tipo-cliente: done            # tabla payment_gateway_rules + lógica por customer_type (migración 040)
+
+  # WEB Track — jedami-web (depende de 17-1 done)
+  web-17-1-selector-medio-pago: done                          # selector en checkout + config admin de gateways por tipo
+
