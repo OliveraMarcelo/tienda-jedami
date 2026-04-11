@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import type { AxiosError } from 'axios'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { useConfigStore } from '@/stores/config.store'
 import {
@@ -9,14 +10,20 @@ import {
   fetchSizes, createSize, deleteSize,
   fetchColors, createColor, deleteColor,
   updateBranding, uploadBrandingLogo, updatePaymentGateway,
-  type ConfigTypeItem, type SizeItem, type ColorItem,
+  fetchPaymentGatewayRules, patchPaymentGatewayRule,
+  type ConfigTypeItem, type SizeItem, type ColorItem, type PaymentGatewayRulesMap,
 } from '@/api/admin.config.api'
 import type { BrandingConfig } from '@/api/config.api'
+import { GATEWAY_LABELS, ALL_GATEWAYS, type SupportedGateway } from '@/lib/gateway-labels'
+import { fetchPosDevices, syncPosDevices, updatePosDevice, type PosDevice } from '@/api/pos.api'
+
+type PosApiError = AxiosError<{ detail?: string }>
+type ConfigApiError = AxiosError<{ detail?: string }>
 
 const router = useRouter()
 const configStore = useConfigStore()
 
-type Tab = 'purchase-types' | 'customer-types' | 'sizes' | 'colors' | 'branding' | 'payments'
+type Tab = 'purchase-types' | 'customer-types' | 'sizes' | 'colors' | 'branding' | 'payments' | 'point'
 const activeTab = ref<Tab>('purchase-types')
 
 // ─── Purchase Types ───────────────────────────────────────────────────────────
@@ -41,7 +48,8 @@ async function addPurchaseType() {
     purchaseTypes.value.push(item)
     ptNew.value = { code: '', label: '' }
     await configStore.refreshConfig()
-  } catch (e: any) {
+  } catch (err) {
+    const e = err as ConfigApiError
     ptError.value = e?.response?.data?.detail ?? 'Error al guardar. Verificá que el código no esté duplicado.'
   } finally { ptSaving.value = false }
 }
@@ -53,7 +61,8 @@ async function togglePurchaseType(item: ConfigTypeItem) {
     const idx = purchaseTypes.value.findIndex(x => x.id === item.id)
     if (idx !== -1) purchaseTypes.value[idx] = updated
     await configStore.refreshConfig()
-  } catch (e: any) {
+  } catch (err) {
+    const e = err as ConfigApiError
     ptError.value = e?.response?.data?.detail ?? 'Error al actualizar.'
   }
 }
@@ -80,7 +89,8 @@ async function addCustomerType() {
     customerTypes.value.push(item)
     ctNew.value = { code: '', label: '' }
     await configStore.refreshConfig()
-  } catch (e: any) {
+  } catch (err) {
+    const e = err as ConfigApiError
     ctError.value = e?.response?.data?.detail ?? 'Error al guardar. Verificá que el código no esté duplicado.'
   } finally { ctSaving.value = false }
 }
@@ -92,7 +102,8 @@ async function toggleCustomerType(item: ConfigTypeItem) {
     const idx = customerTypes.value.findIndex(x => x.id === item.id)
     if (idx !== -1) customerTypes.value[idx] = updated
     await configStore.refreshConfig()
-  } catch (e: any) {
+  } catch (err) {
+    const e = err as ConfigApiError
     ctError.value = e?.response?.data?.detail ?? 'Error al actualizar.'
   }
 }
@@ -119,7 +130,8 @@ async function addSize() {
     const item = await createSize({ label: szNew.value.label, sortOrder: szNew.value.sortOrder })
     sizes.value.push(item)
     szNew.value = { label: '', sortOrder: 0 }
-  } catch (e: any) {
+  } catch (err) {
+    const e = err as ConfigApiError
     szError.value = e?.response?.data?.detail ?? 'Error al guardar.'
   } finally { szSaving.value = false }
 }
@@ -130,7 +142,8 @@ async function removeSize(id: number) {
   try {
     await deleteSize(id)
     sizes.value = sizes.value.filter(s => s.id !== id)
-  } catch (e: any) {
+  } catch (err) {
+    const e = err as ConfigApiError
     szError.value = e?.response?.data?.detail ?? 'No se pudo eliminar el talle.'
   } finally { szDeleting.value = null }
 }
@@ -157,7 +170,8 @@ async function addColor() {
     const item = await createColor({ name: clNew.value.name, hexCode: clNew.value.hexCode || undefined })
     colors.value.push(item)
     clNew.value = { name: '', hexCode: '#000000' }
-  } catch (e: any) {
+  } catch (err) {
+    const e = err as ConfigApiError
     clError.value = e?.response?.data?.detail ?? 'Error al guardar.'
   } finally { clSaving.value = false }
 }
@@ -168,7 +182,8 @@ async function removeColor(id: number) {
   try {
     await deleteColor(id)
     colors.value = colors.value.filter(c => c.id !== id)
-  } catch (e: any) {
+  } catch (err) {
+    const e = err as ConfigApiError
     clError.value = e?.response?.data?.detail ?? 'No se pudo eliminar el color.'
   } finally { clDeleting.value = null }
 }
@@ -233,7 +248,8 @@ async function savePaymentGateway() {
     configStore.config.paymentGateway = paymentGateway.value
     gatewaySuccess.value = true
     setTimeout(() => { gatewaySuccess.value = false }, 2500)
-  } catch (e: any) {
+  } catch (err) {
+    const e = err as ConfigApiError
     gatewayError.value = e?.response?.data?.detail ?? 'Error al guardar'
   } finally {
     gatewaySaving.value = false
@@ -274,16 +290,107 @@ async function saveBankTransfer() {
     configStore.branding.whatsappNumber         = updated.whatsappNumber
     bankTransferSuccess.value = true
     setTimeout(() => { bankTransferSuccess.value = false }, 2500)
-  } catch (e: any) {
+  } catch (err) {
+    const e = err as ConfigApiError
     bankTransferError.value = e?.response?.data?.detail ?? 'Error al guardar'
   } finally {
     bankTransferSaving.value = false
   }
 }
 
+// ─── Payment Gateway Rules ────────────────────────────────────────────────────
+const pgRules = ref<PaymentGatewayRulesMap>({ retail: [], wholesale: [] })
+const pgRulesLoading = ref(false)
+const pgRulesUpdating = ref<string | null>(null)
+const pgRulesError = ref('')
+const pgRulesSuccess = ref('')
+
+async function loadPaymentGatewayRules() {
+  pgRulesLoading.value = true
+  try { pgRules.value = await fetchPaymentGatewayRules() }
+  catch { pgRulesError.value = 'Error al cargar los medios de pago' }
+  finally { pgRulesLoading.value = false }
+}
+
+function isGatewayActive(customerType: 'retail' | 'wholesale', gateway: string): boolean {
+  const rules = pgRules.value[customerType] ?? []
+  const rule = rules.find(r => r.gateway === gateway)
+  return rule?.active ?? false
+}
+
+async function toggleGatewayRule(customerType: 'retail' | 'wholesale', gateway: string) {
+  const key = `${customerType}:${gateway}`
+  pgRulesUpdating.value = key
+  pgRulesError.value = ''
+  pgRulesSuccess.value = ''
+  try {
+    const newActive = !isGatewayActive(customerType, gateway)
+    const updated = await patchPaymentGatewayRule(customerType, gateway, newActive)
+    const rules = pgRules.value[customerType]
+    const idx = rules.findIndex(r => r.gateway === gateway)
+    if (idx !== -1) {
+      rules[idx] = updated
+    } else {
+      rules.push(updated)
+    }
+    pgRulesSuccess.value = `${GATEWAY_LABELS[gateway as SupportedGateway]?.label ?? gateway} actualizado`
+    setTimeout(() => { pgRulesSuccess.value = '' }, 2500)
+  } catch (err) {
+    const e = err as ConfigApiError
+    pgRulesError.value = e?.response?.data?.detail ?? 'Error al actualizar'
+  } finally {
+    pgRulesUpdating.value = null
+  }
+}
+
 // ─── Init ─────────────────────────────────────────────────────────────────────
+// ─── Dispositivos Point ───────────────────────────────────────────────────────
+const posDevices = ref<PosDevice[]>([])
+const posDevicesLoading = ref(false)
+const posDevicesError = ref('')
+const syncingDevices = ref(false)
+const syncSuccess = ref('')
+
+async function loadPosDevices() {
+  posDevicesLoading.value = true
+  posDevicesError.value = ''
+  try { posDevices.value = await fetchPosDevices() }
+  catch { posDevicesError.value = 'Error al cargar los dispositivos.' }
+  finally { posDevicesLoading.value = false }
+}
+
+async function handleSyncDevices() {
+  syncingDevices.value = true
+  syncSuccess.value = ''
+  posDevicesError.value = ''
+  try {
+    posDevices.value = await syncPosDevices()
+    syncSuccess.value = `${posDevices.value.length} dispositivo(s) sincronizados`
+    await configStore.refreshConfig()
+  } catch (err) {
+    const e = err as PosApiError
+    posDevicesError.value = e?.response?.data?.detail ?? 'Error al sincronizar'
+  } finally {
+    syncingDevices.value = false
+  }
+}
+
+async function togglePosDevice(device: PosDevice) {
+  posDevicesError.value = ''
+  syncSuccess.value = ''
+  try {
+    const updated = await updatePosDevice(device.id, !device.active)
+    const idx = posDevices.value.findIndex(d => d.id === device.id)
+    if (idx !== -1) posDevices.value[idx] = updated
+    await configStore.refreshConfig()
+  } catch (err) {
+    const e = err as PosApiError
+    posDevicesError.value = e?.response?.data?.detail ?? 'Error al actualizar el dispositivo'
+  }
+}
+
 onMounted(async () => {
-  await Promise.all([loadPurchaseTypes(), loadCustomerTypes(), loadSizes(), loadColors()])
+  await Promise.all([loadPurchaseTypes(), loadCustomerTypes(), loadSizes(), loadColors(), loadPaymentGatewayRules(), loadPosDevices()])
   brandingForm.value = { ...configStore.branding }
 })
 
@@ -294,6 +401,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'colors',         label: 'Colores' },
   { key: 'branding',       label: 'Branding' },
   { key: 'payments',       label: 'Pagos' },
+  { key: 'point',          label: 'Point POS' },
 ]
 </script>
 
@@ -619,6 +727,69 @@ const TABS: { key: Tab; label: string }[] = [
             </div>
           </div>
         </div>
+
+        <!-- Medios de pago por tipo de cliente -->
+        <div class="bg-white rounded-xl border border-gray-200 p-5">
+          <p class="text-sm font-semibold text-gray-700 mb-1">Medios de pago por tipo de cliente</p>
+          <p class="text-xs text-gray-400 mb-4">Habilitá o deshabilitá cada gateway para minoristas y mayoristas.</p>
+
+          <div v-if="pgRulesLoading" class="space-y-2">
+            <div v-for="i in 4" :key="i" class="animate-pulse bg-gray-100 rounded-lg h-10"></div>
+          </div>
+
+          <div v-else class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-gray-100">
+                  <th class="py-2 pr-4 text-left text-xs text-gray-500 font-medium">Gateway</th>
+                  <th class="py-2 px-4 text-center text-xs text-gray-500 font-medium">Minorista</th>
+                  <th class="py-2 px-4 text-center text-xs text-gray-500 font-medium">Mayorista</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="gw in ALL_GATEWAYS"
+                  :key="gw"
+                  class="border-t border-gray-50"
+                >
+                  <td class="py-3 pr-4">
+                    <p class="font-semibold text-gray-800 text-sm">{{ GATEWAY_LABELS[gw].label }}</p>
+                    <p class="text-xs text-gray-400 font-mono">{{ gw }}</p>
+                  </td>
+                  <td class="py-3 px-4 text-center">
+                    <button
+                      :disabled="pgRulesUpdating === `retail:${gw}`"
+                      @click="toggleGatewayRule('retail', gw)"
+                      class="text-xs font-semibold px-3 py-1 rounded-full border transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                      :class="isGatewayActive('retail', gw)
+                        ? 'bg-green-50 text-green-700 border-green-200 hover:bg-red-50 hover:text-red-700 hover:border-red-200'
+                        : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-green-50 hover:text-green-700 hover:border-green-200'"
+                    >
+                      {{ pgRulesUpdating === `retail:${gw}` ? '…' : (isGatewayActive('retail', gw) ? 'Activo' : 'Inactivo') }}
+                    </button>
+                  </td>
+                  <td class="py-3 px-4 text-center">
+                    <button
+                      :disabled="pgRulesUpdating === `wholesale:${gw}`"
+                      @click="toggleGatewayRule('wholesale', gw)"
+                      class="text-xs font-semibold px-3 py-1 rounded-full border transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                      :class="isGatewayActive('wholesale', gw)
+                        ? 'bg-green-50 text-green-700 border-green-200 hover:bg-red-50 hover:text-red-700 hover:border-red-200'
+                        : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-green-50 hover:text-green-700 hover:border-green-200'"
+                    >
+                      {{ pgRulesUpdating === `wholesale:${gw}` ? '…' : (isGatewayActive('wholesale', gw) ? 'Activo' : 'Inactivo') }}
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="mt-3 h-4">
+            <span v-if="pgRulesSuccess" class="text-xs text-green-600 font-semibold">✓ {{ pgRulesSuccess }}</span>
+            <span v-if="pgRulesError" class="text-xs text-red-500">{{ pgRulesError }}</span>
+          </div>
+        </div>
       </div>
 
       <!-- ── Branding ── -->
@@ -695,6 +866,58 @@ const TABS: { key: Tab; label: string }[] = [
               >{{ brandingSaving ? 'Guardando…' : 'Guardar' }}</button>
               <span v-if="brandingSuccess" class="text-xs text-green-600 font-semibold">✓ Branding actualizado</span>
             </div>
+          </div>
+        </div>
+      </div>
+      <!-- ── Point POS ── -->
+      <div v-if="activeTab === 'point'">
+        <div class="bg-white rounded-xl border border-gray-200 p-5">
+          <div class="flex items-center justify-between mb-4">
+            <p class="text-sm font-semibold text-gray-700">Dispositivos Mercado Pago Point</p>
+            <button
+              @click="handleSyncDevices"
+              :disabled="syncingDevices"
+              class="h-8 px-4 rounded-lg border border-gray-300 text-sm text-gray-600 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] transition-colors disabled:opacity-40 disabled:pointer-events-none flex items-center gap-2"
+            >
+              <svg v-if="syncingDevices" class="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+              </svg>
+              {{ syncingDevices ? 'Sincronizando…' : '↻ Sincronizar con MP' }}
+            </button>
+          </div>
+
+          <div v-if="posDevicesLoading" class="space-y-2">
+            <div v-for="i in 2" :key="i" class="animate-pulse bg-gray-100 rounded-xl h-12"></div>
+          </div>
+
+          <div v-else-if="posDevices.length === 0" class="text-center text-sm text-gray-400 py-6">
+            No hay dispositivos registrados. Hacé clic en "Sincronizar con MP" para importarlos.
+          </div>
+
+          <div v-else class="space-y-2">
+            <div
+              v-for="device in posDevices"
+              :key="device.id"
+              class="flex items-center justify-between px-4 py-3 border border-gray-100 rounded-xl"
+            >
+              <div>
+                <p class="font-semibold text-gray-800 text-sm">{{ device.name }}</p>
+                <p class="text-xs text-gray-400 font-mono">{{ device.mp_device_id }} · {{ device.operating_mode }}</p>
+              </div>
+              <button
+                @click="togglePosDevice(device)"
+                class="text-xs font-semibold px-3 py-1 rounded-full border transition-colors"
+                :class="device.active
+                  ? 'bg-green-50 text-green-700 border-green-200 hover:bg-red-50 hover:text-red-700 hover:border-red-200'
+                  : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-green-50 hover:text-green-700 hover:border-green-200'"
+              >{{ device.active ? 'Activo' : 'Inactivo' }}</button>
+            </div>
+          </div>
+
+          <div class="mt-3 h-4">
+            <span v-if="syncSuccess" class="text-xs text-green-600 font-semibold">✓ {{ syncSuccess }}</span>
+            <span v-if="posDevicesError" class="text-xs text-red-500">{{ posDevicesError }}</span>
           </div>
         </div>
       </div>

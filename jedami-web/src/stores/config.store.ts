@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { fetchConfig, fetchBranding, type AppConfig, type BrandingConfig } from '@/api/config.api'
+import { fetchConfig, fetchBranding, type AppConfig, type BrandingConfig, type PaymentGatewayRuleItem } from '@/api/config.api'
 
 const DEFAULT_BRANDING: BrandingConfig = {
   storeName: 'Jedami',
@@ -27,6 +27,8 @@ export const useConfigStore = defineStore('config', () => {
     purchaseTypes: [],
     customerTypes: [],
     paymentGateway: 'checkout_pro',
+    paymentGatewayRules: { retail: [], wholesale: [] },
+    pointDevice: null,
   })
 
   // Mapas código → label para uso en templates
@@ -41,6 +43,16 @@ export const useConfigStore = defineStore('config', () => {
   const priceModeLabel = computed<Record<string, string>>(() =>
     Object.fromEntries(config.value.priceModes.map(pm => [pm.code, pm.label]))
   )
+
+  const paymentGatewayRules = computed(() =>
+    config.value.paymentGatewayRules ?? { retail: [], wholesale: [] }
+  )
+
+  const pointDevice = computed(() => config.value.pointDevice ?? null)
+
+  function getGatewaysForCustomerType(type: 'retail' | 'wholesale'): PaymentGatewayRuleItem[] {
+    return paymentGatewayRules.value[type] ?? []
+  }
 
   async function loadConfig() {
     if (loaded.value) return
@@ -79,6 +91,9 @@ export const useConfigStore = defineStore('config', () => {
     purchaseTypeLabel,
     customerTypeLabel,
     priceModeLabel,
+    paymentGatewayRules,
+    pointDevice,
+    getGatewaysForCustomerType,
     loadConfig,
     refreshConfig,
     loadBranding,

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { authMiddleware } from '../middlewares/auth.middleware.js';
 import { requireRole } from '../middlewares/role.middleware.js';
 import { ROLES } from '../lib/constants.js';
-import { checkout, webhook, retryPaymentHandler, processPaymentHandler } from '../modules/payments/payments.controller.js';
+import { checkout, webhook, retryPaymentHandler, processPaymentHandler, smartCheckoutHandler } from '../modules/payments/payments.controller.js';
 
 const router = Router();
 
@@ -43,6 +43,39 @@ const router = Router();
  *                 received: { type: boolean }
  */
 router.post('/webhook', webhook);
+
+/**
+ * @swagger
+ * /payments/checkout:
+ *   post:
+ *     tags: [Payments]
+ *     summary: Iniciar checkout unificado con soporte de múltiples gateways por tipo de cliente
+ *     description: |
+ *       Si el usuario tiene un solo gateway activo lo usa directamente.
+ *       Si tiene múltiples, retorna `{ type: 'select', options: [...] }` para que el frontend muestre el selector.
+ *       Si `selectedGateway` está en el body, lo usa directamente (previa validación).
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [orderId]
+ *             properties:
+ *               orderId: { type: integer }
+ *               selectedGateway:
+ *                 type: string
+ *                 enum: [checkout_pro, checkout_api, bank_transfer, mp_point]
+ *                 nullable: true
+ *     responses:
+ *       200:
+ *         description: Resultado de checkout o selector de gateways
+ *       422:
+ *         description: Sin gateways disponibles para el tipo de cliente
+ */
+router.post('/checkout', authMiddleware, smartCheckoutHandler);
 
 /**
  * @swagger

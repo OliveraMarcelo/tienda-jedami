@@ -25,12 +25,22 @@ export interface RoleItem {
   name: string
 }
 
+export interface PaymentGatewayRuleItem {
+  gateway: string
+  active: boolean
+}
+
 export interface AppConfig {
   roles: RoleItem[]
   priceModes: ConfigItem[]
   purchaseTypes: ConfigItem[]
   customerTypes: ConfigItem[]
   paymentGateway?: string
+  paymentGatewayRules?: {
+    retail: PaymentGatewayRuleItem[]
+    wholesale: PaymentGatewayRuleItem[]
+  }
+  pointDevice?: { id: number; name: string } | null
 }
 
 export async function fetchConfig(): Promise<AppConfig> {

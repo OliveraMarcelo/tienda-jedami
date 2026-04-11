@@ -14,8 +14,20 @@ export type CheckoutResult =
   | { type: 'preference'; publicKey: string }
   | { type: 'bank_transfer'; bankDetails: BankDetails }
 
+export type SmartCheckoutResult =
+  | CheckoutResult
+  | { type: 'select'; options: string[] }
+
 export async function initiateCheckout(orderId: number): Promise<CheckoutResult> {
   const res = await apiClient.post<{ data: CheckoutResult }>(`/payments/${orderId}/checkout`)
+  return res.data.data
+}
+
+export async function smartCheckout(orderId: number, selectedGateway?: string): Promise<SmartCheckoutResult> {
+  const res = await apiClient.post<{ data: SmartCheckoutResult }>('/payments/checkout', {
+    orderId,
+    ...(selectedGateway ? { selectedGateway } : {}),
+  })
   return res.data.data
 }
 

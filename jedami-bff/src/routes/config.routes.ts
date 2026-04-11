@@ -11,6 +11,8 @@ import {
   createCustomerType,
   updateCustomerType,
   updatePaymentGateway,
+  getPaymentGatewayRules,
+  updatePaymentGatewayRule,
 } from '../modules/config/config.controller.js';
 import { getBanners } from '../modules/admin/banners.controller.js';
 import { getAnnouncements } from '../modules/admin/announcements.controller.js';
@@ -337,6 +339,47 @@ router.patch('/customer-types/:id', authMiddleware, requireRole([ROLES.ADMIN]), 
  *             schema: { $ref: '#/components/schemas/Error' }
  */
 router.patch('/payment-gateway',         authMiddleware, requireRole([ROLES.ADMIN]), updatePaymentGateway);
+
+/**
+ * @swagger
+ * /config/payment-gateways:
+ *   get:
+ *     tags: [Config]
+ *     summary: Listar reglas de gateway de pago por tipo de cliente (solo admin)
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Reglas agrupadas por customer_type
+ */
+router.get('/payment-gateways',          authMiddleware, requireRole([ROLES.ADMIN]), getPaymentGatewayRules);
+
+/**
+ * @swagger
+ * /config/payment-gateways:
+ *   patch:
+ *     tags: [Config]
+ *     summary: Habilitar o deshabilitar un gateway para un tipo de cliente (solo admin)
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [customer_type, gateway, active]
+ *             properties:
+ *               customer_type: { type: string, enum: [retail, wholesale] }
+ *               gateway: { type: string, enum: [checkout_pro, checkout_api, bank_transfer, mp_point] }
+ *               active: { type: boolean }
+ *     responses:
+ *       200:
+ *         description: Regla actualizada
+ *       400:
+ *         description: Valores inválidos
+ */
+router.patch('/payment-gateways',        authMiddleware, requireRole([ROLES.ADMIN]), updatePaymentGatewayRule);
 
 /**
  * @swagger

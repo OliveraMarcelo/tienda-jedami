@@ -8,7 +8,10 @@ import { UPDATE_PURCHASE_TYPE } from './queries/update-purchase-type.js';
 import { INSERT_CUSTOMER_TYPE } from './queries/insert-customer-type.js';
 import { UPDATE_CUSTOMER_TYPE } from './queries/update-customer-type.js';
 import { UPDATE_BRANDING } from './queries/update-branding.js';
+import { FIND_PAYMENT_GATEWAY_RULES } from './queries/find-payment-gateway-rules.js';
+import { UPSERT_PAYMENT_GATEWAY_RULE } from './queries/update-payment-gateway-rule.js';
 import { cacheGet, cacheSet, cacheDel } from '../../config/redis.js';
+import { getActiveDevice } from '../pos/pos.service.js';
 
 const CONFIG_CACHE_KEY = 'config:all';
 
@@ -17,8 +20,20 @@ export async function getConfig(_req: Request, res: Response, next: NextFunction
     const cached = await cacheGet(CONFIG_CACHE_KEY);
     if (cached) { res.status(200).json(JSON.parse(cached)); return; }
 
-    const result = await pool.query(FIND_CONFIG);
-    const row = result.rows[0];
+    const [configResult, rulesResult, activeDevice] = await Promise.all([
+      pool.query(FIND_CONFIG),
+      pool.query(FIND_PAYMENT_GATEWAY_RULES),
+      getActiveDevice(),
+    ]);
+    const row = configResult.rows[0];
+
+    // Agrupar reglas por customer_type
+    const paymentGatewayRules: Record<string, { gateway: string; active: boolean }[]> = {};
+    for (const r of rulesResult.rows) {
+      if (!paymentGatewayRules[r.customer_type]) paymentGatewayRules[r.customer_type] = [];
+      paymentGatewayRules[r.customer_type].push({ gateway: r.gateway, active: r.active });
+    }
+
     const body = {
       data: {
         roles: row.roles ?? [],
@@ -26,6 +41,8 @@ export async function getConfig(_req: Request, res: Response, next: NextFunction
         purchaseTypes: row.purchase_types ?? [],
         customerTypes: row.customer_types ?? [],
         paymentGateway: row.payment_gateway ?? 'checkout_pro',
+        paymentGatewayRules,
+        pointDevice: activeDevice ? { id: activeDevice.id, name: activeDevice.name } : null,
       },
     };
     await cacheSet(CONFIG_CACHE_KEY, JSON.stringify(body), 300);
@@ -161,6 +178,46 @@ export async function updateCustomerType(req: Request, res: Response) {
   const { label, active } = req.body;
   const result = await pool.query(UPDATE_CUSTOMER_TYPE, [id, label ?? null, active ?? null]);
   if (!result.rows[0]) { res.status(404).json({ detail: 'Tipo de cliente no encontrado' }); return; }
+  await cacheDel(CONFIG_CACHE_KEY);
+  res.status(200).json({ data: result.rows[0] });
+}
+
+// ─── Payment Gateway Rules ─────────────────────────────────────────────────────
+
+const VALID_GATEWAYS   = ['checkout_pro', 'checkout_api', 'bank_transfer', 'mp_point'] as const;
+const VALID_CUST_TYPES = ['retail', 'wholesale'] as const;
+
+export async function getPaymentGatewayRules(_req: Request, res: Response): Promise<void> {
+  const result = await pool.query(FIND_PAYMENT_GATEWAY_RULES);
+  const grouped: Record<string, { gateway: string; active: boolean }[]> = {};
+  for (const r of result.rows) {
+    if (!grouped[r.customer_type]) grouped[r.customer_type] = [];
+    grouped[r.customer_type].push({ gateway: r.gateway, active: r.active });
+  }
+  res.status(200).json({ data: grouped });
+}
+
+export async function updatePaymentGatewayRule(req: Request, res: Response): Promise<void> {
+  const { customer_type, gateway, active } = req.body;
+
+  if (!VALID_CUST_TYPES.includes(customer_type)) {
+    res.status(400).json({
+      detail: `customer_type inválido. Valores permitidos: ${VALID_CUST_TYPES.join(', ')}`,
+    });
+    return;
+  }
+  if (!VALID_GATEWAYS.includes(gateway)) {
+    res.status(400).json({
+      detail: `gateway inválido. Valores permitidos: ${VALID_GATEWAYS.join(', ')}`,
+    });
+    return;
+  }
+  if (typeof active !== 'boolean') {
+    res.status(400).json({ detail: 'active debe ser un booleano' });
+    return;
+  }
+
+  const result = await pool.query(UPSERT_PAYMENT_GATEWAY_RULE, [customer_type, gateway, active]);
   await cacheDel(CONFIG_CACHE_KEY);
   res.status(200).json({ data: result.rows[0] });
 }

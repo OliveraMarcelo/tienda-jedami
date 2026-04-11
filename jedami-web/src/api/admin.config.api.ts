@@ -93,6 +93,40 @@ export async function updatePaymentGateway(gateway: 'checkout_pro' | 'checkout_a
   return res.data.data
 }
 
+// ─── Payment Gateway Rules (por tipo de cliente) ─────────────────────────────
+
+export interface PaymentGatewayRuleRow {
+  id: number
+  customer_type: 'retail' | 'wholesale'
+  gateway: string
+  active: boolean
+  updated_at: string
+}
+
+export interface PaymentGatewayRulesMap {
+  retail: PaymentGatewayRuleRow[]
+  wholesale: PaymentGatewayRuleRow[]
+}
+
+export async function fetchPaymentGatewayRules(): Promise<PaymentGatewayRulesMap> {
+  const res = await apiClient.get<{ data: Partial<PaymentGatewayRulesMap> }>('/config/payment-gateways')
+  const data = res.data.data
+  return { retail: data.retail ?? [], wholesale: data.wholesale ?? [] }
+}
+
+export async function patchPaymentGatewayRule(
+  customerType: 'retail' | 'wholesale',
+  gateway: string,
+  active: boolean,
+): Promise<PaymentGatewayRuleRow> {
+  const res = await apiClient.patch<{ data: PaymentGatewayRuleRow }>('/config/payment-gateways', {
+    customer_type: customerType,
+    gateway,
+    active,
+  })
+  return res.data.data
+}
+
 // ─── Branding ────────────────────────────────────────────────────────────────
 
 export async function updateBranding(data: Partial<BrandingConfig>): Promise<BrandingConfig> {

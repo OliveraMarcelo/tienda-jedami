@@ -55,6 +55,22 @@ export async function retryPaymentHandler(req: Request, res: Response, next: Nex
   }
 }
 
+export async function smartCheckoutHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const user = req.user as JwtUserPayload;
+    const { orderId, selectedGateway } = req.body;
+    const parsedOrderId = parseInt(String(orderId), 10);
+    if (isNaN(parsedOrderId) || parsedOrderId <= 0) {
+      next(new AppError(400, 'orderId inválido', 'https://jedami.com/errors/validation', 'orderId debe ser un entero positivo'));
+      return;
+    }
+    const result = await paymentsService.smartCheckout(parsedOrderId, user.id, selectedGateway);
+    res.status(200).json({ data: result });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function webhook(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     // Usar el raw buffer guardado por el verify callback de express.json()
