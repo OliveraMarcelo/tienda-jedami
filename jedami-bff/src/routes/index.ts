@@ -8,6 +8,7 @@ import ordersRoutes from './orders.routes.js';
 import paymentsRoutes from './payments.routes.js';
 import configRoutes from './config.routes.js';
 import adminRoutes from './admin.routes.js';
+import posRoutes from './pos.routes.js';
 import { authMiddleware } from '../middlewares/auth.middleware.js';
 import { requireRole } from '../middlewares/role.middleware.js';
 import { assignRole, removeRoleFromUser } from '../modules/roles/roles.controller.js';
@@ -130,5 +131,8 @@ router.use('/orders', ordersRoutes);
 
 // Pagos — checkout autenticado + webhook público
 router.use('/payments', paymentsRoutes);
+
+// POS — gestión de dispositivos Point (solo admin)
+router.use('/pos', posRoutes);
 
 export default router;

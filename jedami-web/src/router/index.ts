@@ -88,6 +88,12 @@ const router = createRouter({
       component: () => import('@/views/admin/AdminAnnouncementsView.vue'),
       meta: { requiresRole: ROLES.ADMIN },
     },
+    {
+      path: '/admin/point',
+      name: 'adminPoint',
+      component: () => import('@/views/admin/AdminPointView.vue'),
+      meta: { requiresRole: ROLES.ADMIN },
+    },
   ],
 })
 
