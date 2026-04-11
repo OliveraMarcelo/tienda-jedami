@@ -138,9 +138,28 @@ export const createVariantWithStock = async (
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const variantResult = await client.query(CREATE_VARIANT, [productId, sizeId, colorId]);
-    const variant: Variant = variantResult.rows[0];
-    await client.query(CREATE_STOCK, [variant.id, initialStock]);
+    // Si existe una variante inactiva con la misma combinación, la reactiva en lugar de insertar
+    const existingResult = await client.query(
+      'SELECT id, product_id, size_id, color_id FROM variants WHERE product_id = $1 AND size_id = $2 AND color_id = $3 AND active = FALSE LIMIT 1',
+      [productId, sizeId, colorId],
+    );
+    let variant: Variant;
+    if (existingResult.rows.length > 0) {
+      const reactivated = await client.query(
+        'UPDATE variants SET active = TRUE WHERE id = $1 RETURNING id, product_id, size_id, color_id',
+        [existingResult.rows[0].id],
+      );
+      variant = reactivated.rows[0];
+      // Asegura que exista registro de stock (puede haberse eliminado en cascada)
+      await client.query(
+        'INSERT INTO stock (variant_id, quantity) VALUES ($1, $2) ON CONFLICT (variant_id) DO UPDATE SET quantity = EXCLUDED.quantity',
+        [variant.id, initialStock],
+      );
+    } else {
+      const variantResult = await client.query(CREATE_VARIANT, [productId, sizeId, colorId]);
+      variant = variantResult.rows[0];
+      await client.query(CREATE_STOCK, [variant.id, initialStock]);
+    }
     await client.query('COMMIT');
     return { variant, stock: { variant_id: variant.id, quantity: initialStock } };
   } catch (err) {

@@ -21,6 +21,7 @@ import {
   updateStockHandler,
   reorderImagesHandler,
 } from '../modules/products/products.controller.js';
+import { getPublicDiscountRules } from '../modules/discounts/discounts.controller.js';
 import { authMiddleware } from '../middlewares/auth.middleware.js';
 import { requireRole } from '../middlewares/role.middleware.js';
 import { ROLES } from '../lib/constants.js';
@@ -287,6 +288,33 @@ router.patch('/colors/:id',  authMiddleware, requireRole([ROLES.ADMIN]), updateC
  *                 page: { type: integer }
  *                 limit: { type: integer }
  */
+/**
+ * @swagger
+ * /products/{id}/discount-rules:
+ *   get:
+ *     tags: [Discounts]
+ *     summary: Obtener escalones de descuento activos de un producto (público)
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Escalones de descuento activos por cantidad y curva
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     quantityRules: { type: array, items: { type: object } }
+ *                     curvaRules: { type: array, items: { type: object } }
+ */
+router.get('/:id/discount-rules', getPublicDiscountRules);
+
 router.get('/', listProducts);
 
 /**

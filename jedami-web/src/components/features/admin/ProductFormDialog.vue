@@ -131,7 +131,6 @@ async function handleSubmit() {
       retailPrice: Number(retailPrice.value),
       wholesalePrice: wholesalePrice.value !== '' ? Number(wholesalePrice.value) : null,
     })
-    emit('update:open', false)
   } catch (err: unknown) {
     const e = err as { response?: { data?: { detail?: string } } }
     serverError.value = e.response?.data?.detail ?? 'Error al guardar'
@@ -263,7 +262,7 @@ async function handleSubmit() {
           </div>
         </div>
         <p v-else-if="product" class="text-xs text-gray-400 mb-2">Sin fotos. Agregá la primera.</p>
-        <p v-else class="text-xs text-gray-400 mb-2">Guardá el producto primero para agregar fotos.</p>
+        <p v-else class="text-xs text-gray-500 mb-2">Hacé clic en <strong>Guardar</strong> — el producto se crea y podés subir fotos sin cerrar este panel.</p>
 
         <div v-if="product">
           <label
@@ -307,7 +306,7 @@ async function handleSubmit() {
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
           </svg>
-          Guardar
+          {{ product ? 'Guardar' : 'Guardar y agregar fotos' }}
         </button>
       </div>
     </form>

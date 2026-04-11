@@ -262,9 +262,17 @@ export async function reorderProductImages(productId: number, items: { id: numbe
 }
 
 export async function deleteProduct(id: number) {
-  const deleted = await productsRepository.deleteProduct(id);
-  if (!deleted) {
-    throw new AppError(404, 'Producto no encontrado', 'https://jedami.com/errors/product-not-found', `No existe producto con id ${id}`);
+  try {
+    const deleted = await productsRepository.deleteProduct(id);
+    if (!deleted) {
+      throw new AppError(404, 'Producto no encontrado', 'https://jedami.com/errors/product-not-found', `No existe producto con id ${id}`);
+    }
+  } catch (err: any) {
+    if (err instanceof AppError) throw err;
+    if (err.code === '23503') {
+      throw new AppError(409, 'No se puede eliminar el producto', 'https://jedami.com/errors/conflict', 'El producto tiene pedidos asociados y no puede eliminarse.');
+    }
+    throw err;
   }
 }
 

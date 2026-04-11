@@ -36,7 +36,7 @@ export const useAdminProductsStore = defineStore('adminProducts', () => {
 
   async function createProduct(name: string, description?: string, categoryId?: number | null) {
     const res = await apiCreate({ name, description, categoryId })
-    products.value.push({ ...res.data, variants: [] })
+    products.value.push({ ...res.data, imageUrl: null, categoryName: null, retailPrice: null, wholesalePrice: null, variants: [] })
     totalProducts.value++
     return res.data
   }

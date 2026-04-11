@@ -12,6 +12,8 @@ export interface OrderItem {
   color: string | null
   quantity: number
   unitPrice: number
+  discountPct: number
+  originalUnitPrice: number | null
 }
 
 export interface Order {

@@ -3,6 +3,7 @@ export interface Product {
   name: string;
   description: string | null;
   category_id: number | null;
+  min_quantity_purchase: number | null;
 }
 
 export interface Variant {

@@ -16,6 +16,7 @@ export const ENV = {
   MP_ACCESS_TOKEN: process.env.MP_ACCESS_TOKEN as string,
   MP_WEBHOOK_SECRET: process.env.MP_WEBHOOK_SECRET ?? '',
   MP_WEBHOOK_URL: process.env.MP_WEBHOOK_URL ?? '',
+  MP_POINT_WEBHOOK_SECRET: process.env.MP_POINT_WEBHOOK_SECRET ?? '',
   // Redis
   REDIS_URL: process.env.REDIS_URL ?? '',
   CACHE_TTL: Number(process.env.CACHE_TTL) || 300,

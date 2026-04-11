@@ -1,4 +1,6 @@
-INSERT INTO announcements (title, body, image_url, link_url, link_label, target_audience, active, sort_order) VALUES
+INSERT INTO announcements (title, body, image_url, link_url, link_label, target_audience, active, sort_order)
+SELECT title, body, image_url, link_url, link_label, target_audience, TRUE, sort_order
+FROM (VALUES
   (
     '🔥 Nuevos ingresos esta semana',
     'Llegaron colecciones nuevas de verano. ¡Entrá al catálogo y descubrí las novedades!',
@@ -6,7 +8,6 @@ INSERT INTO announcements (title, body, image_url, link_url, link_label, target_
     '/catalogo',
     'Ver novedades',
     'all',
-    TRUE,
     1
   ),
   (
@@ -16,7 +17,6 @@ INSERT INTO announcements (title, body, image_url, link_url, link_label, target_
     NULL,
     NULL,
     'wholesale',
-    TRUE,
     2
   ),
   (
@@ -26,7 +26,6 @@ INSERT INTO announcements (title, body, image_url, link_url, link_label, target_
     '/catalogo',
     'Comprar ahora',
     'retail',
-    TRUE,
     3
   ),
   (
@@ -36,6 +35,7 @@ INSERT INTO announcements (title, body, image_url, link_url, link_label, target_
     '/pedidos',
     'Ver mis pedidos',
     'authenticated',
-    TRUE,
     4
-  );
+  )
+) AS v(title, body, image_url, link_url, link_label, target_audience, sort_order)
+WHERE NOT EXISTS (SELECT 1 FROM announcements);
