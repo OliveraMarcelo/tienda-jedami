@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QA E2E — Vista /login | Jedami</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      padding: 32px 16px;
+    }
+    h1 { color: #f0f6fc; font-size: 1.8rem; margin-bottom: 8px; }
+    .subtitle { color: #8b949e; margin-bottom: 32px; font-size: 0.95rem; }
+    .subtitle a { color: #58a6ff; text-decoration: none; }
+    .subtitle a:hover { text-decoration: underline; }
+    .badge { display: inline-block; background: #238636; color: #fff; padding: 2px 10px; border-radius: 12px; font-size: 0.8rem; margin-left: 8px; vertical-align: middle; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+      gap: 24px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .card-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid #21262d;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .badge-id {
+      background: #1f6feb;
+      color: #fff;
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .card-title { font-size: 0.9rem; color: #f0f6fc; }
+    .status-pass { color: #3fb950; font-size: 0.8rem; margin-left: auto; white-space: nowrap; }
+    video {
+      width: 100%;
+      display: block;
+      background: #000;
+      max-height: 280px;
+    }
+    .card-footer {
+      padding: 10px 16px;
+      font-size: 0.78rem;
+      color: #8b949e;
+    }
+    header {
+      max-width: 1400px;
+      margin: 0 auto 32px;
+    }
+    .summary-bar {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 14px 20px;
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 32px;
+      max-width: 1400px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .stat { text-align: center; }
+    .stat-value { font-size: 1.6rem; font-weight: 700; color: #3fb950; }
+    .stat-label { font-size: 0.75rem; color: #8b949e; }
+    .divider { width: 1px; background: #30363d; height: 40px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>QA E2E — Vista <code>/login</code> <span class="badge">13/13 PASS</span></h1>
+    <p class="subtitle">
+      Suite ejecutada con Playwright · 2026-04-12 ·
+      <a href="https://github.com/OliveraMarcelo/tienda-jedami/issues/1">Ver issue #1</a> ·
+      <a href="https://github.com/OliveraMarcelo/tienda-jedami/blob/main/jedami-web/e2e/login.spec.ts">Ver código</a>
+    </p>
+  </header>
+
+  <div class="summary-bar">
+    <div class="stat">
+      <div class="stat-value">13</div>
+      <div class="stat-label">Tests ejecutados</div>
+    </div>
+    <div class="divider"></div>
+    <div class="stat">
+      <div class="stat-value">13</div>
+      <div class="stat-label">PASS</div>
+    </div>
+    <div class="divider"></div>
+    <div class="stat">
+      <div class="stat-value" style="color:#f85149">0</div>
+      <div class="stat-label">FAIL</div>
+    </div>
+    <div class="divider"></div>
+    <div class="stat">
+      <div class="stat-value" style="color:#58a6ff">18.8s</div>
+      <div class="stat-label">Duración total</div>
+    </div>
+    <div class="divider"></div>
+    <div class="stat">
+      <div class="stat-value" style="color:#8b949e; font-size:1rem">Chromium</div>
+      <div class="stat-label">Browser</div>
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge-id">L-001</span>
+        <span class="card-title">Login Admin → redirige a /admin</span>
+        <span class="status-pass">✅ PASS</span>
+      </div>
+      <video controls preload="metadata">
+        <source src="videos/L-001-login-admin.webm" type="video/webm">
+      </video>
+      <div class="card-footer">Credenciales admin correctas → redirección a Panel de administración</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge-id">L-002</span>
+        <span class="card-title">Login Mayorista → redirige a /catalogo</span>
+        <span class="status-pass">✅ PASS</span>
+      </div>
+      <video controls preload="metadata">
+        <source src="videos/L-002-login-mayorista.webm" type="video/webm">
+      </video>
+      <div class="card-footer">Credenciales mayorista → redirección al Catálogo</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge-id">L-003</span>
+        <span class="card-title">Email inexistente → error visible</span>
+        <span class="status-pass">✅ PASS</span>
+      </div>
+      <video controls preload="metadata">
+        <source src="videos/L-003-email-inexistente.webm" type="video/webm">
+      </video>
+      <div class="card-footer">Permanece en /login con mensaje "Email o contraseña incorrectos"</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge-id">L-004</span>
+        <span class="card-title">Password incorrecto → error visible</span>
+        <span class="status-pass">✅ PASS</span>
+      </div>
+      <video controls preload="metadata">
+        <source src="videos/L-004-password-incorrecto.webm" type="video/webm">
+      </video>
+      <div class="card-footer">Email válido pero password equivocado → error del servidor</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge-id">L-005</span>
+        <span class="card-title">Campos vacíos → botón deshabilitado</span>
+        <span class="status-pass">✅ PASS</span>
+      </div>
+      <video controls preload="metadata">
+        <source src="videos/L-005-boton-disabled.webm" type="video/webm">
+      </video>
+      <div class="card-footer">Sin datos en ningún campo → botón "Ingresar" disabled</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge-id">L-006</span>
+        <span class="card-title">Blur email vacío → "El email es requerido"</span>
+        <span class="status-pass">✅ PASS</span>
+      </div>
+      <video controls preload="metadata">
+        <source src="videos/L-006-blur-email.webm" type="video/webm">
+      </video>
+      <div class="card-footer">Click en email → click en otro campo → mensaje de validación inline</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge-id">L-007</span>
+        <span class="card-title">Blur password vacío → "La contraseña es requerida"</span>
+        <span class="status-pass">✅ PASS</span>
+      </div>
+      <video controls preload="metadata">
+        <source src="videos/L-007-blur-password.webm" type="video/webm">
+      </video>
+      <div class="card-footer">Tab desde contraseña → mensaje de validación inline</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge-id">L-008</span>
+        <span class="card-title">Email inválido → "El email no es válido"</span>
+        <span class="status-pass">✅ PASS</span>
+      </div>
+      <video controls preload="metadata">
+        <source src="videos/L-008-email-invalido.webm" type="video/webm">
+      </video>
+      <div class="card-footer">Formato sin @ → validación client-side, botón disabled</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge-id">L-009</span>
+        <span class="card-title">Link "Registrate" → navega a /registro</span>
+        <span class="status-pass">✅ PASS</span>
+      </div>
+      <video controls preload="metadata">
+        <source src="videos/L-009-link-registro.webm" type="video/webm">
+      </video>
+      <div class="card-footer">Click en link → formulario de Crear cuenta</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge-id">L-010</span>
+        <span class="card-title">Toggle visibilidad contraseña (👁️ / 🙈)</span>
+        <span class="status-pass">✅ PASS</span>
+      </div>
+      <video controls preload="metadata">
+        <source src="videos/L-010-toggle-password.webm" type="video/webm">
+      </video>
+      <div class="card-footer">type="password" → click ojito → type="text" → click → type="password"</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge-id">L-011</span>
+        <span class="card-title">Usuario logueado redirigido desde /login</span>
+        <span class="status-pass">✅ PASS</span>
+      </div>
+      <video controls preload="metadata">
+        <source src="videos/L-011-redireccion-logueado.webm" type="video/webm">
+      </video>
+      <div class="card-footer">Router guard activo: admin ya logueado → /admin</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge-id">L-012</span>
+        <span class="card-title">Spinner "Ingresando…" durante el request</span>
+        <span class="status-pass">✅ PASS</span>
+      </div>
+      <video controls preload="metadata">
+        <source src="videos/L-012-spinner.webm" type="video/webm">
+      </video>
+      <div class="card-footer">Delay artificial 1500ms → botón muestra "Ingresando…" con spinner</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge-id">L-013</span>
+        <span class="card-title">Error de red → mensaje fallback (no crashea)</span>
+        <span class="status-pass">✅ PASS</span>
+      </div>
+      <video controls preload="metadata">
+        <source src="videos/L-013-error-red.webm" type="video/webm">
+      </video>
+      <div class="card-footer">route.abort('failed') → mensaje genérico de error, app estable</div>
+    </div>
+
+  </div>
+</body>
+</html>
