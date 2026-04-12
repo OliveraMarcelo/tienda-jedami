@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QA E2E — Vista /registro | Jedami</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      padding: 32px 16px;
+    }
+    h1 { color: #f0f6fc; font-size: 1.8rem; margin-bottom: 8px; }
+    .subtitle { color: #8b949e; margin-bottom: 32px; font-size: 0.95rem; }
+    .subtitle a { color: #58a6ff; text-decoration: none; }
+    .subtitle a:hover { text-decoration: underline; }
+    .badge { display: inline-block; background: #238636; color: #fff; padding: 2px 10px; border-radius: 12px; font-size: 0.8rem; margin-left: 8px; vertical-align: middle; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+      gap: 24px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .card-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid #21262d;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .badge-id {
+      background: #1f6feb;
+      color: #fff;
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .card-title { font-size: 0.9rem; color: #f0f6fc; }
+    .status-pass { color: #3fb950; font-size: 0.8rem; margin-left: auto; white-space: nowrap; }
+    .card img {
+      width: 100%;
+      display: block;
+      background: #000;
+      max-height: 320px;
+      object-fit: cover;
+      object-position: top;
+    }
+    .card-footer {
+      padding: 10px 16px;
+      font-size: 0.78rem;
+      color: #8b949e;
+    }
+    .no-screenshot {
+      width: 100%;
+      height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0d1117;
+      color: #484f58;
+      font-size: 0.85rem;
+    }
+    header {
+      max-width: 1400px;
+      margin: 0 auto 32px;
+    }
+    .summary-bar {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 14px 20px;
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 32px;
+      max-width: 1400px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .stat { text-align: center; }
+    .stat-value { font-size: 1.6rem; font-weight: 700; color: #3fb950; }
+    .stat-label { font-size: 0.75rem; color: #8b949e; }
+    .divider { width: 1px; background: #30363d; height: 40px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>QA E2E — Vista <code>/registro</code> <span class="badge">12/12 PASS</span></h1>
+    <p class="subtitle">
+      Suite ejecutada con Playwright · 2026-04-12 ·
+      <a href="https://github.com/OliveraMarcelo/tienda-jedami/issues/2">Ver issue #2</a> ·
+      <a href="https://github.com/OliveraMarcelo/tienda-jedami/blob/main/jedami-web/e2e/registro.spec.ts">Ver código</a>
+    </p>
+  </header>
+
+  <div class="summary-bar">
+    <div class="stat">
+      <div class="stat-value">12</div>
+      <div class="stat-label">Tests ejecutados</div>
+    </div>
+    <div class="divider"></div>
+    <div class="stat">
+      <div class="stat-value">12</div>
+      <div class="stat-label">PASS</div>
+    </div>
+    <div class="divider"></div>
+    <div class="stat">
+      <div class="stat-value" style="color:#f85149">0</div>
+      <div class="stat-label">FAIL</div>
+    </div>
+    <div class="divider"></div>
+    <div class="stat">
+      <div class="stat-value" style="color:#58a6ff">~22s</div>
+      <div class="stat-label">Duración total</div>
+    </div>
+    <div class="divider"></div>
+    <div class="stat">
+      <div class="stat-value" style="color:#8b949e; font-size:1rem">Chromium</div>
+      <div class="stat-label">Browser</div>
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge-id">REG-001</span>
+        <span class="card-title">Registro exitoso como Mayorista → /catalogo</span>
+        <span class="status-pass">✅ PASS</span>
+      </div>
+      <img src="screenshots/REG-001-mayorista-ok.png" alt="REG-001">
+      <div class="card-footer">Seleccionar Mayorista → completar form → redirige a /catalogo</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge-id">REG-002</span>
+        <span class="card-title">Registro exitoso como Minorista → /catalogo</span>
+        <span class="status-pass">✅ PASS</span>
+      </div>
+      <img src="screenshots/REG-002-minorista-ok.png" alt="REG-002">
+      <div class="card-footer">Seleccionar Minorista → completar form → redirige a /catalogo</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge-id">REG-003</span>
+        <span class="card-title">Email ya registrado → error de servidor visible</span>
+        <span class="status-pass">✅ PASS</span>
+      </div>
+      <img src="screenshots/REG-003-email-existente.png" alt="REG-003">
+      <div class="card-footer">Email admin@jedami.com ya registrado → mensaje de error visible en /registro</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge-id">REG-004</span>
+        <span class="card-title">Campos vacíos → botón deshabilitado</span>
+        <span class="status-pass">✅ PASS</span>
+      </div>
+      <img src="screenshots/REG-004-boton-disabled.png" alt="REG-004">
+      <div class="card-footer">Sin datos en ningún campo → botón "Crear cuenta" disabled</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge-id">REG-005</span>
+        <span class="card-title">Password menor a 8 caracteres → error de validación</span>
+        <span class="status-pass">✅ PASS</span>
+      </div>
+      <img src="screenshots/REG-005-password-corto.png" alt="REG-005">
+      <div class="card-footer">Password "corto" (5 chars) → "La contraseña debe tener al menos 8 caracteres"</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge-id">REG-006</span>
+        <span class="card-title">Email con formato inválido → "El email no es válido"</span>
+        <span class="status-pass">✅ PASS</span>
+      </div>
+      <img src="screenshots/REG-006-email-invalido.png" alt="REG-006">
+      <div class="card-footer">Email sin @ → validación client-side, botón disabled</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge-id">REG-007</span>
+        <span class="card-title">Contraseñas que no coinciden → error visible</span>
+        <span class="status-pass">✅ PASS</span>
+      </div>
+      <img src="screenshots/REG-007-passwords-no-coinciden.png" alt="REG-007">
+      <div class="card-footer">Password1! vs Password2! → "Las contraseñas no coinciden"</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge-id">REG-008</span>
+        <span class="card-title">Link "Ingresá" navega a /login</span>
+        <span class="status-pass">✅ PASS</span>
+      </div>
+      <img src="screenshots/REG-008-link-ingresa.png" alt="REG-008">
+      <div class="card-footer">Click en "Ingresá" → formulario de login en /login</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge-id">REG-009</span>
+        <span class="card-title">Selector tipo de cliente visible y funcional</span>
+        <span class="status-pass">✅ PASS</span>
+      </div>
+      <img src="screenshots/REG-009-selector-tipo.png" alt="REG-009">
+      <div class="card-footer">Botones Minorista y Mayorista en el form → click en Mayorista → seleccionado sin submit</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge-id">REG-010</span>
+        <span class="card-title">Blur en email vacío → "El email es requerido"</span>
+        <span class="status-pass">✅ PASS</span>
+      </div>
+      <img src="screenshots/REG-010-blur-email-vacio.png" alt="REG-010">
+      <div class="card-footer">Click en email → click en otro campo → "El email es requerido"</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge-id">REG-011</span>
+        <span class="card-title">Blur en confirmación vacía → "Confirmá tu contraseña"</span>
+        <span class="status-pass">✅ PASS</span>
+      </div>
+      <img src="screenshots/REG-011-blur-confirmacion.png" alt="REG-011">
+      <div class="card-footer">Tab desde confirm vacío → "Confirmá tu contraseña"</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="badge-id">REG-012</span>
+        <span class="card-title">Spinner "Creando cuenta…" visible durante el request</span>
+        <span class="status-pass">✅ PASS</span>
+      </div>
+      <div class="no-screenshot">Verificado por suite automatizada · route intercept 1500ms delay</div>
+      <div class="card-footer">Delay artificial vía page.route → botón muestra "Creando cuenta…" con spinner</div>
+    </div>
+
+  </div>
+</body>
+</html>
