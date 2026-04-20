@@ -91,18 +91,17 @@ services:
       context: ./jedami-web
       dockerfile: Dockerfile
       args:
-        # VITE_API_URL vacío → Nginx proxea /api/ al BFF en el mismo origen.
-        # Si exponés el BFF en un dominio separado, ponelo acá:
-        #   VITE_API_URL: "https://api.tudominio.com"
         VITE_API_URL: ""
     restart: unless-stopped
     ports:
-      # Puerto 80 expuesto al host. Si usás SSL con Certbot, cambiar a 443
-      # o poner un reverse proxy (Caddy/Traefik) delante.
       - "80:80"
+      - "443:443"
+    volumes:
+      # Certificados Let's Encrypt del host montados como readonly en el contenedor
+      - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       jedami-bff:
-        condition: service_healthy       # Esperar a que el BFF esté respondiendo
+        condition: service_healthy
     networks:
       - jedami-internal
 
