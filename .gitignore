@@ -14,6 +14,23 @@ jedami-mobile/build/
 jedami-mobile/.flutter-plugins
 jedami-mobile/.flutter-plugins-dependencies
 
+# Variables de entorno producción (nunca commitear)
+.env.prod
+.env.production
+
+# Claude Code — configuración local del agente
+.claude/
+
+# Playwright MCP — configuración local
+.playwright-mcp/
+
+# Reportes y resultados de tests E2E (generados en cada ejecución)
+jedami-web/playwright-report/
+jedami-web/test-results/
+
+# Archivos de bloqueo de LibreOffice/Excel
+.~lock.*.xlsx#
+
 # General
 .DS_Store
 *.log

@@ -1,0 +1,126 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# docker-compose.prod.yml — Stack completo de producción para Jedami
+#
+# Servicios:
+#   postgres    → base de datos principal (volumen persistente)
+#   redis       → caché y sesiones (volumen persistente)
+#   jedami-bff  → API Express/Node.js
+#   jedami-web  → SPA Vue servida por Nginx (proxy al BFF)
+#
+# Uso rápido:
+#   docker compose -f docker-compose.prod.yml up -d --build
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped              # Reinicio automático salvo parada manual
+    env_file:
+      - .env.prod                        # Leer POSTGRES_USER/PASSWORD/DB desde archivo
+    volumes:
+      # Volumen nombrado: los datos sobreviven a "docker compose down"
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - jedami-internal
+    healthcheck:
+      # pg_isready verifica que Postgres acepta conexiones (usa la var POSTGRES_USER)
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s                  # Esperar 30s antes del primer check
+
+  # ── Redis ───────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --appendonly yes                   # Persistencia AOF: los datos sobreviven reinicios
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru     # Evicción LRU cuando se llena la memoria
+    volumes:
+      - redis_data:/data
+    networks:
+      - jedami-internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Backend (Express + TypeScript) ──────────────────────────────────────────
+  jedami-bff:
+    build:
+      context: ./jedami-bff
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env.prod                        # Variables de entorno del BFF
+    environment:
+      # Sobreescribir las URLs con los service names de docker para conectividad interna.
+      # "postgres" y "redis" son los nombres de los servicios definidos arriba.
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      NODE_ENV: production
+    volumes:
+      # Volumen para uploads (imágenes de productos, branding, etc.)
+      # Se monta en la ruta que usa el código: /app/uploads
+      - uploads_data:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy       # Esperar a que Postgres esté listo
+      redis:
+        condition: service_healthy       # Esperar a que Redis esté listo
+    networks:
+      - jedami-internal
+    # El BFF NO expone puerto al host en producción.
+    # Solo jedami-web (nginx) accede a él internamente.
+    # Si necesitás acceso directo para debugging: descomentar la línea de abajo.
+    # ports:
+    #   - "3000:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/v1/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # ── Frontend (Vue + Nginx) ───────────────────────────────────────────────────
+  jedami-web:
+    build:
+      context: ./jedami-web
+      dockerfile: Dockerfile
+      args:
+        # VITE_API_URL vacío → Nginx proxea /api/ al BFF en el mismo origen.
+        # Si exponés el BFF en un dominio separado, ponelo acá:
+        #   VITE_API_URL: "https://api.tudominio.com"
+        VITE_API_URL: ""
+    restart: unless-stopped
+    ports:
+      # Puerto 80 expuesto al host. Si usás SSL con Certbot, cambiar a 443
+      # o poner un reverse proxy (Caddy/Traefik) delante.
+      - "80:80"
+    depends_on:
+      jedami-bff:
+        condition: service_healthy       # Esperar a que el BFF esté respondiendo
+    networks:
+      - jedami-internal
+
+# ─── Volúmenes persistentes ───────────────────────────────────────────────────
+# Los datos de Postgres, Redis y uploads sobreviven a "docker compose down".
+# Para borrarlos: docker compose -f docker-compose.prod.yml down -v
+volumes:
+  postgres_data:
+  redis_data:
+  uploads_data:
+
+# ─── Red interna ─────────────────────────────────────────────────────────────
+# Red bridge aislada. Los servicios se ven entre sí por nombre (postgres, redis, etc.)
+# pero NO son accesibles desde el host salvo por los puertos explícitamente publicados.
+networks:
+  jedami-internal:
+    driver: bridge
