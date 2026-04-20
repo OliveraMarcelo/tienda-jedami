@@ -1,34 +1,13 @@
-name: Deploy
+name: Deploy a producción
 
 on:
   push:
     branches: [main]
 
 jobs:
-  # ─── Detectar qué cambió ──────────────────────────────────────────────────
-  changes:
-    name: Detect changes
-    runs-on: ubuntu-latest
-    outputs:
-      bff: ${{ steps.filter.outputs.bff }}
-      web: ${{ steps.filter.outputs.web }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
-            bff:
-              - 'jedami-bff/**'
-              - 'render.yaml'
-            web:
-              - 'jedami-web/**'
-
-  # ─── CI del BFF (solo si cambió) ──────────────────────────────────────────
-  ci-bff:
-    name: BFF — lint + type-check
-    needs: changes
-    if: needs.changes.outputs.bff == 'true'
+  # ─── Gate: lint + build antes de deployar ────────────────────────────────
+  ci:
+    name: BFF — lint + build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -44,73 +23,20 @@ jobs:
       - run: npm run lint
       - run: npm run build
 
-  # ─── Build & push imagen BFF → GHCR ───────────────────────────────────────
-  build-bff:
-    name: Build BFF image → GHCR
-    needs: ci-bff
+  # ─── Deploy al Droplet vía SSH ────────────────────────────────────────────
+  deploy:
+    name: Deploy → DigitalOcean
+    needs: ci
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
+      - name: SSH deploy
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and push
-        uses: docker/build-push-action@v6
-        with:
-          context: ./jedami-bff
-          file: ./jedami-bff/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/jedami-bff:latest
-            ghcr.io/${{ github.repository_owner }}/jedami-bff:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  # ─── Deploy BFF → Render ──────────────────────────────────────────────────
-  deploy-bff:
-    name: Deploy BFF → Render
-    needs: build-bff
-    runs-on: ubuntu-latest
-    steps:
-      - name: Trigger Render deploy hook
-        run: |
-          curl -s --fail-with-body \
-            "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" \
-            -X POST
-
-  # ─── Deploy Web → Vercel ──────────────────────────────────────────────────
-  # Vercel también auto-despliega via su GitHub App en cada push a main.
-  # Este job existe para tener visibilidad del deploy en el pipeline de GH Actions
-  # y para poder bloquear el deploy web si el BFF falló (añadir needs: deploy-bff).
-  deploy-web:
-    name: Deploy Web → Vercel
-    needs: changes
-    if: needs.changes.outputs.web == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Vercel CLI
-        run: npm install -g vercel@latest
-
-      - name: Deploy to Vercel
-        run: |
-          vercel deploy \
-            --token=${{ secrets.VERCEL_TOKEN }} \
-            --prod \
-            --yes \
-            --cwd jedami-web
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd /opt/jedami
+            git pull origin main
+            docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build jedami-bff jedami-web
+            docker image prune -f
