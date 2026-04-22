@@ -73,13 +73,12 @@ jobs:
           script: |
             cd /opt/jedami
             git pull origin main
-            export DOCKERHUB_USERNAME=$DOCKERHUB_USERNAME
             docker compose -f docker-compose.prod.yml --env-file .env.prod pull jedami-bff jedami-web
             docker compose -f docker-compose.prod.yml --env-file .env.prod up -d jedami-bff jedami-web
-            docker image prune -f
             echo "Verificando salud del BFF..."
             sleep 15
             docker compose -f docker-compose.prod.yml exec -T jedami-bff wget -qO- http://localhost:3000/api/v1/health || (echo "ERROR: BFF no responde" && exit 1)
             echo "Deploy exitoso"
+            docker image prune -f
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}

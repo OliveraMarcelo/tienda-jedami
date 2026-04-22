@@ -1,6 +1,6 @@
 # Story 14.9: CI/CD — Build de imágenes Docker en el runner y push a Docker Hub
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -20,33 +20,34 @@ para que el servidor de producción solo haga `docker pull` y el deploy baje de 
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 — Configurar credenciales Docker Hub en GitHub Secrets** (AC: #4)
-  - [ ] 1.1 Crear cuenta en Docker Hub (si no existe) o usar la existente
-  - [ ] 1.2 Crear un Access Token en Docker Hub: Account Settings → Security → New Access Token (permisos: Read, Write, Delete)
-  - [ ] 1.3 Agregar los siguientes GitHub Secrets en el repo:
-    - `DOCKERHUB_USERNAME` — usuario de Docker Hub
-    - `DOCKERHUB_TOKEN` — access token generado
+- [x] **Task 1 — Configurar credenciales Docker Hub en GitHub Secrets** (AC: #4)
+  - [x] 1.1 Cuenta Docker Hub existente: `marceloo20`
+  - [x] 1.2 Access Token creado por el usuario
+  - [x] 1.3 GitHub Secrets configurados: `DOCKERHUB_USERNAME` + `DOCKERHUB_TOKEN`
 
-- [ ] **Task 2 — Actualizar docker-compose.prod.yml para usar imágenes del registry** (AC: #3, #7)
-  - [ ] 2.1 Reemplazar el bloque `build:` de `jedami-bff` por `image: ${DOCKERHUB_USERNAME}/jedami-bff:latest`
-  - [ ] 2.2 Reemplazar el bloque `build:` de `jedami-web` por `image: ${DOCKERHUB_USERNAME}/jedami-web:latest`
-  - [ ] 2.3 Agregar `DOCKERHUB_USERNAME` al `.env.prod.example` con valor `TODO_tu_usuario_docker_hub`
-  - [ ] 2.4 Agregar `DOCKERHUB_USERNAME` al `.env.prod` en el servidor de producción
+- [x] **Task 2 — Actualizar docker-compose.prod.yml para usar imágenes del registry** (AC: #3, #7)
+  - [x] 2.1 jedami-bff: `image: ${DOCKERHUB_USERNAME}/jedami-bff:latest`
+  - [x] 2.2 jedami-web: `image: ${DOCKERHUB_USERNAME}/jedami-web:latest`
+  - [x] 2.3 `DOCKERHUB_USERNAME` agregado a `.env.prod.example`
+  - [x] 2.4 Servidor recibe `DOCKERHUB_USERNAME` vía `envs:` del SSH action
 
-- [ ] **Task 3 — Actualizar deploy.yml con build + push en el runner** (AC: #1, #2, #3, #5)
-  - [ ] 3.1 Agregar job `build-and-push` con los siguientes steps:
-    - `docker/login-action` con `DOCKERHUB_USERNAME` y `DOCKERHUB_TOKEN`
-    - `docker/build-push-action` para `jedami-bff` con tags `latest` y `${{ github.sha }}`
-    - `docker/build-push-action` para `jedami-web` con tags `latest` y `${{ github.sha }}`
-  - [ ] 3.2 El job `deploy` debe depender de `build-and-push` (y de `ci`)
-  - [ ] 3.3 Reemplazar `docker compose up -d --build jedami-bff jedami-web` por `docker compose pull jedami-bff jedami-web && docker compose up -d jedami-bff jedami-web`
-  - [ ] 3.4 Preservar el health-check post-deploy existente
+- [x] **Task 3 — Actualizar deploy.yml con build + push en el runner** (AC: #1, #2, #3, #5)
+  - [x] 3.1 Job `build-and-push` con docker/login-action@v3 + docker/build-push-action@v6
+  - [x] 3.2 `deploy` depends on `[ci, build-and-push]`
+  - [x] 3.3 `docker compose pull` + `docker compose up -d` sin `--build`
+  - [x] 3.4 Health-check preservado y movido antes del `docker image prune`
 
-- [ ] **Task 4 — Verificar pipeline end-to-end** (AC: #1, #2, #3, #5, #6)
-  - [ ] 4.1 Hacer push y verificar que el pipeline completa sin errores
-  - [ ] 4.2 Verificar en Docker Hub que las imágenes aparecen con tags `latest` y SHA del commit
-  - [ ] 4.3 Verificar que `https://www.jedamiapp.com` sigue funcionando después del deploy
-  - [ ] 4.4 Medir el tiempo total del deploy (objetivo: < 2 min en el servidor)
+- [x] **Task 4 — Verificar pipeline end-to-end** (AC: #1, #2, #3, #5, #6)
+  - [x] 4.1 Pipeline disparado con commit `c6b06df`
+  - [x] 4.2 Imágenes en Docker Hub con tags `latest` y SHA
+  - [x] 4.3 Sitio verificado post-deploy
+  - [x] 4.4 Deploy en servidor < 2 minutos
+
+### Review Follow-ups (AI)
+- [x] [AI-Review][HIGH] Task 2.3 faltaba: DOCKERHUB_USERNAME agregado a .env.prod.example
+- [x] [AI-Review][MEDIUM] Comentario desactualizado en docker-compose.prod.yml — removido `--build`
+- [x] [AI-Review][MEDIUM] docker image prune movido después del health-check
+- [x] [AI-Review][LOW] export redundante removido del script SSH
 
 ## Dev Notes
 
@@ -201,6 +202,27 @@ claude-sonnet-4-6
 
 ### Debug Log References
 
+Pipeline inicial tardaba 20+ min por build en el Droplet (1 vCPU). Con esta implementación el build pasa al runner de GitHub Actions y el deploy en el servidor baja a < 2 min.
+
+### Senior Developer Review (AI)
+
+**Outcome:** Changes Requested | **Date:** 2026-04-22
+
+**Action Items:**
+- [x] [HIGH] DOCKERHUB_USERNAME faltaba en .env.prod.example
+- [x] [MEDIUM] Comentario `--build` desactualizado en docker-compose.prod.yml
+- [x] [MEDIUM] docker image prune ejecutaba antes del health-check
+- [x] [LOW] export redundante en script SSH
+
 ### Completion Notes List
 
+- Secrets DOCKERHUB_USERNAME y DOCKERHUB_TOKEN configurados en GitHub
+- docker-compose.prod.yml: build: context reemplazado por image: para bff y web
+- deploy.yml: nuevo job build-and-push (runner) → deploy solo hace pull
+- Fixes post-review aplicados en el mismo ciclo
+
 ### File List
+
+- `.github/workflows/deploy.yml`
+- `docker-compose.prod.yml`
+- `.env.prod.example`
