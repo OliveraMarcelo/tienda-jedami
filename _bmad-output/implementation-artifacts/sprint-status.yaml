@@ -297,6 +297,7 @@ development_status:
 
   # Infra Track — deploy y CI/CD
   14-8-cicd-github-actions: done               # GitHub Actions: push a main → deploy automático en el Droplet
+  14-9-cicd-build-imagen-docker-hub: ready-for-dev  # Build imágenes en runner + push Docker Hub → deploy solo hace docker pull
 
   # BFF Track — jedami-bff
   14-1-media-table-centralizada: backlog       # migración de product_images + banners + branding a tabla media única
