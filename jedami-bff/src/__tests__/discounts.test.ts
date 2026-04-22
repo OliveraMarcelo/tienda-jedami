@@ -10,7 +10,6 @@ const ORDERS_BASE = '/api/v1/orders';
 
 let adminToken: string;
 let productId: number;
-let wholesaleUserId: number;
 let wholesaleToken: string;
 
 // ─── Setup global ─────────────────────────────────────────────────────────────
@@ -78,7 +77,7 @@ beforeAll(async () => {
   // Setup wholesale user inicial
   const ws = await setupWholesaleUser();
   wholesaleToken = ws.token;
-  wholesaleUserId = ws.userId;
+
 });
 
 // ─── Discount rules — Public endpoint ────────────────────────────────────────
@@ -239,7 +238,7 @@ describe('Descuento aplicado en pedido CANTIDAD', () => {
     // Re-crear wholesale user (truncado por afterEach)
     const ws = await setupWholesaleUser();
     wholesaleToken = ws.token;
-    wholesaleUserId = ws.userId;
+  
 
     // Resetear mínimo de compra
     await pool.query('UPDATE products SET min_quantity_purchase = NULL WHERE id = $1', [productId]);

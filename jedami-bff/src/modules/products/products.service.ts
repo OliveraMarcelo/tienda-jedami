@@ -253,8 +253,8 @@ export async function getCatalog(page: number, pageSize: number, categoryId?: nu
 export async function reorderProductImages(productId: number, items: { id: number; position: number }[]) {
   try {
     await productsRepository.reorderImages(productId, items);
-  } catch (err: any) {
-    if (err?._invalidIds) {
+  } catch (err: unknown) {
+    if (err && typeof err === 'object' && '_invalidIds' in err) {
       throw new AppError(400, 'IDs inválidos', 'https://jedami.com/errors/validation', 'IDs de imágenes inválidos para este producto');
     }
     throw err;
@@ -267,9 +267,9 @@ export async function deleteProduct(id: number) {
     if (!deleted) {
       throw new AppError(404, 'Producto no encontrado', 'https://jedami.com/errors/product-not-found', `No existe producto con id ${id}`);
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (err instanceof AppError) throw err;
-    if (err.code === '23503') {
+    if (err && typeof err === 'object' && 'code' in err && (err as { code: string }).code === '23503') {
       throw new AppError(409, 'No se puede eliminar el producto', 'https://jedami.com/errors/conflict', 'El producto tiene pedidos asociados y no puede eliminarse.');
     }
     throw err;

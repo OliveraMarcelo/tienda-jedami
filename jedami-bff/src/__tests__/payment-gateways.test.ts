@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import request from 'supertest';
 import { pool } from '../config/database.js';
 import { testApp } from './helpers/app.js';
@@ -6,7 +6,6 @@ import { testApp } from './helpers/app.js';
 const AUTH_BASE    = '/api/v1/auth';
 const CONFIG_BASE  = '/api/v1/config';
 const PAYMENTS_BASE = '/api/v1/payments';
-const ORDERS_BASE  = '/api/v1/orders';
 
 let adminToken: string;
 let retailToken: string;
@@ -135,7 +134,7 @@ async function deleteGatewayRules(): Promise<void> {
 
 async function createOrder(
   customerType: 'retail' | 'wholesale',
-  token: string,
+  _token: string,
 ): Promise<number> {
   // Crear un pedido simple usando el endpoint de órdenes retail si es retail, o wholesale si es wholesale
   // Para simplificar, insertamos directamente en la base de datos

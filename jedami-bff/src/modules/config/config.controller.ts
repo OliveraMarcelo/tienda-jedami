@@ -90,7 +90,7 @@ export async function updateBranding(req: Request, res: Response) {
   if (bankTransferHolderName !== undefined) { fields.push(`bank_transfer_holder_name = $${idx++}`); values.push(bankTransferHolderName ?? null); }
   if (bankTransferBankName !== undefined)   { fields.push(`bank_transfer_bank_name = $${idx++}`);   values.push(bankTransferBankName ?? null); }
   if (bankTransferNotes !== undefined)      { fields.push(`bank_transfer_notes = $${idx++}`);       values.push(bankTransferNotes ?? null); }
-  if (whatsappNumber !== undefined)         { fields.push(`whatsapp_number = $${idx++}`);            values.push(whatsappNumber ?? null); }
+  if (whatsappNumber !== undefined)         { fields.push(`whatsapp_number = $${idx}`);              values.push(whatsappNumber ?? null); }
 
   if (fields.length === 0) {
     res.status(400).json({ detail: 'Debe enviar al menos un campo para actualizar' });
