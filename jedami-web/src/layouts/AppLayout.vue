@@ -57,5 +57,11 @@ const configStore = useConfigStore()
       </template>
       <slot v-else />
     </main>
+    <footer class="border-t border-gray-200 bg-white mt-8">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-12 flex items-center justify-between text-xs text-gray-400">
+        <span>© {{ new Date().getFullYear() }} {{ configStore.branding.storeName }}</span>
+        <span>Hecho con ♥ en Argentina</span>
+      </div>
+    </footer>
   </div>
 </template>
