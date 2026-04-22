@@ -1,6 +1,6 @@
 # Story 14.8: CI/CD con GitHub Actions — Deploy automático en push a main
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -19,34 +19,39 @@ para no tener que conectarme manualmente al servidor cada vez que hay un cambio.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 — Configurar secrets en GitHub** (AC: #3)
-  - [ ] 1.1 Generar par de claves SSH dedicado para el deploy (`ssh-keygen -t ed25519 -C "github-actions-deploy"`)
-  - [ ] 1.2 Agregar la clave pública al servidor: `~/.ssh/authorized_keys`
-  - [ ] 1.3 Crear los siguientes GitHub Secrets en el repo:
+- [x] **Task 1 — Configurar secrets en GitHub** (AC: #3)
+  - [x] 1.1 Generar par de claves SSH dedicado para el deploy (`ssh-keygen -t ed25519 -C "github-actions-deploy"`)
+  - [x] 1.2 Agregar la clave pública al servidor: `~/.ssh/authorized_keys`
+  - [x] 1.3 Crear los siguientes GitHub Secrets en el repo:
     - `DEPLOY_SSH_KEY` — clave privada ed25519 (contenido completo del archivo)
     - `DEPLOY_HOST` — `167.99.145.245`
     - `DEPLOY_USER` — `root`
 
-- [ ] **Task 2 — Crear el workflow de GitHub Actions** (AC: #1, #2, #4, #5)
-  - [ ] 2.1 Crear `.github/workflows/deploy.yml`
-  - [ ] 2.2 Configurar trigger: `on: push: branches: [main]`
-  - [ ] 2.3 Step de SSH: usar `appleboy/ssh-action` para conectarse al servidor
-  - [ ] 2.4 Comandos en el servidor:
+- [x] **Task 2 — Crear el workflow de GitHub Actions** (AC: #1, #2, #4, #5)
+  - [x] 2.1 Crear `.github/workflows/deploy.yml`
+  - [x] 2.2 Configurar trigger: `on: push: branches: [main]`
+  - [x] 2.3 Step de SSH: usar `appleboy/ssh-action` para conectarse al servidor
+  - [x] 2.4 Comandos en el servidor:
     ```bash
     cd /opt/jedami
     git pull origin main
     docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build jedami-bff jedami-web
     docker image prune -f
     ```
-  - [ ] 2.5 Verificar que Postgres y Redis **no** se incluyen en el `up --build` (solo bff y web)
+  - [x] 2.5 Verificar que Postgres y Redis **no** se incluyen en el `up --build` (solo bff y web)
 
-- [ ] **Task 3 — Configurar renovación automática del certificado SSL** (AC: #6)
-  - [ ] 3.1 Crear script `/opt/jedami/renew-ssl.sh` que pare nginx de Docker, renueve con certbot, y lo levante
-  - [ ] 3.2 Agregar cron en el servidor: `0 3 * * 1 /opt/jedami/renew-ssl.sh >> /var/log/renew-ssl.log 2>&1` (cada lunes a las 3am)
+- [x] **Task 3 — Configurar renovación automática del certificado SSL** (AC: #6)
+  - [x] 3.1 Crear script `/opt/jedami/renew-ssl.sh` que pare nginx de Docker, renueve con certbot, y lo levante
+  - [x] 3.2 Agregar cron en el servidor: `0 3 * * 1 /opt/jedami/renew-ssl.sh >> /var/log/renew-ssl.log 2>&1` (cada lunes a las 3am)
 
-- [ ] **Task 4 — Verificar pipeline end-to-end** (AC: #1, #2, #4)
-  - [ ] 4.1 Hacer un commit de prueba y verificar que Actions ejecuta correctamente
-  - [ ] 4.2 Confirmar que `https://www.jedamiapp.com` sigue funcionando después del deploy
+- [x] **Task 4 — Verificar pipeline end-to-end** (AC: #1, #2, #4)
+  - [x] 4.1 Hacer un commit de prueba y verificar que Actions ejecuta correctamente
+  - [x] 4.2 Confirmar que `https://www.jedamiapp.com` sigue funcionando después del deploy
+
+### Review Follow-ups (AI)
+- [x] [AI-Review][HIGH] Unificar Node version: ci.yml 22 → 24 para coincidir con deploy.yml [.github/workflows/ci.yml:23]
+- [x] [AI-Review][MEDIUM] Eliminar trigger push:main de ci.yml — duplicaba CI con deploy.yml [.github/workflows/ci.yml:4]
+- [x] [AI-Review][MEDIUM] Agregar health-check post-deploy en deploy.yml [.github/workflows/deploy.yml]
 
 ## Dev Notes
 
@@ -148,6 +153,27 @@ claude-sonnet-4-6
 
 ### Debug Log References
 
+Verificado en producción vía SSH: deploy.yml activo, renew-ssl.sh existe, cron configurado `0 3 * * 1`.
+Commit `cad53fe` confirma ejecución exitosa del pipeline end-to-end.
+
+### Senior Developer Review (AI)
+
+**Outcome:** Changes Requested | **Date:** 2026-04-21
+
+**Action Items:**
+- [x] [HIGH] Node version inconsistente: ci.yml usaba Node 22, deploy.yml usa Node 24
+- [x] [MEDIUM] CI duplicado en push a main: ci.yml y deploy.yml corrían lint+build dos veces
+- [x] [MEDIUM] Sin health-check post-deploy: workflow reportaba éxito aunque el BFF no levantara
+
 ### Completion Notes List
 
+- Todos los ACs implementados y verificados en producción antes de este registro
+- Fixes post-review: Node unificado a 24, CI deduplicado, health-check agregado al deploy
+- ci.yml ahora solo corre en pull_request (CI gate para PRs)
+- deploy.yml contiene CI gate + deploy + verificación de salud del BFF
+
 ### File List
+
+- `.github/workflows/deploy.yml`
+- `.github/workflows/ci.yml`
+- `/opt/jedami/renew-ssl.sh` (en servidor, no en repo)

@@ -87,11 +87,10 @@ Los roles iniciales son:
 
 ## Seed de usuarios
 
-El usuario de prueba tiene los siguientes detalles:
+El usuario administrador de desarrollo se crea en `003_seed_admin.sql`:
 
-- **Nombre**: "Juan Pérez"
-- **Email**: "juan@tienda.com"
-- **Contraseña**: "password123" (Hasheada con bcrypt)
+- **Email**: `admin@jedami.com`
+- **Contraseña**: ver `.env` local (nunca documentar passwords en el repo)
 
 ## Comando para correr el seed:
 

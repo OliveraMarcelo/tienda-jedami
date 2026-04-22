@@ -40,3 +40,7 @@ jobs:
             git pull origin main
             docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build jedami-bff jedami-web
             docker image prune -f
+            echo "Verificando salud del BFF..."
+            sleep 15
+            docker compose -f docker-compose.prod.yml exec -T jedami-bff wget -qO- http://localhost:3000/api/v1/health || (echo "ERROR: BFF no responde" && exit 1)
+            echo "Deploy exitoso"
