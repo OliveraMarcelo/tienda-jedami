@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /pedidos
+Disallow: /perfil
+
+Sitemap: https://www.jedamiapp.com/sitemap.xml
