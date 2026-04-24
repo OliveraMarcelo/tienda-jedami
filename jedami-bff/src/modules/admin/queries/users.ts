@@ -6,14 +6,14 @@ export const ADMIN_USERS_QUERY = `
     u.created_at,
     json_agg(r.name ORDER BY r.name) FILTER (WHERE r.name IS NOT NULL) AS roles,
     c.id       AS customer_id,
-    c.type     AS customer_type
+    c.customer_type  AS customer_type
   FROM users u
   LEFT JOIN user_roles ur ON ur.user_id  = u.id
   LEFT JOIN roles r       ON r.id        = ur.role_id
   LEFT JOIN customers c   ON c.user_id   = u.id
   WHERE ($3::VARCHAR IS NULL OR r.name = $3)
     AND ($4::VARCHAR IS NULL OR u.email ILIKE '%' || $4 || '%')
-  GROUP BY u.id, u.email, u.created_at, c.id, c.type
+  GROUP BY u.id, u.email, u.created_at, c.id, c.customer_type
   ORDER BY u.created_at DESC
   LIMIT $1 OFFSET $2
 `;

@@ -298,6 +298,7 @@ development_status:
   # Infra Track — deploy y CI/CD
   14-8-cicd-github-actions: done               # GitHub Actions: push a main → deploy automático en el Droplet
   14-9-cicd-build-imagen-docker-hub: done            # Build imágenes en runner + push Docker Hub → deploy solo hace docker pull
+  14-10-kubernetes: ready-for-dev                     # Migración de Docker Compose a Kubernetes (k3s o DOKS)
 
   # BFF Track — jedami-bff
   14-1-media-table-centralizada: backlog       # migración de product_images + banners + branding a tabla media única
@@ -312,6 +313,11 @@ development_status:
   # EPIC 15: Medios de Pago Adicionales
   # Extiende Épica 10 — agrega transferencia bancaria con confirmación manual
   # ─────────────────────────────────────────────────────────
+  # ─────────────────────────────────────────────────────────
+  # HOTFIXES: Bugs detectados en producción
+  # ─────────────────────────────────────────────────────────
+  hotfix-1-fix-admin-usuarios-column-customer-type: done             # column c.type → c.customer_type en ADMIN_USERS_QUERY
+
   epic-15: done
 
   # BFF Track — jedami-bff
