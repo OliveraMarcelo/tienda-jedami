@@ -13,11 +13,17 @@ function rateLimitHandler(max: number, windowMs: number) {
   };
 }
 
+// En desarrollo local, las IPs de loopback no tienen límite
+function skipLocalhost(req: Request): boolean {
+  return ENV.NODE_ENV === 'development' && ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.ip ?? '')
+}
+
 export const generalRateLimit = rateLimit({
   windowMs: ENV.RATE_LIMIT_WINDOW_MS,
   max: ENV.RATE_LIMIT_MAX,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: skipLocalhost,
   handler: rateLimitHandler(ENV.RATE_LIMIT_MAX, ENV.RATE_LIMIT_WINDOW_MS),
 });
 
@@ -26,5 +32,6 @@ export const authRateLimit = rateLimit({
   max: ENV.AUTH_RATE_LIMIT_MAX,
   standardHeaders: true,
   legacyHeaders: false,
+  skip: skipLocalhost,
   handler: rateLimitHandler(ENV.AUTH_RATE_LIMIT_MAX, ENV.RATE_LIMIT_WINDOW_MS),
 });

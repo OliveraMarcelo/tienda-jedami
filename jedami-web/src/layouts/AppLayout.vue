@@ -35,6 +35,7 @@ const configStore = useConfigStore()
             Admin
           </RouterLink>
           <ModeIndicator :mode="authStore.mode" @toggle="authStore.toggleMode()" />
+          <span v-if="authStore.isAuthenticated" class="hidden sm:inline text-xs text-gray-400 max-w-[140px] truncate">{{ authStore.user?.email }}</span>
           <RouterLink v-if="!authStore.isAuthenticated" to="/login" class="text-sm font-medium text-gray-700 hover:text-[var(--color-primary)] transition-colors">
             Ingresar
           </RouterLink>

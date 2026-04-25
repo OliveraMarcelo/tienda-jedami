@@ -104,7 +104,7 @@ export async function createAnnouncement(req: Request, res: Response, next: Next
     let result;
     try {
       await client.query('BEGIN');
-      const sortRes = await client.query('SELECT COALESCE(MAX(sort_order), 0) + 1 AS next FROM announcements FOR UPDATE');
+      const sortRes = await client.query('SELECT COALESCE(MAX(sort_order), 0) + 1 AS next FROM announcements');
       const sortOrder = Number(sortRes.rows[0].next);
       result = await client.query(
         `INSERT INTO announcements (title, body, image_url, link_url, link_label, target_audience, valid_from, valid_until, sort_order)
