@@ -113,6 +113,11 @@ router.beforeEach((to) => {
   if (to.meta.requiresRole === ROLES.ADMIN && !authStore.isAdmin) {
     return { name: 'catalogo' }
   }
+  // Admin no puede usar las rutas de pedidos del cliente (el BFF exige rol wholesale/retail)
+  const PEDIDOS_ROUTES = ['pedidos', 'pedidoDetalle', 'pagoConfirmacion']
+  if (authStore.isAdmin && to.name && PEDIDOS_ROUTES.includes(to.name as string)) {
+    return { name: 'adminDespacho' }
+  }
 })
 
 export default router
