@@ -63,21 +63,13 @@ test.describe('Detalle de Producto — /catalogo/:id', () => {
 
   // ── PROD-003 ──────────────────────────────────────────────────────────────────
   test('PROD-003 | Precios mayoristas visibles para usuario wholesale', async ({ page }) => {
-    await loginAs(page, ADMIN.email, ADMIN.password)
-
-    // Cambiar modo a Mayorista si está en Minorista
-    const modeBtn = page.getByRole('button', { name: /modo activo/i })
-    if (await modeBtn.isVisible()) {
-      const btnText = await modeBtn.textContent()
-      if (btnText?.toLowerCase().includes('minorista')) {
-        await modeBtn.click()
-        await page.waitForTimeout(300)
-      }
-    }
+    // Asegurar modo Mayorista vía localStorage antes de navegar al producto
+    await page.goto('/catalogo')
+    await page.waitForLoadState('networkidle')
+    await page.evaluate(() => localStorage.setItem('jedami_view_mode', 'wholesale'))
 
     await goToProduct(page)
 
-    // El label de precio debe decir "Precio mayorista"
     await expect(page.getByText('Precio mayorista')).toBeVisible({ timeout: 8_000 })
   })
 

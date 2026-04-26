@@ -113,6 +113,30 @@ test.describe('Admin – Productos (/admin/productos)', () => {
     await expect(dialog).not.toBeVisible({ timeout: 8_000 })
   })
 
+  // ── APROD-006 ─────────────────────────────────────────────────────────────────
+  test('APROD-006 | Eliminar variante de producto', async ({ page }) => {
+    // Expandir variantes del primer producto (que debería tener E2E-TEST-SIZE de APROD-005)
+    const variantToggle = page.getByRole('button', { name: /Variantes/ }).first()
+    await expect(variantToggle).toBeVisible()
+    await variantToggle.click()
+
+    const e2eRow = page.locator('tr').filter({ hasText: 'E2E-TEST-SIZE' })
+    const hasRow = await e2eRow.count() > 0
+    if (!hasRow) { test.skip(); return }
+
+    const xBefore = await e2eRow.getByRole('button', { name: '×' }).count()
+    if (xBefore === 0) { test.skip(); return }
+
+    await e2eRow.getByRole('button', { name: '×' }).first().click()
+
+    await expect(page.getByRole('heading', { name: 'Confirmar acción' })).toBeVisible({ timeout: 5_000 })
+    await page.getByRole('button', { name: 'Eliminar' }).last().click()
+
+    await expect(page.getByRole('heading', { name: 'Confirmar acción' })).not.toBeVisible({ timeout: 8_000 })
+    const xAfter = await e2eRow.getByRole('button', { name: '×' }).count()
+    expect(xAfter).toBeLessThan(xBefore)
+  })
+
   // ── APROD-010 ─────────────────────────────────────────────────────────────────
   test('APROD-010 | Actualizar precio mayorista en grid de variantes', async ({ page }) => {
     // Expandir primer producto que tenga variantes
@@ -156,6 +180,63 @@ test.describe('Admin – Productos (/admin/productos)', () => {
 
     // La regla aparece en la tabla (buscar dentro de la sección de cantidad)
     await expect(qtySection.getByRole('cell', { name: '10' })).toBeVisible({ timeout: 8_000 })
+  })
+
+  // ── APROD-012 ─────────────────────────────────────────────────────────────────
+  test('APROD-012 | Panel de descuentos — crear regla por curva', async ({ page }) => {
+    const discountBtn = page.getByRole('button', { name: /Descuentos/ }).first()
+    await expect(discountBtn).toBeVisible()
+    await discountBtn.click()
+
+    await expect(page.getByText('Escalones por curva')).toBeVisible({ timeout: 5_000 })
+
+    const curvaSection = page.locator('p', { hasText: 'Escalones por curva' }).locator('xpath=..')
+    await curvaSection.getByPlaceholder('Desde (curvas)').fill('3')
+    await curvaSection.getByPlaceholder('% descuento').fill('15')
+    await curvaSection.getByRole('button', { name: '+ Agregar' }).click()
+
+    await expect(page.getByText('Escalón de curva creado')).toBeVisible({ timeout: 8_000 })
+    await expect(curvaSection.getByRole('cell', { name: '3' }).first()).toBeVisible({ timeout: 5_000 })
+  })
+
+  // ── APROD-013 ─────────────────────────────────────────────────────────────────
+  test('APROD-013 | Panel de descuentos — editar regla existente', async ({ page }) => {
+    // Omitido: el panel no tiene edición inline — solo crear/eliminar reglas
+    test.skip()
+  })
+
+  // ── APROD-014 ─────────────────────────────────────────────────────────────────
+  test('APROD-014 | Panel de descuentos — eliminar regla', async ({ page }) => {
+    const discountBtn = page.getByRole('button', { name: /Descuentos/ }).first()
+    await expect(discountBtn).toBeVisible()
+    await discountBtn.click()
+
+    await expect(page.getByText('Escalones por curva')).toBeVisible({ timeout: 5_000 })
+
+    const curvaSection = page.locator('p', { hasText: 'Escalones por curva' }).locator('xpath=..')
+    const hasRules = await curvaSection.getByRole('button', { name: 'Eliminar' }).count() > 0
+    if (!hasRules) { test.skip(); return }
+
+    await curvaSection.getByRole('button', { name: 'Eliminar' }).first().click()
+    await expect(page.getByRole('heading', { name: 'Confirmar acción' })).toBeVisible({ timeout: 5_000 })
+    await page.getByRole('button', { name: 'Eliminar' }).last().click()
+
+    await expect(page.getByText('Escalón eliminado')).toBeVisible({ timeout: 8_000 })
+  })
+
+  // ── APROD-015 ─────────────────────────────────────────────────────────────────
+  test('APROD-015 | Configurar mínimo de compra del producto', async ({ page }) => {
+    const discountBtn = page.getByRole('button', { name: /Descuentos/ }).first()
+    await expect(discountBtn).toBeVisible()
+    await discountBtn.click()
+
+    await expect(page.getByText('Mínimo de compra (unidades)')).toBeVisible({ timeout: 5_000 })
+
+    const minSection = page.locator('p', { hasText: 'Mínimo de compra (unidades)' }).locator('xpath=..')
+    await minSection.getByPlaceholder('Sin mínimo').fill('5')
+    await minSection.getByRole('button', { name: 'Guardar' }).click()
+
+    await expect(page.getByText('Mínimo de compra actualizado')).toBeVisible({ timeout: 8_000 })
   })
 
   // ── APROD-016 ─────────────────────────────────────────────────────────────────

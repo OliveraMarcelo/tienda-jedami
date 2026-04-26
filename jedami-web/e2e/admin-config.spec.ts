@@ -111,4 +111,56 @@ test.describe('Admin – Configuración (/admin/configuracion)', () => {
     await expect(page.getByText('Error')).not.toBeVisible({ timeout: 5_000 })
   })
 
+  // ── CFG-004 ─────────────────────────────────────────────────────────────────
+  test('CFG-004 | Tab Pagos — configurar WhatsApp de contacto', async ({ page }) => {
+    await page.getByRole('button', { name: 'Pagos' }).click()
+    await expect(page.getByPlaceholder('ej: 5491112345678')).toBeVisible({ timeout: 5_000 })
+
+    await page.getByPlaceholder('ej: 5491112345678').fill('5491100000000')
+    await page.getByRole('button', { name: 'Guardar datos bancarios' }).click()
+
+    await expect(page.getByText('✓ Guardado')).toBeVisible({ timeout: 8_000 })
+  })
+
+  // ── CFG-006 ─────────────────────────────────────────────────────────────────
+  test('CFG-006 | Tab Medios de pago — activar/desactivar gateway', async ({ page }) => {
+    await page.getByRole('button', { name: 'Pagos' }).click()
+    await expect(page.getByText('Medios de pago por tipo de cliente')).toBeVisible({ timeout: 5_000 })
+
+    const toggleBtn = page.locator('button').filter({ hasText: /^(Activo|Inactivo)$/ }).first()
+    await toggleBtn.click()
+
+    await expect(page.getByText(/actualizado/i)).toBeVisible({ timeout: 8_000 })
+  })
+
+  // ── CFG-007 ─────────────────────────────────────────────────────────────────
+  test('CFG-007 | Tab Medios de pago — activar múltiples gateways', async ({ page }) => {
+    // Omitido: requiere conocer estado inicial de múltiples gateways para verificar correctamente
+    test.skip()
+  })
+
+  // ── CFG-008 ─────────────────────────────────────────────────────────────────
+  test('CFG-008 | Tab Medios de pago — desactivar gateway', async ({ page }) => {
+    await page.getByRole('button', { name: 'Pagos' }).click()
+    await expect(page.getByText('Medios de pago por tipo de cliente')).toBeVisible({ timeout: 5_000 })
+
+    // Revertir el toggle del primer gateway (restaurar estado)
+    const toggleBtn = page.locator('button').filter({ hasText: /^(Activo|Inactivo)$/ }).first()
+    await toggleBtn.click()
+
+    await expect(page.getByText(/actualizado/i)).toBeVisible({ timeout: 8_000 })
+  })
+
+  // ── CFG-013 ─────────────────────────────────────────────────────────────────
+  test('CFG-013 | Tab Talles — soft-delete y reactivación', async ({ page }) => {
+    // Omitido: la UI solo expone "Eliminar" (hard delete), sin opción de reactivación
+    test.skip()
+  })
+
+  // ── CFG-015 ─────────────────────────────────────────────────────────────────
+  test('CFG-015 | Cambios sin guardar — alerta antes de salir', async ({ page }) => {
+    // Omitido: depende de si el router guard de unsaved changes está implementado
+    test.skip()
+  })
+
 })

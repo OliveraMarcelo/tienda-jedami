@@ -67,4 +67,22 @@ test.describe('Admin – Despacho (/admin/despacho)', () => {
     await expect(page.locator('table, .order-card').first()).toBeVisible({ timeout: 5_000 })
   })
 
+  // ── DESP-002 ─────────────────────────────────────────────────────────────────
+  test('DESP-002 | Notas del comprador visibles en el pedido', async ({ page }) => {
+    // Omitido: requiere un pedido con nota específica del comprador en la DB
+    test.skip()
+  })
+
+  // ── DESP-005 ─────────────────────────────────────────────────────────────────
+  test('DESP-005 | Decrement stock al despachar item', async ({ page }) => {
+    // Omitido: modifica stock permanentemente; requiere orden en estado específico
+    test.skip()
+  })
+
+  // ── DESP-006 ─────────────────────────────────────────────────────────────────
+  test('DESP-006 | Confirmar transferencia bancaria desde despacho', async ({ page }) => {
+    // Omitido: requiere pedido con gateway bank_transfer pendiente de confirmación
+    test.skip()
+  })
+
 })

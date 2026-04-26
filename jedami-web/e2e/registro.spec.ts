@@ -38,6 +38,9 @@ async function clickCrearCuenta(page: Page) {
 // ─── Suite ────────────────────────────────────────────────────────────────────
 test.describe('Registro — /registro', () => {
 
+  // Sin storageState: los tests de registro necesitan usuario NO autenticado
+  test.use({ storageState: { cookies: [], origins: [] } })
+
   test.beforeEach(async ({ page }) => {
     await goToRegister(page)
   })
