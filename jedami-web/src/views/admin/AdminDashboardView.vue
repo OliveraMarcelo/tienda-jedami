@@ -150,7 +150,7 @@ const barOptions = {
             <p class="text-3xl font-bold text-gray-900">{{ data.totalOrders }}</p>
           </div>
           <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-            <p class="text-sm text-gray-500 mb-1">Revenue Total</p>
+            <p class="text-sm text-gray-500 mb-1">Ventas totales</p>
             <p class="text-3xl font-bold text-gray-900">{{ formatCurrency(data.totalRevenue) }}</p>
           </div>
           <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">

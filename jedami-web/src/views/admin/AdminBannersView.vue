@@ -155,9 +155,9 @@ onMounted(load)
           <div class="flex-1 min-w-0">
             <p class="text-sm font-semibold text-gray-800">Banner #{{ banner.id }}</p>
             <p v-if="banner.linkUrl" class="text-xs text-gray-500 truncate mt-0.5">
-              Link: {{ banner.linkUrl }}
+              Enlace: {{ banner.linkUrl }}
             </p>
-            <p v-else class="text-xs text-gray-400 mt-0.5">Sin link</p>
+            <p v-else class="text-xs text-gray-400 mt-0.5">Sin enlace</p>
           </div>
 
           <!-- Acciones -->
@@ -227,7 +227,7 @@ onMounted(load)
           </div>
 
           <div>
-            <label class="block text-xs text-gray-500 mb-1">Link URL <span class="text-gray-400">(opcional — ej: /catalogo?categoria=3)</span></label>
+            <label class="block text-xs text-gray-500 mb-1">URL de enlace <span class="text-gray-400">(opcional — ej: /catalogo?categoria=3)</span></label>
             <input
               v-model="linkUrlInput"
               type="text"

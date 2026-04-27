@@ -235,7 +235,7 @@ async function doRemoveRole(userId: number, roleName: string) {
                 </div>
                 <!-- Confirmación inline para asignar rol admin -->
                 <template v-if="confirmingAdminAssign === user.id">
-                  <p class="text-xs text-orange-600">¿Asignar rol admin a {{ user.email }}? Esto da acceso total al panel.</p>
+                  <p class="text-xs text-orange-600">¿Asignar rol administrador a {{ user.email }}? Esto da acceso total al panel.</p>
                   <div class="flex gap-2">
                     <button @click="handleAssignRole(user.id)" class="text-xs text-orange-600 font-semibold hover:underline">Confirmar</button>
                     <button @click="confirmingAdminAssign = null" class="text-xs text-gray-500 hover:underline">Cancelar</button>
