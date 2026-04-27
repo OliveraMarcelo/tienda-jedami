@@ -9,7 +9,7 @@ const configStore = useConfigStore()
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#F0F8FF]">
+  <div class="min-h-screen bg-[#F0F8FF] flex flex-col">
     <header class="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         <RouterLink to="/catalogo" class="flex items-center gap-2 text-xl font-extrabold text-[var(--color-primary)] tracking-tight">
@@ -45,7 +45,7 @@ const configStore = useConfigStore()
         </nav>
       </div>
     </header>
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <main class="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <template v-if="$slots.sidebar">
         <div class="flex flex-col lg:flex-row gap-6">
           <div class="flex-1 min-w-0">
