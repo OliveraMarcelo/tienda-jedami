@@ -197,7 +197,7 @@ async function handleConfirmTransfer(orderId: number) {
                   <th class="px-4 py-3 font-medium">Método</th>
                   <th class="px-4 py-3 font-medium">Estado</th>
                   <th class="px-4 py-3 font-medium">Fecha</th>
-                  <th class="px-4 py-3 font-medium">Acciones</th>
+                  <th class="px-4 py-3 font-medium min-w-[160px]">Acciones</th>
                 </tr>
               </thead>
               <tbody>

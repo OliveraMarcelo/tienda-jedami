@@ -44,15 +44,17 @@ function formatDate(iso: string) {
 }
 
 const statusColors: Record<string, string> = {
-  pending:  'bg-yellow-50 text-yellow-700 border-yellow-200',
-  paid:     'bg-green-50 text-green-700 border-green-200',
-  rejected: 'bg-red-50 text-red-700 border-red-200',
+  pending:   'bg-yellow-50 text-yellow-700 border-yellow-200',
+  paid:      'bg-green-50 text-green-700 border-green-200',
+  rejected:  'bg-red-50 text-red-700 border-red-200',
+  cancelled: 'bg-gray-50 text-gray-500 border-gray-200',
 }
 
 const statusLabels: Record<string, string> = {
-  pending:  'Pendiente',
-  paid:     'Pagado',
-  rejected: 'Rechazado',
+  pending:   'Pendiente',
+  paid:      'Pagado',
+  rejected:  'Rechazado',
+  cancelled: 'Cancelado',
 }
 
 // Datos para el gráfico de torta — pedidos por estado

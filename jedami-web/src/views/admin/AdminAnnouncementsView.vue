@@ -157,7 +157,10 @@ const audienceBadgeClass: Record<string, string> = {
 <template>
   <AppLayout>
     <div class="flex items-center justify-between mb-6">
-      <h1 class="text-2xl font-bold text-gray-900">Anuncios</h1>
+      <div class="flex items-center gap-3">
+        <button @click="router.push('/admin')" class="text-sm text-gray-500 hover:text-[var(--color-primary,#E91E8C)]">← Admin</button>
+        <h1 class="text-2xl font-bold text-gray-900">Anuncios</h1>
+      </div>
       <button
         @click="showForm = !showForm"
         class="px-4 py-2 rounded-xl bg-[var(--color-primary,#E91E8C)] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
