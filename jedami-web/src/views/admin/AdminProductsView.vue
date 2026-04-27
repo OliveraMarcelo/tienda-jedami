@@ -461,6 +461,7 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
       :product="editingProduct"
       @update:open="showProductDialog = $event"
       @saved="handleProductSaved"
+      @image-changed="({ productId, imageUrl }) => { const p = adminStore.products.find(p => p.id === productId); if (p) p.imageUrl = imageUrl }"
     />
 
     <VariantFormDialog

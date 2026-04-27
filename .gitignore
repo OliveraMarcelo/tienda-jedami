@@ -34,6 +34,9 @@ jedami-web/test-results/
 # General
 .DS_Store
 *.log
+node_modules/
+test-results/
+google*.html
 
 # Uploads (archivos subidos por usuarios)
 jedami-bff/uploads/

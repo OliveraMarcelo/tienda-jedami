@@ -22,7 +22,9 @@ export async function uploadBanner(file: File, linkUrl?: string): Promise<Banner
   const form = new FormData()
   form.append('image', file)
   if (linkUrl) form.append('linkUrl', linkUrl)
-  const res = await apiClient.post<{ data: Banner }>('/admin/banners', form)
+  const res = await apiClient.post<{ data: Banner }>('/admin/banners', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
   return res.data.data
 }
 

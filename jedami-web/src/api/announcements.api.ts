@@ -48,7 +48,9 @@ export async function createAnnouncement(dto: {
   form.append('targetAudience', dto.targetAudience)
   if (dto.validFrom) form.append('validFrom', dto.validFrom)
   if (dto.validUntil) form.append('validUntil', dto.validUntil)
-  const res = await apiClient.post<{ data: Announcement }>('/admin/announcements', form)
+  const res = await apiClient.post<{ data: Announcement }>('/admin/announcements', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
   return res.data.data
 }
 

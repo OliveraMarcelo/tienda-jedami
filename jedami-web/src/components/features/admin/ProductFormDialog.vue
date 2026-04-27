@@ -13,6 +13,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:open': [value: boolean]
   'saved': [data: { name: string; description: string; categoryId: number | null; retailPrice: number; wholesalePrice: number | null }]
+  'image-changed': [value: { productId: number; imageUrl: string }]
 }>()
 
 const productsStore = useProductsStore()
@@ -73,8 +74,12 @@ async function handleFileSelected(event: Event) {
   imageError.value = ''
   imageLoading.value = true
   try {
+    const isFirst = localImages.value.length === 0
     const res = await apiUploadImage(props.product.id, file, localImages.value.length)
     localImages.value.push(res.data)
+    if (isFirst && props.product) {
+      emit('image-changed', { productId: props.product.id, imageUrl: res.data.url })
+    }
   } catch {
     imageError.value = 'Error al subir la foto'
   } finally {
