@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { fetchAdminUsers, assignRole, removeRoleFromUser, type AdminUser } from '@/api/admin.users.api'
 import { useConfigStore } from '@/stores/config.store'
+import { ROLE_LABELS } from '@/lib/constants'
 import apiClient from '@/api/client'
 
 const router = useRouter()
@@ -157,7 +158,7 @@ async function doRemoveRole(userId: number, roleName: string) {
             class="h-9 rounded-lg border border-gray-300 px-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#E91E8C]"
           >
             <option value="">Todos</option>
-            <option v-for="role in roles" :key="role.id" :value="role.name">{{ role.name }}</option>
+            <option v-for="role in roles" :key="role.id" :value="role.name">{{ ROLE_LABELS[role.name] ?? role.name }}</option>
           </select>
         </div>
         <button
@@ -192,7 +193,7 @@ async function doRemoveRole(userId: number, roleName: string) {
                     class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold border"
                     :class="roleColors[role] ?? 'bg-gray-50 text-gray-600 border-gray-200'"
                   >
-                    {{ role }}
+                    {{ ROLE_LABELS[role] ?? role }}
                     <button
                       @click="doRemoveRole(user.id, role)"
                       class="opacity-60 hover:opacity-100 hover:text-red-500 transition-colors leading-none"
@@ -216,7 +217,7 @@ async function doRemoveRole(userId: number, roleName: string) {
                     @change="confirmingAdminAssign = null"
                   >
                     <option value="">Asignar rol…</option>
-                    <option v-for="role in roles" :key="role.id" :value="role.id">{{ role.name }}</option>
+                    <option v-for="role in roles" :key="role.id" :value="role.id">{{ ROLE_LABELS[role.name] ?? role.name }}</option>
                   </select>
                   <button
                     :disabled="assigning === user.id || !selectedRole[user.id]"

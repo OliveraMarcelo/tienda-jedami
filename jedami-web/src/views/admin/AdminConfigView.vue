@@ -401,7 +401,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'colors',         label: 'Colores' },
   { key: 'branding',       label: 'Branding' },
   { key: 'payments',       label: 'Pagos' },
-  { key: 'point',          label: 'Point POS' },
+  { key: 'point',          label: 'Cobros Point' },
 ]
 </script>
 
@@ -620,7 +620,7 @@ const TABS: { key: Tab; label: string }[] = [
       <div v-if="activeTab === 'payments'" class="space-y-4">
         <!-- Gateway selector -->
         <div class="bg-white rounded-xl border border-gray-200 p-5">
-          <p class="text-sm font-semibold text-gray-700 mb-4">Gateway de pago</p>
+          <p class="text-sm font-semibold text-gray-700 mb-4">Pasarela de pago</p>
           <div class="space-y-3 max-w-sm">
             <div>
               <label class="block text-xs text-gray-500 mb-1">Método de pago activo</label>
@@ -652,7 +652,7 @@ const TABS: { key: Tab; label: string }[] = [
         <!-- Datos bancarios (siempre visible para configurar de antemano) -->
         <div class="bg-white rounded-xl border border-gray-200 p-5">
           <p class="text-sm font-semibold text-gray-700 mb-1">Datos bancarios para transferencia</p>
-          <p class="text-xs text-gray-400 mb-4">Se mostrarán al comprador cuando el gateway sea "Transferencia bancaria".</p>
+          <p class="text-xs text-gray-400 mb-4">Se mostrarán al comprador cuando la pasarela sea "Transferencia bancaria".</p>
           <div class="space-y-3 max-w-sm">
             <div>
               <label class="block text-xs text-gray-500 mb-1">CVU <span class="text-gray-400">(22 dígitos)</span></label>
@@ -741,7 +741,7 @@ const TABS: { key: Tab; label: string }[] = [
             <table class="w-full text-sm">
               <thead>
                 <tr class="border-b border-gray-100">
-                  <th class="py-2 pr-4 text-left text-xs text-gray-500 font-medium">Gateway</th>
+                  <th class="py-2 pr-4 text-left text-xs text-gray-500 font-medium">Pasarela</th>
                   <th class="py-2 px-4 text-center text-xs text-gray-500 font-medium">Minorista</th>
                   <th class="py-2 px-4 text-center text-xs text-gray-500 font-medium">Mayorista</th>
                 </tr>

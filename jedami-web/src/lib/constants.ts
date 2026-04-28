@@ -30,3 +30,9 @@ export const CUSTOMER_TYPES = {
 } as const
 
 export type CustomerType = (typeof CUSTOMER_TYPES)[keyof typeof CUSTOMER_TYPES]
+
+export const ROLE_LABELS: Record<string, string> = {
+  admin:     'Administrador',
+  wholesale: 'Mayorista',
+  retail:    'Minorista',
+}

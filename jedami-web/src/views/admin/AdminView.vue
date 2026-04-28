@@ -21,7 +21,7 @@ if (!authStore.isAdmin) {
         class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 hover:shadow-md hover:border-[#E91E8C] transition-all group"
       >
         <div class="text-3xl mb-3">📊</div>
-        <p class="font-bold text-gray-900 group-hover:text-[#E91E8C] transition-colors">Dashboard</p>
+        <p class="font-bold text-gray-900 group-hover:text-[#E91E8C] transition-colors">Tablero</p>
         <p class="text-sm text-gray-500 mt-1">Métricas de ventas y pedidos recientes</p>
       </RouterLink>
       <RouterLink

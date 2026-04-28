@@ -43,3 +43,6 @@ jedami-bff/uploads/
 
 # Flutter DevTools
 jedami-mobile/devtools_options.yaml
+
+# Capturas de pantalla generadas por Playwright MCP
+*.png

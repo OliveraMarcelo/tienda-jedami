@@ -29,7 +29,7 @@ onMounted(async () => {
   try {
     data.value = await fetchDashboard()
   } catch {
-    error.value = 'Error al cargar el dashboard.'
+    error.value = 'Error al cargar el tablero.'
   } finally {
     loading.value = false
   }
@@ -125,7 +125,7 @@ const barOptions = {
       <!-- Breadcrumb -->
       <div class="flex items-center gap-3 mb-6">
         <button @click="router.push('/admin')" class="text-sm text-gray-500 hover:text-[var(--color-primary)]">← Admin</button>
-        <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <h1 class="text-2xl font-bold text-gray-900">Tablero</h1>
       </div>
 
       <!-- Skeleton -->

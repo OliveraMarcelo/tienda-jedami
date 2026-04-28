@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { fetchMe, type MeResponse } from '@/api/profile.api'
-import { ROLES, CUSTOMER_TYPES } from '@/lib/constants'
+import { ROLES, CUSTOMER_TYPES, ROLE_LABELS } from '@/lib/constants'
 import { useConfigStore } from '@/stores/config.store'
 
 const configStore = useConfigStore()
@@ -51,7 +51,7 @@ onMounted(async () => {
                       role === ROLES.WHOLESALE ? 'bg-blue-50 text-blue-700 border-blue-200' :
                       'bg-gray-50 text-gray-700 border-gray-200'"
             >
-              {{ role }}
+              {{ ROLE_LABELS[role] ?? role }}
             </span>
           </div>
         </div>
