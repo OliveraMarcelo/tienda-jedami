@@ -214,7 +214,7 @@ async function handleConfirmTransfer(orderId: number) {
                     </p>
                   </td>
                   <td class="px-4 py-3 text-gray-600">{{ configStore.purchaseTypeLabel[p.purchaseType] ?? p.purchaseType }}</td>
-                  <td class="px-4 py-3 text-right font-semibold text-gray-800">{{ formatCurrency(p.amount) }}</td>
+                  <td class="px-4 py-3 text-right font-semibold text-gray-800">{{ formatCurrency(p.totalAmount) }}</td>
                   <td class="px-4 py-3">
                     <span
                       class="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold border"
