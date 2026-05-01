@@ -61,7 +61,7 @@ const copied = ref<Record<string, boolean>>({})
 function openWhatsApp() {
   const number = configStore.branding.whatsappNumber
   if (!number || !order.value) return
-  const amount = order.value.totalAmount.toLocaleString('es-AR')
+  const amount = order.value.totalAmount.toLocaleString('es-AR', { maximumFractionDigits: 0 })
   const text = encodeURIComponent(
     `Hola! Realicé la transferencia para el Pedido #${order.value.id} por $${amount}. Adjunto el comprobante.`
   )
@@ -230,19 +230,19 @@ watch(() => paymentsStore.checkoutPublicKey, async (newKey) => {
                 <td class="px-5 py-3 text-right text-gray-700">
                   <template v-if="item.discountPct > 0 && item.originalUnitPrice">
                     <span class="line-through text-gray-400 text-xs mr-1">
-                      ${{ Number(item.originalUnitPrice).toLocaleString('es-AR') }}
+                      ${{ Number(item.originalUnitPrice).toLocaleString('es-AR', { maximumFractionDigits: 0 }) }}
                     </span>
-                    <span class="text-green-700 font-semibold">${{ Number(item.unitPrice).toLocaleString('es-AR') }}</span>
+                    <span class="text-green-700 font-semibold">${{ Number(item.unitPrice).toLocaleString('es-AR', { maximumFractionDigits: 0 }) }}</span>
                     <span class="ml-1 inline-block rounded-full bg-green-50 border border-green-200 text-green-700 text-xs font-semibold px-1.5 py-0.5">
                       -{{ item.discountPct }}%
                     </span>
                   </template>
                   <template v-else>
-                    ${{ Number(item.unitPrice).toLocaleString('es-AR') }}
+                    ${{ Number(item.unitPrice).toLocaleString('es-AR', { maximumFractionDigits: 0 }) }}
                   </template>
                 </td>
                 <td class="px-5 py-3 text-right font-semibold text-gray-900">
-                  ${{ (item.quantity * Number(item.unitPrice)).toLocaleString('es-AR') }}
+                  ${{ (item.quantity * Number(item.unitPrice)).toLocaleString('es-AR', { maximumFractionDigits: 0 }) }}
                 </td>
               </tr>
             </tbody>
@@ -254,7 +254,7 @@ watch(() => paymentsStore.checkoutPublicKey, async (newKey) => {
           <div class="flex items-center justify-between gap-4 mb-4">
             <div>
               <p class="text-xs text-gray-400 uppercase tracking-wide font-semibold mb-0.5">Total del pedido</p>
-              <p class="text-2xl font-bold text-gray-900">${{ order.totalAmount?.toLocaleString('es-AR') ?? '—' }}</p>
+              <p class="text-2xl font-bold text-gray-900">${{ order.totalAmount?.toLocaleString('es-AR', { maximumFractionDigits: 0 }) ?? '—' }}</p>
             </div>
 
             <template v-if="order.status === 'pending' && order.totalAmount > 0">
@@ -332,7 +332,7 @@ watch(() => paymentsStore.checkoutPublicKey, async (newKey) => {
           </div>
           <div class="flex items-center justify-between text-sm">
             <span class="text-gray-600">Monto a transferir</span>
-            <span class="font-bold text-gray-900">${{ Number(bankDetails.amount).toLocaleString('es-AR') }}</span>
+            <span class="font-bold text-gray-900">${{ Number(bankDetails.amount).toLocaleString('es-AR', { maximumFractionDigits: 0 }) }}</span>
           </div>
           <p v-if="bankDetails.notes" class="text-xs text-indigo-700 bg-indigo-100 rounded-lg px-3 py-2 mt-1">{{ bankDetails.notes }}</p>
 

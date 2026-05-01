@@ -39,7 +39,7 @@ async function retryPayment() {
         <h1 class="text-2xl font-bold text-gray-900 mb-2">¡Pago confirmado!</h1>
         <p class="text-gray-500 mb-2">Tu pedido <strong>#{{ orderId }}</strong> fue pagado exitosamente.</p>
         <p v-if="ordersStore.currentOrder" class="text-xl font-bold text-green-700 mb-8">
-          ${{ ordersStore.currentOrder.totalAmount.toLocaleString('es-AR') }}
+          ${{ ordersStore.currentOrder.totalAmount.toLocaleString('es-AR', { maximumFractionDigits: 0 }) }}
         </p>
         <button
           @click="router.push('/catalogo')"

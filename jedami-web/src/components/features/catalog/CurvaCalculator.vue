@@ -76,7 +76,7 @@ const canConfirm = computed(() => curves.value > 0 && props.product.variants.len
           <tr class="border-t-2 border-blue-100 bg-blue-50/60 font-semibold text-sm">
             <td class="px-3 py-2 text-gray-700">Total</td>
             <td class="px-3 py-2 text-right text-[var(--color-primary)]">
-              {{ totalUnits }} uds. · ${{ totalAmount.toLocaleString('es-AR') }}
+              {{ totalUnits }} uds. · ${{ totalAmount.toLocaleString('es-AR', { maximumFractionDigits: 0 }) }}
             </td>
           </tr>
         </tfoot>
@@ -88,7 +88,7 @@ const canConfirm = computed(() => curves.value > 0 && props.product.variants.len
       @click="emit('confirm', curves)"
       class="w-full h-10 rounded-xl bg-[var(--color-primary)] text-white font-semibold text-sm shadow hover:opacity-90 transition-opacity disabled:opacity-40 disabled:pointer-events-none"
     >
-      Agregar {{ totalUnits }} uds. al pedido · ${{ totalAmount.toLocaleString('es-AR') }}
+      Agregar {{ totalUnits }} uds. al pedido · ${{ totalAmount.toLocaleString('es-AR', { maximumFractionDigits: 0 }) }}
     </button>
   </div>
 </template>

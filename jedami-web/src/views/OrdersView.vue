@@ -116,7 +116,7 @@ function openWhatsApp(orderId: number, amount: number) {
   const number = configStore.branding.whatsappNumber
   if (!number) return
   const text = encodeURIComponent(
-    `Hola! Realicé la transferencia para el Pedido #${orderId} por $${amount.toLocaleString('es-AR')}. Adjunto el comprobante.`
+    `Hola! Realicé la transferencia para el Pedido #${orderId} por $${amount.toLocaleString('es-AR', { maximumFractionDigits: 0 })}. Adjunto el comprobante.`
   )
   window.open(`https://wa.me/${number}?text=${text}`, '_blank')
 }
@@ -179,7 +179,7 @@ function openWhatsApp(orderId: number, amount: number) {
               </p>
             </div>
             <div class="text-right shrink-0">
-              <p class="text-lg font-bold text-gray-900">${{ order.totalAmount.toLocaleString('es-AR') }}</p>
+              <p class="text-lg font-bold text-gray-900">${{ order.totalAmount.toLocaleString('es-AR', { maximumFractionDigits: 0 }) }}</p>
               <p class="text-xs text-gray-400">total</p>
             </div>
           </div>
@@ -262,7 +262,7 @@ function openWhatsApp(orderId: number, amount: number) {
                 </div>
                 <div class="flex items-center justify-between text-sm">
                   <span class="text-gray-600">Monto a transferir</span>
-                  <span class="font-bold text-gray-900">${{ Number(bankDetailsMap[order.id].amount).toLocaleString('es-AR') }}</span>
+                  <span class="font-bold text-gray-900">${{ Number(bankDetailsMap[order.id].amount).toLocaleString('es-AR', { maximumFractionDigits: 0 }) }}</span>
                 </div>
                 <p v-if="bankDetailsMap[order.id].notes" class="text-xs text-indigo-700 bg-indigo-100 rounded-lg px-3 py-2 mt-1">
                   {{ bankDetailsMap[order.id].notes }}

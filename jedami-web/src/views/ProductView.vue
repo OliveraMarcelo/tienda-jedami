@@ -286,7 +286,7 @@ async function handleCantidadConfirm() {
           <div v-if="product.retailPrice !== null">
             <p class="text-xs text-gray-500">{{ priceLabel }}</p>
             <p class="text-2xl font-bold text-gray-900">
-              ${{ (authStore.mode === MODES.WHOLESALE ? (product.wholesalePrice ?? product.retailPrice ?? 0) : (product.retailPrice ?? 0)).toLocaleString('es-AR') }}
+              ${{ (authStore.mode === MODES.WHOLESALE ? (product.wholesalePrice ?? product.retailPrice ?? 0) : (product.retailPrice ?? 0)).toLocaleString('es-AR', { maximumFractionDigits: 0 }) }}
             </p>
           </div>
 

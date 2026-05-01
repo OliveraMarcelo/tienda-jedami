@@ -95,7 +95,7 @@ const stockBadge = computed(() => {
 
         <p v-if="displayPrice !== null" class="text-sm text-gray-700">
           <span class="text-xs text-gray-500 mr-1">{{ mode === MODES.WHOLESALE ? 'Precio mayorista' : 'Precio' }}</span>
-          <span class="font-bold text-gray-900">${{ displayPrice!.toLocaleString('es-AR') }}</span>
+          <span class="font-bold text-gray-900">${{ displayPrice!.toLocaleString('es-AR', { maximumFractionDigits: 0 }) }}</span>
         </p>
       </div>
     </div>

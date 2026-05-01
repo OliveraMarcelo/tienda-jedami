@@ -298,10 +298,10 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
               <td class="px-4 py-3 font-medium text-gray-900">{{ product.name }}</td>
               <td class="px-4 py-3 text-gray-500 hidden md:table-cell">{{ product.categoryName ?? '—' }}</td>
               <td class="px-4 py-3 text-right text-gray-700 hidden lg:table-cell">
-                {{ product.retailPrice != null ? `$${product.retailPrice.toLocaleString('es-AR')}` : '—' }}
+                {{ product.retailPrice != null ? `$${product.retailPrice.toLocaleString('es-AR', { maximumFractionDigits: 0 })}` : '—' }}
               </td>
               <td class="px-4 py-3 text-right text-gray-500 hidden lg:table-cell">
-                {{ product.wholesalePrice != null ? `$${product.wholesalePrice.toLocaleString('es-AR')}` : '—' }}
+                {{ product.wholesalePrice != null ? `$${product.wholesalePrice.toLocaleString('es-AR', { maximumFractionDigits: 0 })}` : '—' }}
               </td>
               <td class="px-4 py-3 text-center text-gray-600">{{ totalStock(product) }}</td>
               <td class="px-4 py-3">
