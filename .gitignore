@@ -31,6 +31,9 @@ jedami-web/test-results/
 # Archivos de bloqueo de LibreOffice/Excel
 .~lock.*.xlsx#
 
+# Documentación multitenant (trabajo en progreso, no publicar)
+docs/multitenant/
+
 # General
 .DS_Store
 *.log

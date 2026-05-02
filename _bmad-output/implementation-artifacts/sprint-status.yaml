@@ -299,6 +299,7 @@ development_status:
   14-8-cicd-github-actions: done               # GitHub Actions: push a main → deploy automático en el Droplet
   14-9-cicd-build-imagen-docker-hub: done            # Build imágenes en runner + push Docker Hub → deploy solo hace docker pull
   14-10-kubernetes: ready-for-dev                     # Migración de Docker Compose a Kubernetes (k3s o DOKS)
+  14-11-dominio-y-ssl-produccion: ready-for-dev       # DNS GoDaddy (A records jedamiapp.com) + certbot Let's Encrypt en el Droplet
 
   # BFF Track — jedami-bff
   14-1-media-table-centralizada: backlog       # migración de product_images + banners + branding a tabla media única

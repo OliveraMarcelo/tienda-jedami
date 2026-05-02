@@ -8,13 +8,32 @@
 
 ## Objetivo
 
-Convertir Jedami de un sistema single-tenant en una **plataforma SaaS** donde cualquier negocio puede tener su propio espacio aislado, pagar una suscripción mensual y vender en modalidad minorista y/o mayorista.
+Convertir Jedami de un sistema single-tenant en una **plataforma SaaS** basada en el modelo
+**Tenant → Account**, donde:
+- Un **Tenant** es quien contrata y paga el SaaS (MarceDev, Clara, Don Lucho).
+- Una **Account** es cada tienda/negocio dentro de un Tenant (jedami, ferretería-don-lucho).
+- Un Tenant puede tener una o más Accounts según su plan.
+
+---
+
+## Jerarquía del modelo
+
+```
+plans
+  └── tenants               ← paga el SaaS
+        ├── subscription_payments
+        └── accounts         ← cada tienda / negocio
+              ├── account_modules
+              └── [tablas operativas con account_id]
+                    users, products, categories, customers,
+                    orders, payments, branding, banners, etc.
+```
 
 ---
 
 ## Schema actual (referencia — 043 migraciones aplicadas)
 
-Las 28 tablas actuales que requieren `tenant_id`:
+Las tablas operativas que recibirán `account_id`:
 
 | Grupo | Tablas |
 |-------|--------|
@@ -27,7 +46,7 @@ Las 28 tablas actuales que requieren `tenant_id`:
 | Branding/Config | `branding` |
 | Marketing | `banners`, `announcements` |
 
-Tablas globales (sin `tenant_id` — compartidas por toda la plataforma):
+Tablas globales (sin `account_id` — compartidas por toda la plataforma):
 - `roles`, `user_roles`, `refresh_tokens`
 
 ---
@@ -35,15 +54,11 @@ Tablas globales (sin `tenant_id` — compartidas por toda la plataforma):
 ## Fases de implementación
 
 ```
-Fase 1 — Fundación        → tenant_id en todo el sistema, middleware tenant
-Fase 2 — Billing SaaS     → MP PreApproval, planes, webhook de suscripciones
-Fase 3 — Onboarding       → registro de tenants, flujo de activación
+Fase 1 — Fundación        → tablas Tenant/Account, account_id en todo, middleware
+Fase 2 — Billing SaaS     → MP PreApproval a nivel Tenant, planes, webhook
+Fase 3 — Onboarding       → registro de Tenants, flujo de activación, panel superadmin
 Fase 4 — Módulos extra    → hardware, grocery, restaurant (por demanda)
 ```
-
-Las fases 1 y 2 son bloqueantes entre sí y deben implementarse en orden.
-La fase 3 puede solaparse con la fase 2.
-La fase 4 es completamente independiente y se implementa según demanda.
 
 ---
 
@@ -54,261 +69,273 @@ La fase 4 es completamente independiente y se implementa según demanda.
 ### Story 12-1: Tablas core del sistema multi-tenant
 
 **Como** desarrollador,
-**quiero** crear las tablas `plans`, `tenants`, `tenant_modules` y `subscription_payments`,
-**para** tener la base de datos lista para soportar múltiples tenants.
+**quiero** crear las tablas `plans`, `tenants`, `subscription_payments`, `accounts` y `account_modules`,
+**para** tener la base de datos lista para soportar el modelo Tenant → Account.
 
 **Criterios de aceptación:**
 
 - **Given** la migración aplicada,
   **When** se consulta la DB,
-  **Then** existen las tablas `plans`, `tenants`, `tenant_modules`, `subscription_payments`.
+  **Then** existen las tablas `plans`, `tenants`, `subscription_payments`, `accounts`, `account_modules`.
 
 - **Given** el sistema actual de Jedami,
-  **When** se aplica la migración,
-  **Then** existe un registro en `tenants` con `id = 1, slug = 'jedami'` y `subscription_status = 'active'`.
+  **When** se aplica la migración seed,
+  **Then** existe `tenants.id = 1` con `slug = 'jedami'` y `accounts.id = 1` con `slug = 'jedami'` bajo ese tenant.
 
 - **Given** los planes definidos,
   **When** se consulta `plans`,
-  **Then** existen los planes `starter`, `pro`, `full` con sus `features` JSONB y precios en USD.
+  **Then** existen los planes `free`, `basic`, `pro` con sus `features` JSONB.
 
 **Tareas técnicas:**
-- [ ] Migration `044_multitenant_core.sql`:
+
+- [ ] Migration `044_plans.sql`:
   ```sql
   CREATE TABLE plans (
-    id               SERIAL PRIMARY KEY,
-    name             VARCHAR(50) NOT NULL UNIQUE,    -- 'starter', 'pro', 'full'
-    price_usd        NUMERIC(8,2) NOT NULL,
-    price_usd_annual NUMERIC(8,2) NOT NULL,
-    features         JSONB NOT NULL DEFAULT '{}',    -- { point: true, discounts: true, ... }
-    active           BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id             SERIAL PRIMARY KEY,
+    name           VARCHAR(50)   NOT NULL UNIQUE,
+    price          NUMERIC(10,2) NOT NULL DEFAULT 0,
+    currency       VARCHAR(3)    NOT NULL DEFAULT 'ARS',
+    frequency      INT           NOT NULL DEFAULT 1,
+    frequency_type VARCHAR(10)   NOT NULL DEFAULT 'months',
+    max_accounts   INT           NOT NULL DEFAULT 1,
+    max_products   INT           NOT NULL DEFAULT 10,
+    max_users      INT           NOT NULL DEFAULT 2,
+    features       JSONB         NOT NULL DEFAULT '{}',
+    active         BOOLEAN       NOT NULL DEFAULT TRUE,
+    created_at     TIMESTAMPTZ   NOT NULL DEFAULT NOW()
   );
+  ```
 
+- [ ] Migration `045_tenants.sql`:
+  ```sql
   CREATE TABLE tenants (
-    id                    SERIAL PRIMARY KEY,
-    slug                  VARCHAR(100) NOT NULL UNIQUE,
-    name                  VARCHAR(200) NOT NULL,
-    plan_id               INT NOT NULL REFERENCES plans(id),
-    subscription_status   VARCHAR(20) NOT NULL DEFAULT 'free'
-                            CHECK (subscription_status IN ('free','pending','active','paused','cancelled')),
-    mp_subscription_id    VARCHAR(200),
-    mp_payer_email        VARCHAR(255),
-    created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id                   SERIAL PRIMARY KEY,
+    slug                 VARCHAR(100) UNIQUE NOT NULL,
+    name                 VARCHAR(255)        NOT NULL,
+    plan_id              INT                 REFERENCES plans(id),
+    subscription_status  VARCHAR(20)         NOT NULL DEFAULT 'free'
+      CHECK (subscription_status IN ('free', 'pending', 'authorized', 'paused', 'cancelled')),
+    mp_subscription_id   VARCHAR(100),
+    mp_payer_email       VARCHAR(255),
+    created_at           TIMESTAMPTZ         NOT NULL DEFAULT NOW(),
+    updated_at           TIMESTAMPTZ         NOT NULL DEFAULT NOW()
   );
-
-  CREATE TABLE tenant_modules (
-    tenant_id   INT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    module      VARCHAR(50) NOT NULL,               -- 'clothing', 'point', 'reports'
-    enabled_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    PRIMARY KEY (tenant_id, module)
-  );
+  CREATE INDEX idx_tenants_slug ON tenants(slug);
 
   CREATE TABLE subscription_payments (
     id                  SERIAL PRIMARY KEY,
-    tenant_id           INT NOT NULL REFERENCES tenants(id),
-    mp_payment_id       VARCHAR(200),
-    mp_subscription_id  VARCHAR(200),
+    tenant_id           INT          NOT NULL REFERENCES tenants(id),
+    mp_payment_id       VARCHAR(100),
+    mp_subscription_id  VARCHAR(100),
     amount              NUMERIC(10,2),
-    status              VARCHAR(20),
+    status              VARCHAR(30),
     event_type          VARCHAR(50),
     raw_data            JSONB,
-    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at          TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+  );
+  CREATE INDEX idx_subscription_payments_tenant ON subscription_payments(tenant_id);
+  ```
+
+- [ ] Migration `046_accounts.sql`:
+  ```sql
+  CREATE TABLE accounts (
+    id          SERIAL PRIMARY KEY,
+    tenant_id   INT          NOT NULL REFERENCES tenants(id),
+    slug        VARCHAR(100) UNIQUE NOT NULL,
+    name        VARCHAR(255) NOT NULL,
+    active      BOOLEAN      NOT NULL DEFAULT TRUE,
+    created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    updated_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+  );
+  CREATE INDEX idx_accounts_slug      ON accounts(slug);
+  CREATE INDEX idx_accounts_tenant_id ON accounts(tenant_id);
+
+  CREATE TABLE account_modules (
+    account_id  INT         NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    module      VARCHAR(50) NOT NULL,
+    enabled_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (account_id, module)
   );
   ```
-- [ ] Migration `045_seed_plans.sql` — insertar planes starter/pro/full con precios y features JSONB:
-  ```sql
-  INSERT INTO plans (name, price_usd, price_usd_annual, features) VALUES
-    ('starter', 80, 800,  '{"point": false, "discounts": false, "custom_domain": false}'),
-    ('pro',     150, 1500, '{"point": true,  "discounts": true,  "custom_domain": false}'),
-    ('full',    250, 2500, '{"point": true,  "discounts": true,  "custom_domain": true}');
-  ```
-- [ ] Migration `046_seed_default_tenant.sql` — insertar Jedami como tenant_id = 1:
-  ```sql
-  INSERT INTO tenants (id, slug, name, plan_id, subscription_status)
-  VALUES (1, 'jedami', 'Jedami', (SELECT id FROM plans WHERE name = 'full'), 'active');
 
-  INSERT INTO tenant_modules (tenant_id, module) VALUES
-    (1, 'clothing'),
-    (1, 'point'),
-    (1, 'discounts'),
-    (1, 'reports');
+- [ ] Migration `047_seed_plans_tenant_account.sql`:
+  ```sql
+  INSERT INTO plans (name, price, max_accounts, max_products, max_users, features) VALUES
+    ('free',  0,   1,   10,   2,  '{"checkout_api": false, "point": false, "reports": false}'),
+    ('basic', 0,   3,   100,  5,  '{"checkout_api": true,  "point": false, "reports": false}'),
+    ('pro',   0,   999, 9999, 99, '{"checkout_api": true,  "point": true,  "reports": true}');
+
+  INSERT INTO tenants (id, slug, name, plan_id, subscription_status)
+  VALUES (1, 'jedami', 'Jedami', (SELECT id FROM plans WHERE name = 'pro'), 'authorized');
+
+  INSERT INTO accounts (id, tenant_id, slug, name, active)
+  VALUES (1, 1, 'jedami', 'Jedami', TRUE);
+
+  INSERT INTO account_modules (account_id, module)
+  VALUES (1, 'clothing');
   ```
 
 ---
 
-### Story 12-2: tenant_id en tablas existentes
+### Story 12-2: account_id en tablas existentes
 
 **Como** desarrollador,
-**quiero** agregar `tenant_id` a todas las tablas existentes,
-**para** aislar completamente los datos entre tenants.
+**quiero** agregar `account_id` a todas las tablas operativas,
+**para** aislar completamente los datos entre accounts.
 
 **Criterios de aceptación:**
 
 - **Given** la migración aplicada,
   **When** se consultan datos existentes,
-  **Then** todos los registros tienen `tenant_id = 1` (el tenant por defecto Jedami).
+  **Then** todos los registros tienen `account_id = 1`.
 
-- **Given** dos tenants con productos distintos,
-  **When** se consultan los productos de cada uno,
-  **Then** cada tenant solo ve sus propios productos.
+- **Given** dos accounts con productos distintos,
+  **When** se consultan los productos de cada una,
+  **Then** cada account solo ve sus propios productos.
 
 **Tareas técnicas:**
-- [ ] Migration `047_tenant_id_all_tables.sql`:
+
+- [ ] Migration `048_account_id_users.sql`:
   ```sql
-  -- Grupo 1: Usuarios y clientes
-  ALTER TABLE users      ADD COLUMN tenant_id INT NOT NULL DEFAULT 1 REFERENCES tenants(id);
-  ALTER TABLE customers  ADD COLUMN tenant_id INT NOT NULL DEFAULT 1 REFERENCES tenants(id);
-
-  -- Grupo 2: Catálogo
-  ALTER TABLE products          ADD COLUMN tenant_id INT NOT NULL DEFAULT 1 REFERENCES tenants(id);
-  ALTER TABLE categories        ADD COLUMN tenant_id INT NOT NULL DEFAULT 1 REFERENCES tenants(id);
-  ALTER TABLE variants          ADD COLUMN tenant_id INT NOT NULL DEFAULT 1 REFERENCES tenants(id);
-  ALTER TABLE product_images    ADD COLUMN tenant_id INT NOT NULL DEFAULT 1 REFERENCES tenants(id);
-  ALTER TABLE product_prices    ADD COLUMN tenant_id INT NOT NULL DEFAULT 1 REFERENCES tenants(id);
-  ALTER TABLE sizes             ADD COLUMN tenant_id INT NOT NULL DEFAULT 1 REFERENCES tenants(id);
-  ALTER TABLE colors            ADD COLUMN tenant_id INT NOT NULL DEFAULT 1 REFERENCES tenants(id);
-  ALTER TABLE price_modes       ADD COLUMN tenant_id INT NOT NULL DEFAULT 1 REFERENCES tenants(id);
-
-  -- Grupo 3: Pedidos y pagos
-  ALTER TABLE orders                 ADD COLUMN tenant_id INT NOT NULL DEFAULT 1 REFERENCES tenants(id);
-  ALTER TABLE order_items            ADD COLUMN tenant_id INT NOT NULL DEFAULT 1 REFERENCES tenants(id);
-  ALTER TABLE payments               ADD COLUMN tenant_id INT NOT NULL DEFAULT 1 REFERENCES tenants(id);
-  ALTER TABLE payment_gateway_rules  ADD COLUMN tenant_id INT NOT NULL DEFAULT 1 REFERENCES tenants(id);
-
-  -- Grupo 4: Configuración del sistema
-  ALTER TABLE purchase_types   ADD COLUMN tenant_id INT NOT NULL DEFAULT 1 REFERENCES tenants(id);
-  ALTER TABLE customer_types   ADD COLUMN tenant_id INT NOT NULL DEFAULT 1 REFERENCES tenants(id);
-
-  -- Grupo 5: Descuentos
-  ALTER TABLE quantity_discount_rules ADD COLUMN tenant_id INT NOT NULL DEFAULT 1 REFERENCES tenants(id);
-  ALTER TABLE curva_discount_rules    ADD COLUMN tenant_id INT NOT NULL DEFAULT 1 REFERENCES tenants(id);
-
-  -- Grupo 6: POS
-  ALTER TABLE pos_devices          ADD COLUMN tenant_id INT NOT NULL DEFAULT 1 REFERENCES tenants(id);
-  ALTER TABLE pos_payment_intents  ADD COLUMN tenant_id INT NOT NULL DEFAULT 1 REFERENCES tenants(id);
-
-  -- Grupo 7: Branding y marketing
-  ALTER TABLE branding       ADD COLUMN tenant_id INT NOT NULL DEFAULT 1 REFERENCES tenants(id);
-  ALTER TABLE banners        ADD COLUMN tenant_id INT NOT NULL DEFAULT 1 REFERENCES tenants(id);
-  ALTER TABLE announcements  ADD COLUMN tenant_id INT NOT NULL DEFAULT 1 REFERENCES tenants(id);
-
-  -- stock y stock_adjustments se acceden via variant_id → tenant implícito por variants
-  ALTER TABLE stock              ADD COLUMN tenant_id INT NOT NULL DEFAULT 1 REFERENCES tenants(id);
-  ALTER TABLE stock_adjustments  ADD COLUMN tenant_id INT NOT NULL DEFAULT 1 REFERENCES tenants(id);
-
-  -- Índices por tenant_id en tablas más consultadas
-  CREATE INDEX idx_products_tenant          ON products(tenant_id);
-  CREATE INDEX idx_categories_tenant        ON categories(tenant_id);
-  CREATE INDEX idx_orders_tenant            ON orders(tenant_id);
-  CREATE INDEX idx_payments_tenant          ON payments(tenant_id);
-  CREATE INDEX idx_customers_tenant         ON customers(tenant_id);
-  CREATE INDEX idx_payment_gw_rules_tenant  ON payment_gateway_rules(tenant_id);
-  CREATE INDEX idx_variants_tenant          ON variants(tenant_id);
-  CREATE INDEX idx_branding_tenant          ON branding(tenant_id);
-  CREATE INDEX idx_banners_tenant           ON banners(tenant_id);
-  CREATE INDEX idx_announcements_tenant     ON announcements(tenant_id);
-
-  -- Email único por tenant (no global)
+  ALTER TABLE users ADD COLUMN tenant_id  INT REFERENCES tenants(id);
+  ALTER TABLE users ADD COLUMN account_id INT REFERENCES accounts(id);
   ALTER TABLE users DROP CONSTRAINT IF EXISTS users_email_key;
-  ALTER TABLE users ADD CONSTRAINT uq_users_tenant_email UNIQUE (tenant_id, email);
+  ALTER TABLE users ADD CONSTRAINT uq_users_account_email UNIQUE (account_id, email);
+  ```
 
-  -- Categories único por tenant
+- [ ] Migration `049_account_id_all_tables.sql`:
+  ```sql
+  ALTER TABLE products     ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+  ALTER TABLE categories   ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+  ALTER TABLE variants     ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+  ALTER TABLE product_images ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+  ALTER TABLE product_prices ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+  ALTER TABLE sizes         ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+  ALTER TABLE colors        ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+  ALTER TABLE price_modes   ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+  ALTER TABLE customers     ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+  ALTER TABLE orders        ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+  ALTER TABLE order_items   ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+  ALTER TABLE payments      ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+  ALTER TABLE payment_gateway_rules ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+  ALTER TABLE purchase_types        ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+  ALTER TABLE customer_types        ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+  ALTER TABLE quantity_discount_rules ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+  ALTER TABLE curva_discount_rules    ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+  ALTER TABLE pos_devices          ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+  ALTER TABLE pos_payment_intents  ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+  ALTER TABLE branding             ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+  ALTER TABLE banners              ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+  ALTER TABLE announcements        ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+  ALTER TABLE stock                ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+  ALTER TABLE stock_adjustments    ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+
+  CREATE INDEX idx_products_account   ON products(account_id);
+  CREATE INDEX idx_categories_account ON categories(account_id);
+  CREATE INDEX idx_orders_account     ON orders(account_id);
+  CREATE INDEX idx_payments_account   ON payments(account_id);
+  CREATE INDEX idx_customers_account  ON customers(account_id);
+  CREATE INDEX idx_variants_account   ON variants(account_id);
+  CREATE INDEX idx_branding_account   ON branding(account_id);
+
   ALTER TABLE categories DROP CONSTRAINT IF EXISTS categories_name_key;
   ALTER TABLE categories DROP CONSTRAINT IF EXISTS categories_slug_key;
-  ALTER TABLE categories ADD CONSTRAINT uq_categories_tenant_name UNIQUE (tenant_id, name);
-  ALTER TABLE categories ADD CONSTRAINT uq_categories_tenant_slug UNIQUE (tenant_id, slug);
+  ALTER TABLE categories ADD CONSTRAINT uq_categories_account_name UNIQUE (account_id, name);
+  ALTER TABLE categories ADD CONSTRAINT uq_categories_account_slug UNIQUE (account_id, slug);
 
-  -- Sizes único por tenant
-  ALTER TABLE sizes DROP CONSTRAINT IF EXISTS sizes_label_key;
-  ALTER TABLE sizes ADD CONSTRAINT uq_sizes_tenant_label UNIQUE (tenant_id, label);
+  ALTER TABLE sizes  DROP CONSTRAINT IF EXISTS sizes_label_key;
+  ALTER TABLE sizes  ADD CONSTRAINT uq_sizes_account_label UNIQUE (account_id, label);
 
-  -- Colors único por tenant
   ALTER TABLE colors DROP CONSTRAINT IF EXISTS colors_name_key;
-  ALTER TABLE colors ADD CONSTRAINT uq_colors_tenant_name UNIQUE (tenant_id, name);
+  ALTER TABLE colors ADD CONSTRAINT uq_colors_account_name UNIQUE (account_id, name);
 
-  -- payment_gateway_rules único por tenant
   ALTER TABLE payment_gateway_rules DROP CONSTRAINT IF EXISTS payment_gateway_rules_customer_type_gateway_key;
-  ALTER TABLE payment_gateway_rules ADD CONSTRAINT uq_pgr_tenant_ct_gw UNIQUE (tenant_id, customer_type, gateway);
+  ALTER TABLE payment_gateway_rules ADD CONSTRAINT uq_pgr_account_ct_gw UNIQUE (account_id, customer_type, gateway);
+  ```
+
+- [ ] Migration `050_new_roles.sql`:
+  ```sql
+  INSERT INTO roles (name) VALUES
+    ('superadmin'),
+    ('tenant_owner'),
+    ('account_operator')
+  ON CONFLICT (name) DO NOTHING;
+
+  UPDATE roles SET name = 'account_admin' WHERE name = 'admin';
   ```
 
 ---
 
-### Story 12-3: Middleware resolveTenant + queries con tenant_id
+### Story 12-3: Middleware resolveAccount + queries con account_id
 
 **Como** desarrollador,
-**quiero** que cada request HTTP identifique automáticamente a qué tenant pertenece y que todas las queries filtren por `tenant_id`,
-**para** que nunca se mezclen datos entre tenants.
+**quiero** que cada request identifique automáticamente a qué account pertenece y que todas las queries filtren por `account_id`,
+**para** que nunca se mezclen datos entre accounts.
 
 **Criterios de aceptación:**
 
-- **Given** un request con header `X-Tenant-Slug: jedami`,
+- **Given** un request con header `X-Account-Slug: jedami` (desarrollo),
   **When** el middleware corre,
-  **Then** `req.tenantId = 1` está disponible para todos los handlers.
+  **Then** `req.accountId = 1` y `req.tenantId = 1` están disponibles para los handlers.
 
 - **Given** un request con slug desconocido,
   **When** el middleware corre,
-  **Then** responde 404 "Tenant no encontrado".
+  **Then** responde 404 "Account no encontrada".
 
-- **Given** dos tenants distintos,
-  **When** cada uno consulta `GET /api/v1/products`,
-  **Then** cada uno solo ve sus propios productos.
+- **Given** dos accounts distintas,
+  **When** cada una consulta `GET /api/v1/products`,
+  **Then** cada una solo ve sus propios productos.
 
 **Tareas técnicas:**
-- [ ] Crear `src/middleware/tenant.middleware.ts` con `resolveTenant`:
-  - Lee `X-Tenant-Slug` header (o subdominio en producción)
-  - Consulta `tenants` por slug → carga `plan_id`, `features`, `subscription_status`
-  - Inyecta `req.tenantId`, `req.tenantPlan`, `req.tenantFeatures`
-  - Cachea en Redis con TTL 60s: `tenant:{slug}` → `{id, planId, features, status}`
-- [ ] Registrar `resolveTenant` como middleware global en `app.ts` antes de todas las rutas `/api/v1/`
-- [ ] Actualizar **todos los repositories y queries** para agregar `AND tenant_id = $N`:
-  - `products.repository.ts` — findAll, findById, create, update, findByCategory
-  - `orders.repository.ts` — findByCustomerId, findById, create, findAll
-  - `customers.repository.ts` — findByUserId, create
-  - `payments.repository.ts` — findByOrderId, create, update
-  - `users.repository.ts` — findByEmail, findById, create
-  - `config.controller.ts` — branding, purchase_types, customer_types, sizes, colors, price_modes
-  - `banners.controller.ts`, `announcements.controller.ts`
-  - `pos.repository.ts`, `pos.service.ts`
-  - `discounts` queries
-- [ ] JWT payload extender con `tenantId`:
+
+- [ ] Crear `src/middleware/account.middleware.ts` con `resolveAccount`:
   ```typescript
-  // Antes: { userId: 1, roles: ['admin'] }
-  // Después: { userId: 1, tenantId: 1, roles: ['admin'] }
+  export async function resolveAccount(req, res, next) {
+    const slug = req.hostname.split('.')[0] ?? req.headers['x-account-slug'];
+    const result = await pool.query(
+      `SELECT a.id AS account_id, a.tenant_id,
+              p.features, p.name AS plan_name
+       FROM accounts a
+       JOIN tenants t ON t.id = a.tenant_id
+       JOIN plans p   ON p.id = t.plan_id
+       WHERE a.slug = $1 AND a.active = TRUE`,
+      [slug],
+    );
+    const account = result.rows[0];
+    if (!account) return res.status(404).json({ error: 'Account no encontrada' });
+    req.accountId       = account.account_id;
+    req.tenantId        = account.tenant_id;
+    req.accountPlan     = account.plan_name;
+    req.accountFeatures = account.features ?? {};
+    next();
+  }
   ```
-- [ ] Validar que `tenantId` del JWT coincida con `tenantId` del request
-- [ ] Tests: aislamiento entre tenant_id=1 y tenant_id=2
+- [ ] Registrar `resolveAccount` como middleware global en `app.ts` para todas las rutas `/api/v1/`
+- [ ] Actualizar **todos los repositories y queries** para agregar `AND account_id = $N`:
+  - `products`, `orders`, `customers`, `payments`, `users`
+  - `config` (branding, purchase_types, customer_types, sizes, colors, price_modes)
+  - `banners`, `announcements`, `pos`, `discounts`
+- [ ] JWT payload: `{ userId, tenantId, accountId, roles }`
+- [ ] `authMiddleware` valida que `token.accountId === req.accountId`
 
 ---
 
-### Story 12-4: Módulos verticales dinámicos por tenant
+### Story 12-4: Guard de features por plan
 
 **Como** desarrollador,
-**quiero** que las rutas de módulos verticales se registren solo si el tenant los tiene activos en `tenant_modules`,
-**para** que cada tenant solo exponga los endpoints que le corresponden.
+**quiero** bloquear el acceso a funcionalidades premium según el plan del tenant,
+**para** hacer cumplir los límites de cada plan.
 
 **Criterios de aceptación:**
 
-- **Given** un tenant con módulo `clothing` activo,
-  **When** llama a `GET /api/v1/products/variants`,
-  **Then** responde correctamente.
-
-- **Given** un tenant SIN módulo `clothing`,
-  **When** llama a `GET /api/v1/products/variants`,
-  **Then** responde 404.
-
 - **Given** endpoint protegido con `requireFeature('point')`,
-  **When** lo llama un tenant con plan `starter` (sin `point` en features),
+  **When** lo llama una account con plan `free`,
   **Then** responde 403 con `{ upgrade: true, feature: 'point' }`.
 
 **Tareas técnicas:**
-- [ ] Crear `src/middleware/plan-guard.middleware.ts` con `requireFeature(feature: string)`:
-  - Lee `req.tenantFeatures` inyectado por `resolveTenant`
-  - Si la feature no está activa → 403 `{ upgrade: true, feature }`
-- [ ] Agregar `requireFeature('point')` en todas las rutas de `/api/v1/admin/pos/`
-- [ ] Agregar `requireFeature('discounts')` en endpoints de `quantity_discount_rules` y `curva_discount_rules`
-- [ ] Agregar `requireFeature('checkout_api')` en `POST /payments/:id/process` (CardPaymentBrick)
-- [ ] Registrar módulo activo al crear tenant (seed `tenant_modules` en 12-7)
+
+- [ ] Crear `src/middleware/plan-guard.middleware.ts` con `requireFeature(feature: string)`
+- [ ] Aplicar en: `/admin/pos/` (`point`), descuentos (`discount_rules`), Checkout API (`checkout_api`)
 
 ---
 
@@ -316,177 +343,96 @@ La fase 4 es completamente independiente y se implementa según demanda.
 
 ---
 
-### Story 12-5: Planes y suscripciones vía MP PreApproval
+### Story 12-5: Suscripción de Tenant vía MP PreApproval
 
 **Como** dueño de un tenant,
-**quiero** elegir un plan y pagar mi suscripción mensual a Jedami,
-**para** tener mi espacio activo en la plataforma.
+**quiero** elegir un plan y pagar la suscripción mensual,
+**para** tener mis accounts activas en la plataforma.
 
 **Flujo:**
 ```
 POST /api/saas/subscribe { planId, payerEmail }
-  → Crea PreApproval en MP con auto_recurring (mensual, en USD)
+  → Crea PreApproval en MP (auto_recurring mensual)
   → Guarda mp_subscription_id en tenants
-  → Devuelve { checkoutUrl } — el dueño paga en MP
-  → MP webhookea POST /api/saas/webhook → subscription_status = 'active'
+  → Devuelve { checkoutUrl }
+  → Tenant owner paga en MP
+  → MP webhookea POST /api/saas/webhook
+  → tenants.subscription_status = 'authorized'
 ```
 
-**Criterios de aceptación:**
-
-- **Given** un tenant con `subscription_status = 'free'` elige plan Pro,
-  **When** llama a `POST /api/saas/subscribe`,
-  **Then** recibe una URL de checkout de MP para completar el pago.
-
-- **Given** el dueño completó el pago en MP,
-  **When** llega el webhook con `status = 'authorized'`,
-  **Then** `tenants.subscription_status = 'active'`.
-
-- **Given** MP no cobra una cuota (tarjeta vencida),
-  **When** llega webhook con `status = 'paused'`,
-  **Then** `tenants.subscription_status = 'paused'`.
-
-- **Given** 3 cuotas rechazadas consecutivas,
-  **When** MP cancela automáticamente,
-  **Then** `subscription_status = 'cancelled'`.
-
 **Tareas técnicas:**
-- [ ] Módulo `src/modules/saas/`:
-  - `saas.service.ts` — `createSubscription(tenantId, planId, payerEmail)`, `cancelSubscription(tenantId)`, `handleSaasWebhook(payload)`
-  - `saas.controller.ts`
-  - `saas.routes.ts` — montado en `/api/saas/` (sin `resolveTenant` — rutas de la plataforma)
-- [ ] Usar `PreApproval` del SDK de MP (distinto a `Preference` y `Payment`)
-- [ ] `external_reference` del PreApproval = `tenantId` para vincular con el tenant en el webhook
-- [ ] Endpoint `POST /api/saas/webhook` — idempotente, guarda en `subscription_payments`
-- [ ] Endpoint `DELETE /api/saas/subscribe` — cancela en MP y actualiza `tenants`
-- [ ] Endpoint `GET /api/saas/subscription` — estado actual de la suscripción del tenant autenticado
+- [ ] Módulo `src/modules/saas/` con `saas.service.ts`, `saas.controller.ts`, `saas.routes.ts`
+- [ ] Rutas montadas en `/api/saas/` — sin `resolveAccount` (son rutas de la plataforma)
+- [ ] `external_reference` del PreApproval = `tenantId`
+- [ ] Endpoints: `POST /subscribe`, `POST /webhook`, `DELETE /subscribe`, `GET /subscription`
 
 ---
 
-### Story 12-6: Guard de acceso según estado de suscripción
+### Story 12-6: Guard de suscripción activa
 
 **Como** sistema,
-**quiero** bloquear el acceso al tenant cuando la suscripción está pausada o cancelada,
-**para** que solo las tenants activas puedan operar.
-
-**Criterios de aceptación:**
-
-- **Given** tenant con `subscription_status = 'active'`,
-  **When** un cliente visita el catálogo,
-  **Then** ve los productos normalmente.
-
-- **Given** tenant con `subscription_status = 'paused'`,
-  **When** un cliente intenta crear un pedido,
-  **Then** responde 503 "Esta tienda está temporalmente inactiva".
-
-- **Given** tenant con `subscription_status = 'free'` usa feature del plan Pro,
-  **When** llama al endpoint protegido,
-  **Then** responde 403 con `{ upgrade: true }`.
+**quiero** bloquear operaciones cuando el tenant tiene la suscripción pausada o cancelada,
+**para** que solo las accounts de tenants activos puedan operar.
 
 **Tareas técnicas:**
-- [ ] Agregar chequeo de `subscription_status` en `resolveTenant` o middleware separado `requireActiveTenant`
-- [ ] Estados que permiten operar plenamente: `free`, `active`
-- [ ] Estado `pending` → grace period de 24hs (tenant opera mientras el pago se procesa)
-- [ ] Estados que bloquean escrituras: `paused` (catálogo visible, no puede crear pedidos), `cancelled` (bloqueado completamente)
-- [ ] Catálogo público (GET /products, GET /config) sigue funcionando en `paused` para que el comprador vea que la tienda existe
+- [ ] Middleware `requireActiveTenant` — verifica `subscription_status` del tenant de la account
+- [ ] `paused` → catálogo visible (GET), bloquea escrituras (pedidos, pagos)
+- [ ] `cancelled` → bloqueo total
 
 ---
 
-## FASE 3 — Onboarding de nuevas tenants
+## FASE 3 — Onboarding
 
 ---
 
-### Story 12-7: Registro y activación de un nuevo tenant
+### Story 12-7: Registro de nuevo Tenant + primera Account
 
-**Como** nuevo cliente de Jedami,
-**quiero** registrar mi tenant en la plataforma,
-**para** tener mi propio panel de administración y catálogo online.
+**Como** nuevo cliente,
+**quiero** registrar mi tenant en Jedami y crear mi primera account,
+**para** empezar a vender.
 
 **Flujo:**
 ```
-POST /api/saas/tenants { name, slug, ownerEmail, ownerPassword, planId }
-  → Valida unicidad de slug y ownerEmail
-  → Crea registro en tenants (status: 'free' si plan starter, 'pending' si plan pro/full)
-  → Crea usuario con rol 'admin' para ese tenant
-  → Activa módulo 'clothing' por defecto (+ 'point' y 'discounts' si plan >= pro)
-  → Crea registro de branding vacío (store_name = name)
-  → Seed de purchase_types, customer_types, price_modes por defecto
-  → Si plan != free → inicia flujo de suscripción MP (story 12-5)
-  → Devuelve { tenantId, slug, checkoutUrl? }
+POST /api/saas/register { tenantName, tenantSlug, accountName, accountSlug, ownerEmail, ownerPassword, planId }
+  → Crea tenant
+  → Crea account bajo el tenant
+  → Crea usuario con rol tenant_owner (tenant_id set, account_id null)
+  → Crea usuario con rol account_admin para la primera account
+  → Activa módulo clothing en la account
+  → Seed de branding, purchase_types, customer_types, sizes, colors por defecto
+  → Si plan pago → inicia flujo MP PreApproval
 ```
 
-**Criterios de aceptación:**
+---
 
-- **Given** datos válidos de nuevo tenant,
-  **When** se llama a `POST /api/saas/tenants`,
-  **Then** el tenant es creado con su admin y puede loguearse inmediatamente.
+### Story web-12-1: UI de registro (onboarding)
 
-- **Given** slug ya existente,
-  **When** se intenta registrar,
-  **Then** error 409 "El slug ya está en uso".
-
-- **Given** nuevo tenant con plan Pro,
-  **When** se registra,
-  **Then** recibe `checkoutUrl` para pagar la suscripción en MP y módulos `point` y `discounts` activos.
-
-**Tareas técnicas:**
-- [ ] Endpoint `POST /api/saas/tenants` — transacción atómica:
-  1. Crear `tenants`
-  2. Crear `users` con tenant_id + hash de password
-  3. Asignar rol `admin` en `user_roles`
-  4. Insertar en `tenant_modules` (clothing siempre + extras según plan)
-  5. Insertar `branding` vacío con tenant_id
-  6. Copiar seed de `purchase_types`, `customer_types`, `price_modes` del tenant 1 como defaults
-  7. Copiar seed de `sizes` y `colors` del tenant 1 como defaults
-  8. Si plan pago → `createSubscription(tenantId, planId, ownerEmail)`
-- [ ] Validar unicidad de `slug` (global) y `ownerEmail` dentro del tenant
+**Pantallas:**
+1. `/registro` — nombre del tenant, slug del tenant, email, contraseña, plan
+2. `/registro/account` — nombre y slug de la primera account (con preview `{slug}.jedamiapp.com`)
+3. Selector de plan con comparativa Free / Basic / Pro
+4. Si plan pago → redirect a MP
+5. `/bienvenida` con checklist de primeros pasos
 
 ---
 
-### Story web-12-1: UI de registro de nuevo tenant (onboarding)
+### Story web-12-2: Panel superadmin
 
-**Como** nuevo cliente,
-**quiero** registrar mi tenant desde una página pública de Jedami,
-**para** empezar a vender sin necesidad de configuración técnica.
+**Como** Marceloo (dueño del SaaS),
+**quiero** un panel para ver y gestionar todos los tenants y sus accounts.
 
 **Pantallas:**
-1. `/registro` — formulario: nombre del negocio, slug (con preview de URL `{slug}.jedami.com`), email, contraseña, plan
-2. Selector de plan con tabla comparativa Starter / Pro / Full
-3. Si plan pago → redirect a MP para suscripción
-4. Callback → `/bienvenida` con checklist de primeros pasos (subir logo, cargar productos, configurar branding)
-
-**Depende de:** 12-7 (BFF done)
+- `/superadmin/tenants` — tabla: tenant, plan, status, accounts activas, MRR
+- `/superadmin/tenants/:slug/accounts` — accounts del tenant
+- Acciones: pausar/reactivar tenant, cambiar plan (promo)
 
 ---
 
-### Story web-12-2: Panel de suscripción del dueño de tenant
-
-**Como** dueño de tenant,
-**quiero** ver y gestionar mi suscripción desde el panel,
-**para** poder upgradar, cancelar o ver el historial de pagos.
+### Story web-12-3: Panel de suscripción del tenant owner
 
 **Pantallas:**
-- `/admin/suscripcion` — estado actual (badge), plan activo, fecha próximo cobro, historial de pagos
-- Botón "Cambiar plan" → nuevo checkout MP (upgrade)
-- Botón "Cancelar suscripción" → confirmación + aviso de pérdida de datos
-
-**Depende de:** 12-5, 12-6 (BFF done)
-
----
-
-### Story web-12-3: Superadmin — Panel de gestión de tenants
-
-**Como** dueño de la plataforma Jedami (superadmin),
-**quiero** ver todas las tenants registradas, sus estados y sus suscripciones,
-**para** gestionar la plataforma.
-
-**Pantallas:**
-- `/superadmin/tenants` — tabla: nombre, plan, status (badge), fecha creación, último pago, MRR
-- Filtros por estado de suscripción y plan
-- Acciones: pausar/reactivar tenant manualmente, cambiar plan sin pago (promo/cortesía)
-
-**Nota:** requiere nuevo rol `superadmin` en la tabla `roles` — separado del rol `admin` de tenant.
-
-**Depende de:** 12-5, 12-7 (BFF done)
+- `/tenant/suscripcion` — plan activo, próximo cobro, historial de pagos
+- `/tenant/accounts` — lista de accounts del tenant, crear nueva account
 
 ---
 
@@ -494,42 +440,38 @@ POST /api/saas/tenants { name, slug, ownerEmail, ownerPassword, planId }
 
 ### JWT multi-tenant
 ```typescript
-// Payload actual:
-{ userId: 1, roles: ['admin'] }
+// Superadmin (plataforma):
+{ userId: 1, roles: ['superadmin'] }
 
-// Payload multi-tenant:
-{ userId: 1, tenantId: 1, roles: ['admin'] }
+// Tenant owner (ve todas las accounts del tenant):
+{ userId: 2, tenantId: 1, roles: ['tenant_owner'] }
+
+// Account admin / operator (scoped a una account):
+{ userId: 3, tenantId: 1, accountId: 1, roles: ['account_admin'] }
+
+// Comprador:
+{ userId: 4, accountId: 1, roles: ['wholesale'] }
 ```
-El `resolveTenant` middleware valida que `tenantId` del JWT coincida con el del request (header o subdominio).
 
-### Redis — claves namespaciadas por tenant
+### Redis — claves por account
 ```
 # Antes (single-tenant):
 config:all
-catalog:*
 
 # Después (multi-tenant):
-tenant:{slug}          → metadatos del tenant (60s TTL)
-config:{tenantId}:all  → config del tenant (300s TTL)
-catalog:{tenantId}:*   → catálogo del tenant
+account:{accountId}:config
+account:{accountId}:catalog:*
+tenant:{tenantSlug}:meta
 ```
 
-### Credenciales MP por tenant (fase futura)
-Actualmente todas las tenants usan las credenciales MP de la plataforma. En el futuro, cada tenant puede conectar su propia cuenta MP (campo `mp_access_token` en `tenants`). Implica construir el cliente MP por request en vez de uno global.
-
-### Migrations sin downtime
-Al agregar `tenant_id` a tablas grandes (`products`, `orders`, `payments`), usar `DEFAULT 1` para que el ALTER TABLE no requiera lock. Una vez migrados todos los registros, el DEFAULT puede removerse.
-
-### Unicidades que cambian de global a por-tenant
-| Tabla | Constraint actual | Nuevo constraint |
-|-------|------------------|-----------------|
-| `users` | `UNIQUE(email)` | `UNIQUE(tenant_id, email)` |
-| `categories` | `UNIQUE(name)`, `UNIQUE(slug)` | `UNIQUE(tenant_id, name)`, `UNIQUE(tenant_id, slug)` |
-| `sizes` | `UNIQUE(label)` | `UNIQUE(tenant_id, label)` |
-| `colors` | `UNIQUE(name)` | `UNIQUE(tenant_id, name)` |
-| `payment_gateway_rules` | `UNIQUE(customer_type, gateway)` | `UNIQUE(tenant_id, customer_type, gateway)` |
-| `purchase_types` | `UNIQUE(code)` | `UNIQUE(tenant_id, code)` |
-| `customer_types` | `UNIQUE(code)` | `UNIQUE(tenant_id, code)` |
+### Unicidades que cambian de global a por-account
+| Tabla | Constraint anterior | Nuevo constraint |
+|-------|--------------------|--------------------|
+| `users` | `UNIQUE(email)` | `UNIQUE(account_id, email)` |
+| `categories` | `UNIQUE(name)`, `UNIQUE(slug)` | `UNIQUE(account_id, name/slug)` |
+| `sizes` | `UNIQUE(label)` | `UNIQUE(account_id, label)` |
+| `colors` | `UNIQUE(name)` | `UNIQUE(account_id, name)` |
+| `payment_gateway_rules` | `UNIQUE(customer_type, gateway)` | `UNIQUE(account_id, customer_type, gateway)` |
 
 ---
 
@@ -537,13 +479,13 @@ Al agregar `tenant_id` a tablas grandes (`products`, `orders`, `payments`), usar
 
 | Story | Track | Fase | Migraciones | Estado |
 |-------|-------|------|-------------|--------|
-| 12-1 | BFF | 1 | 044, 045, 046 | backlog |
-| 12-2 | BFF | 1 | 047 | backlog |
-| 12-3 | BFF | 1 | (solo código) | backlog |
-| 12-4 | BFF | 1 | (solo código) | backlog |
-| 12-5 | BFF | 2 | (solo código) | backlog |
-| 12-6 | BFF | 2 | (solo código) | backlog |
-| 12-7 | BFF | 3 | (solo código) | backlog |
+| 12-1 | BFF | 1 | 044–047 | backlog |
+| 12-2 | BFF | 1 | 048–050 | backlog |
+| 12-3 | BFF | 1 | solo código | backlog |
+| 12-4 | BFF | 1 | solo código | backlog |
+| 12-5 | BFF | 2 | solo código | backlog |
+| 12-6 | BFF | 2 | solo código | backlog |
+| 12-7 | BFF | 3 | solo código | backlog |
 | web-12-1 | WEB | 3 | — | backlog |
 | web-12-2 | WEB | 3 | — | backlog |
 | web-12-3 | WEB | 3 | — | backlog |

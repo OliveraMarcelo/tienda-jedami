@@ -2,231 +2,277 @@
 
 ## Visión
 
-Jedami es una **plataforma SaaS** que puede ser contratada por cualquier tipo de organización: una tienda de ropa, una ferretería, una empresa distribuidora, un almacén, un restaurante. El tipo de solución es una tienda online, pero el cliente puede ser cualquier tipo de negocio.
+Jedami es una plataforma SaaS donde vos (Marceloo) sos el dueño de la plataforma.
+Tus clientes contratan el SaaS como **Tenants** y dentro de cada tenant gestionan
+una o más **Accounts** (tiendas / negocios).
 
-Cada organización que contrata la plataforma es un **tenant**. Cada tenant:
-- Tiene su propio espacio aislado: catálogo, precios, pedidos, clientes y configuración.
-- Paga una suscripción mensual para usar la plataforma.
-- Activa los módulos verticales que necesita según su rubro (indumentaria, ferretería, almacén, etc.).
-- Tiene su propio branding (logo, colores, nombre).
+```
+PLATAFORMA JEDAMI (Marceloo — superadmin)
+│
+├── Tenant: MarceDev
+│     ├── Account: jedami
+│     └── Account: jedami-mayorista
+│
+├── Tenant: Indumentaria Clara
+│     └── Account: indumentaria-clara
+│
+└── Tenant: Ferretería Don Lucho
+      └── Account: ferreteria-don-lucho
+```
 
 ---
 
-## Dos capas de negocio
+## Jerarquía de roles
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│  PLATAFORMA JEDAMI (vos — el dueño del SaaS)                     │
-│  Cobra suscripción mensual a cada tenant via MP PreApproval       │
-└──────────────────────────────────────────────────────────────────┘
-                             │
-          ┌──────────────────┼──────────────────┐
-          ▼                  ▼                  ▼
-   ┌─────────────┐   ┌─────────────┐   ┌─────────────┐
-   │  Tenant A   │   │  Tenant B   │   │  Tenant C   │
-   │  (empresa   │   │ (ferretería)│   │  (almacén)  │
-   │  de ropa)   │   │             │   │             │
-   │  Plan Pro   │   │  Plan Basic │   │  Plan Free  │
-   └─────────────┘   └─────────────┘   └─────────────┘
-         │                  │                  │
-   Sus compradores    Sus compradores    Sus compradores
-   pagan via          pagan via          pagan via
-   MP Checkout        MP Checkout        MP Checkout
-```
+| Rol | Nivel | Qué puede hacer |
+|-----|-------|-----------------|
+| `superadmin` | Plataforma | Ve y administra todos los tenants y accounts |
+| `tenant_owner` | Tenant | Crea/elimina accounts, ve métricas de todas sus accounts, gestiona el billing |
+| `account_admin` | Account | Administración completa de una account (rol actual `admin`) |
+| `account_operator` | Account | Despacho, stock, pedidos — sin acceso a configuración ni pagos |
+| `wholesale` | Account | Comprador mayorista de la account |
+| `retail` | Account | Comprador minorista de la account |
 
-**Capa 1 — Billing del SaaS:** vos cobrás a cada tenant usando **MP PreApproval** (suscripción recurrente).
-
-**Capa 2 — Pagos del tenant:** cada tenant cobra a sus compradores usando **MP Checkout Pro / Checkout API / Point** (flujos implementados en Epics 3, 10 y 11).
+> `wholesale` y `retail` son roles de compradores, no de staff. Se mantienen igual que hoy.
 
 ---
 
 ## Modelo de datos
 
-### Tablas del core multi-tenant
+### Diagrama de capas
+
+```
+plans
+  └── tenants                ← quien paga el SaaS (MarceDev, Clara, Don Lucho)
+        ├── subscription_payments
+        └── accounts         ← cada tienda / negocio
+              ├── account_modules
+              └── [todas las tablas del negocio con account_id]
+                    users, products, categories, customers,
+                    orders, payments, branding, banners, etc.
+```
+
+---
+
+### Tablas nuevas
 
 ```sql
--- ─── Planes del SaaS ─────────────────────────────────────────────────────────
+-- ─── 044: Planes del SaaS ──────────────────────────────────────────────────────
 CREATE TABLE plans (
   id             SERIAL PRIMARY KEY,
-  name           VARCHAR(50)    NOT NULL,          -- 'free', 'basic', 'pro'
-  price          NUMERIC(10,2)  NOT NULL,           -- precio mensual en ARS
-  currency       VARCHAR(3)     DEFAULT 'ARS',
-  frequency      INT            DEFAULT 1,          -- cada cuántos períodos
-  frequency_type VARCHAR(10)    DEFAULT 'months',
-  max_products   INT            DEFAULT 10,         -- límite por plan
-  max_users      INT            DEFAULT 1,
-  features       JSONB          DEFAULT '{}',
-  -- Ej: {"checkout_api": true, "point": false, "reports": true, "custom_domain": false}
-  active         BOOLEAN        NOT NULL DEFAULT TRUE,
-  created_at     TIMESTAMPTZ    DEFAULT NOW()
+  name           VARCHAR(50)   NOT NULL,           -- 'free', 'basic', 'pro'
+  price          NUMERIC(10,2) NOT NULL DEFAULT 0,
+  currency       VARCHAR(3)    NOT NULL DEFAULT 'ARS',
+  frequency      INT           NOT NULL DEFAULT 1,
+  frequency_type VARCHAR(10)   NOT NULL DEFAULT 'months',
+  max_accounts   INT           NOT NULL DEFAULT 1,  -- accounts por tenant
+  max_products   INT           NOT NULL DEFAULT 10,
+  max_users      INT           NOT NULL DEFAULT 2,
+  features       JSONB         NOT NULL DEFAULT '{}',
+  -- Ej: {"checkout_api": true, "point": false, "reports": false, "custom_domain": false}
+  active         BOOLEAN       NOT NULL DEFAULT TRUE,
+  created_at     TIMESTAMPTZ   NOT NULL DEFAULT NOW()
 );
 
--- ─── Tenants (organizaciones que usan la plataforma) ─────────────────────────
--- "tenant" es neutral: puede ser una tienda, empresa, distribuidora, etc.
+-- ─── 045: Tenants (quien compra el SaaS) ──────────────────────────────────────
 CREATE TABLE tenants (
   id                   SERIAL PRIMARY KEY,
-  slug                 VARCHAR(100) UNIQUE NOT NULL,  -- identificador único: "empresa-abc"
-  name                 VARCHAR(255)        NOT NULL,   -- nombre visible: "Empresa ABC"
-  plan_id              INT REFERENCES plans(id),
-  subscription_status  VARCHAR(20) DEFAULT 'free'
+  slug                 VARCHAR(100) UNIQUE NOT NULL,  -- 'marcedev', 'ferreteria-don-lucho'
+  name                 VARCHAR(255)        NOT NULL,
+  plan_id              INT                 REFERENCES plans(id),
+  subscription_status  VARCHAR(20)         NOT NULL DEFAULT 'free'
     CHECK (subscription_status IN ('free', 'pending', 'authorized', 'paused', 'cancelled')),
-  mp_subscription_id   VARCHAR(100),   -- ID en MP PreApproval API
+  mp_subscription_id   VARCHAR(100),
   mp_payer_email       VARCHAR(255),
-  created_at           TIMESTAMPTZ    DEFAULT NOW(),
-  updated_at           TIMESTAMPTZ    DEFAULT NOW()
+  created_at           TIMESTAMPTZ         NOT NULL DEFAULT NOW(),
+  updated_at           TIMESTAMPTZ         NOT NULL DEFAULT NOW()
 );
 
--- ─── Módulos activos por tenant ───────────────────────────────────────────────
-CREATE TABLE tenant_modules (
-  tenant_id   INT  NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-  module      VARCHAR(50) NOT NULL,
-  -- 'clothing' | 'hardware' | 'grocery' | 'restaurant'
-  enabled_at  TIMESTAMPTZ DEFAULT NOW(),
-  PRIMARY KEY (tenant_id, module)
-);
+CREATE INDEX idx_tenants_slug ON tenants(slug);
 
--- ─── Historial de pagos del SaaS (auditoría de suscripciones) ─────────────────
+-- ─── 046: Historial de pagos del SaaS ─────────────────────────────────────────
 CREATE TABLE subscription_payments (
   id                  SERIAL PRIMARY KEY,
-  tenant_id           INT  NOT NULL REFERENCES tenants(id),
+  tenant_id           INT          NOT NULL REFERENCES tenants(id),
   mp_payment_id       VARCHAR(100),
   mp_subscription_id  VARCHAR(100),
   amount              NUMERIC(10,2),
   status              VARCHAR(30),
   event_type          VARCHAR(50),
   raw_data            JSONB,
-  created_at          TIMESTAMPTZ DEFAULT NOW()
+  created_at          TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
--- Índices de performance (críticos en multi-tenant)
-CREATE INDEX idx_tenants_slug             ON tenants(slug);
-CREATE INDEX idx_tenant_modules_tenant    ON tenant_modules(tenant_id);
-CREATE INDEX idx_sub_payments_tenant      ON subscription_payments(tenant_id);
+CREATE INDEX idx_subscription_payments_tenant ON subscription_payments(tenant_id);
+
+-- ─── 047: Accounts (tiendas / negocios dentro de un tenant) ───────────────────
+CREATE TABLE accounts (
+  id          SERIAL PRIMARY KEY,
+  tenant_id   INT          NOT NULL REFERENCES tenants(id),
+  slug        VARCHAR(100) UNIQUE NOT NULL,   -- 'jedami', 'ferreteria-don-lucho'
+  name        VARCHAR(255) NOT NULL,
+  active      BOOLEAN      NOT NULL DEFAULT TRUE,
+  created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_accounts_slug      ON accounts(slug);
+CREATE INDEX idx_accounts_tenant_id ON accounts(tenant_id);
+
+-- ─── 048: Módulos activos por account ─────────────────────────────────────────
+CREATE TABLE account_modules (
+  account_id  INT         NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  module      VARCHAR(50) NOT NULL,
+  -- 'clothing' | 'hardware' | 'grocery' | 'restaurant'
+  enabled_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (account_id, module)
+);
 ```
 
-### tenant_id en todas las tablas del core
+---
 
-Todas las tablas que hoy existen agregan `tenant_id` para aislar la data entre tenants:
+### Cambios en tablas existentes
 
 ```sql
-ALTER TABLE users       ADD COLUMN tenant_id INT NOT NULL REFERENCES tenants(id);
-ALTER TABLE customers   ADD COLUMN tenant_id INT NOT NULL REFERENCES tenants(id);
-ALTER TABLE products    ADD COLUMN tenant_id INT NOT NULL REFERENCES tenants(id);
-ALTER TABLE categories  ADD COLUMN tenant_id INT NOT NULL REFERENCES tenants(id);
-ALTER TABLE orders      ADD COLUMN tenant_id INT NOT NULL REFERENCES tenants(id);
-ALTER TABLE payments    ADD COLUMN tenant_id INT NOT NULL REFERENCES tenants(id);
-ALTER TABLE branding    ADD COLUMN tenant_id INT NOT NULL REFERENCES tenants(id);
+-- ─── 049: Agregar tenant_id y account_id a users ──────────────────────────────
+-- tenant_id  → usuario de nivel tenant (tenant_owner, ve todas las accounts)
+-- account_id → usuario de nivel account (account_admin, operator, wholesale, retail)
+-- ambos NULL → superadmin (plataforma)
 
--- Índices por tenant_id en las tablas más consultadas
-CREATE INDEX idx_products_tenant  ON products(tenant_id);
-CREATE INDEX idx_orders_tenant    ON orders(tenant_id);
-CREATE INDEX idx_payments_tenant  ON payments(tenant_id);
+ALTER TABLE users ADD COLUMN tenant_id  INT REFERENCES tenants(id);
+ALTER TABLE users ADD COLUMN account_id INT REFERENCES accounts(id);
 
--- UNIQUE email por tenant, no global
+-- Un email puede existir en distintas accounts sin conflicto
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_email_key;
-ALTER TABLE users ADD CONSTRAINT uq_users_tenant_email UNIQUE (tenant_id, email);
+ALTER TABLE users ADD CONSTRAINT uq_users_account_email
+  UNIQUE (account_id, email);
+
+-- ─── 050: account_id en tablas del negocio ────────────────────────────────────
+-- DEFAULT 1 para no romper datos actuales (account inicial = 1)
+
+ALTER TABLE products    ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+ALTER TABLE categories  ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+ALTER TABLE customers   ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+ALTER TABLE orders      ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+ALTER TABLE payments    ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+ALTER TABLE branding    ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+ALTER TABLE banners     ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+ALTER TABLE announcements        ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+ALTER TABLE pos_devices          ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+ALTER TABLE payment_gateway_rules ADD COLUMN account_id INT NOT NULL DEFAULT 1 REFERENCES accounts(id);
+
+CREATE INDEX idx_products_account   ON products(account_id);
+CREATE INDEX idx_categories_account ON categories(account_id);
+CREATE INDEX idx_customers_account  ON customers(account_id);
+CREATE INDEX idx_orders_account     ON orders(account_id);
+CREATE INDEX idx_payments_account   ON payments(account_id);
+
+-- ─── 051: Nuevos roles de staff ───────────────────────────────────────────────
+INSERT INTO roles (name) VALUES
+  ('superadmin'),
+  ('tenant_owner'),
+  ('account_operator')
+ON CONFLICT (name) DO NOTHING;
+
+-- Renombrar rol existente 'admin' → 'account_admin'
+UPDATE roles SET name = 'account_admin' WHERE name = 'admin';
+
+-- ─── 052: Seed — tenant y account inicial para los datos actuales ──────────────
+INSERT INTO plans (name, price, max_accounts, max_products, max_users, features)
+VALUES
+  ('free',  0, 1,   10,   2,  '{"checkout_api": false, "point": false, "reports": false}'),
+  ('basic', 0, 3,   100,  5,  '{"checkout_api": true,  "point": false, "reports": false}'),
+  ('pro',   0, 999, 9999, 99, '{"checkout_api": true,  "point": true,  "reports": true}');
+
+INSERT INTO tenants (id, slug, name, plan_id, subscription_status)
+VALUES (1, 'jedami', 'Jedami', 3, 'authorized');
+
+INSERT INTO accounts (id, tenant_id, slug, name, active)
+VALUES (1, 1, 'jedami', 'Jedami', TRUE);
+
+INSERT INTO account_modules (account_id, module)
+VALUES (1, 'clothing');
 ```
-
-### Tabla users multi-tenant
-
-Un usuario pertenece a un tenant. No comparte cuenta entre tenants.
 
 ---
 
-## Módulos verticales
-
-Cada tenant activa los módulos que necesita. Los módulos definen qué tipo de productos y variantes maneja.
-
-| Módulo | Rubro | Qué agrega |
-|--------|-------|-----------|
-| `clothing` | Indumentaria | Talles, colores, variantes, compra por curva y por cantidad |
-| `hardware` | Ferretería / corralón | Atributos técnicos (medida, material), unidades de venta |
-| `grocery` | Almacén / kiosco | Stock por peso/litro, vencimientos, proveedores |
-| `restaurant` | Gastronomía | Secciones de menú, modificadores, mesas |
-
-El módulo `clothing` es el que está implementado actualmente. Los demás son backlog.
-
----
-
-## Resolución del tenant en cada request
-
-Cada request HTTP necesita saber a qué tenant pertenece. Hay dos estrategias:
-
-### Opción A — Por subdominio (recomendada para producción)
-```
-empresa-abc.jedami.com   →  tenant.slug = 'empresa-abc'
-ferreteria-pepe.jedami.com  →  tenant.slug = 'ferreteria-pepe'
-```
-
-### Opción B — Por header (más simple para empezar)
-```
-X-Tenant-Slug: empresa-abc
-```
-
-### Implementación del middleware
+## JWT multi-tenant
 
 ```typescript
-// src/middleware/tenant.middleware.ts
-import { Request, Response, NextFunction } from 'express';
-import { pool } from '../config/database.js';
+// Superadmin (Marceloo — acceso total):
+{ userId: 1, roles: ['superadmin'] }
+
+// Tenant owner (ve todas las accounts de su tenant):
+{ userId: 2, tenantId: 1, roles: ['tenant_owner'] }
+
+// Account admin / operator (scoped a una account):
+{ userId: 3, tenantId: 1, accountId: 1, roles: ['account_admin'] }
+
+// Comprador (wholesale o retail de la account):
+{ userId: 4, accountId: 1, roles: ['wholesale'] }
+```
+
+---
+
+## Middleware
+
+### resolveAccount
+
+Se ejecuta en todas las rutas `/api/v1/*`. Resuelve la account por subdominio.
+
+```typescript
+// jedami-bff/src/middleware/account.middleware.ts
 
 declare global {
   namespace Express {
     interface Request {
-      tenantId:       number;
-      tenantPlan:     string;
-      tenantFeatures: Record<string, boolean>;
+      accountId:       number;
+      tenantId:        number;
+      accountPlan:     string;
+      accountFeatures: Record<string, boolean>;
     }
   }
 }
 
-export async function resolveTenant(req: Request, res: Response, next: NextFunction) {
-  // Opción A: subdominio
-  const host = req.hostname; // "empresa-abc.jedami.com"
-  const slug = host.split('.')[0];
+export async function resolveAccount(req: Request, res: Response, next: NextFunction) {
+  // Producción: subdominio  → jedami.jedamiapp.com
+  // Desarrollo: header      → X-Account-Slug: jedami
+  const slug = req.hostname.split('.')[0] ?? req.headers['x-account-slug'] as string;
 
-  // Opción B: header (fallback en desarrollo)
-  // const slug = req.headers['x-tenant-slug'] as string;
-
-  if (!slug) {
-    return res.status(400).json({ error: 'Tenant no identificado' });
-  }
+  if (!slug) return res.status(400).json({ error: 'Account no identificada' });
 
   const result = await pool.query(
-    `SELECT t.id, t.subscription_status, p.features, p.name AS plan_name
-     FROM tenants t
-     LEFT JOIN plans p ON p.id = t.plan_id
-     WHERE t.slug = $1`,
+    `SELECT a.id AS account_id, a.tenant_id,
+            p.features, p.name AS plan_name
+     FROM accounts a
+     JOIN tenants t ON t.id = a.tenant_id
+     JOIN plans p   ON p.id = t.plan_id
+     WHERE a.slug = $1 AND a.active = TRUE`,
     [slug],
   );
 
-  const tenant = result.rows[0];
-  if (!tenant) {
-    return res.status(404).json({ error: 'Tenant no encontrado' });
-  }
+  const account = result.rows[0];
+  if (!account) return res.status(404).json({ error: 'Account no encontrada' });
 
-  req.tenantId       = tenant.id;
-  req.tenantPlan     = tenant.plan_name;
-  req.tenantFeatures = tenant.features ?? {};
+  req.accountId       = account.account_id;
+  req.tenantId        = account.tenant_id;
+  req.accountPlan     = account.plan_name;
+  req.accountFeatures = account.features ?? {};
 
   next();
 }
 ```
 
----
-
-## Guard de plan (acceso por feature)
+### requireFeature
 
 ```typescript
-// src/middleware/plan-guard.middleware.ts
-import { Request, Response, NextFunction } from 'express';
+// jedami-bff/src/middleware/plan-guard.middleware.ts
 
 export function requireFeature(feature: string) {
   return (req: Request, res: Response, next: NextFunction) => {
-    // subscription_status lo resuelve resolveTenant — no necesita otra query
-    if (!req.tenantFeatures?.[feature]) {
+    if (!req.accountFeatures?.[feature]) {
       return res.status(403).json({
-        error: `Tu plan "${req.tenantPlan}" no incluye esta funcionalidad`,
+        error: `Tu plan "${req.accountPlan}" no incluye esta funcionalidad`,
         feature,
         upgrade: true,
       });
@@ -234,127 +280,26 @@ export function requireFeature(feature: string) {
     next();
   };
 }
-
-// Uso en rutas:
-// router.post('/process', requireFeature('checkout_api'), processPaymentHandler)
-// router.post('/point/initiate', requireFeature('point'), initiatePointHandler)
 ```
 
----
-
-## Billing del SaaS — MP PreApproval
-
-El dueño del tenant se suscribe para pagar el plan mensual. Se usa la API **PreApproval** de MP — distinta a la API de pagos del tenant.
-
-### Flujo de suscripción
-
-```
-Dueño del tenant → elige plan en el panel de Jedami
-  → POST /api/saas/subscribe { planId }
-  → Backend crea PreApproval en MP → devuelve init_point (URL de checkout)
-  → Dueño completa el pago en MP
-  → MP envía webhook a POST /api/saas/webhook
-  → subscription_status = 'authorized'
-  → El tenant queda activo
-```
-
-### Servicio de suscripción
+### requireRole
 
 ```typescript
-// src/modules/saas/saas.service.ts
-import { MercadoPagoConfig, PreApproval } from 'mercadopago';
-import { pool } from '../../config/database.js';
-import { ENV } from '../../config/env.js';
+// jedami-bff/src/middleware/role-guard.middleware.ts
 
-const mpClient = new MercadoPagoConfig({ accessToken: ENV.MP_ACCESS_TOKEN });
-const preApproval = new PreApproval(mpClient);
-
-export async function createSubscription(tenantId: number, payerEmail: string, planId: number) {
-  const planRes = await pool.query('SELECT * FROM plans WHERE id = $1 AND active = TRUE', [planId]);
-  const plan = planRes.rows[0];
-  if (!plan) throw new Error('Plan no encontrado');
-
-  const subscription = await preApproval.create({
-    body: {
-      back_url:           `${ENV.APP_URL}/panel/suscripcion/callback`,
-      reason:             `Jedami — Plan ${plan.name}`,
-      external_reference: String(tenantId),
-      payer_email:        payerEmail,
-      auto_recurring: {
-        frequency:          plan.frequency,
-        frequency_type:     plan.frequency_type,
-        transaction_amount: Number(plan.price),
-        currency_id:        plan.currency,
-      },
-      status: 'pending',
-    },
-  });
-
-  await pool.query(
-    `UPDATE tenants
-     SET mp_subscription_id  = $1,
-         mp_payer_email      = $2,
-         plan_id             = $3,
-         subscription_status = 'pending',
-         updated_at          = NOW()
-     WHERE id = $4`,
-    [subscription.id, payerEmail, planId, tenantId],
-  );
-
-  return { subscriptionId: subscription.id, checkoutUrl: subscription.init_point };
-}
-
-export async function cancelSubscription(tenantId: number) {
-  const res = await pool.query('SELECT mp_subscription_id FROM tenants WHERE id = $1', [tenantId]);
-  const { mp_subscription_id } = res.rows[0];
-  if (!mp_subscription_id) throw new Error('No hay suscripción activa');
-
-  await preApproval.update({ id: mp_subscription_id, body: { status: 'cancelled' } });
-
-  await pool.query(
-    `UPDATE tenants SET subscription_status = 'cancelled', updated_at = NOW() WHERE id = $1`,
-    [tenantId],
-  );
-}
-```
-
-### Webhook de suscripciones del SaaS
-
-```typescript
-// Endpoint: POST /api/saas/webhook
-// DISTINTO al webhook de pagos del tenant (POST /api/v1/payments/webhook)
-
-export async function handleSaasWebhook(body: { type: string; data: { id: string } }) {
-  if (body.type !== 'subscription_preapproval') return;
-
-  const subscription = await preApproval.get({ id: body.data.id });
-
-  const statusMap: Record<string, string> = {
-    authorized: 'authorized',
-    paused:     'paused',
-    cancelled:  'cancelled',
-    pending:    'pending',
+export function requireRole(...roles: string[]) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const userRoles: string[] = (req as any).user?.roles ?? [];
+    const hasRole = roles.some(r => userRoles.includes(r));
+    if (!hasRole) return res.status(403).json({ error: 'Acceso no autorizado' });
+    next();
   };
-  const newStatus = statusMap[subscription.status ?? ''] ?? 'unknown';
-
-  // external_reference = tenant_id
-  const tenantId = subscription.external_reference;
-
-  await pool.query(
-    `UPDATE tenants
-     SET subscription_status = $1,
-         mp_subscription_id  = $2,
-         updated_at          = NOW()
-     WHERE id = $3`,
-    [newStatus, subscription.id, tenantId],
-  );
-
-  await pool.query(
-    `INSERT INTO subscription_payments (tenant_id, mp_subscription_id, status, event_type, raw_data)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [tenantId, subscription.id, newStatus, body.type, JSON.stringify(body)],
-  );
 }
+
+// Uso:
+// router.get('/tenants',  requireRole('superadmin'), listTenantsHandler)
+// router.get('/accounts', requireRole('superadmin', 'tenant_owner'), listAccountsHandler)
+// router.get('/products', requireRole('account_admin', 'account_operator'), listProductsHandler)
 ```
 
 ---
@@ -362,86 +307,65 @@ export async function handleSaasWebhook(body: { type: string; data: { id: string
 ## Estructura de rutas
 
 ```
-/api/saas/           ← gestión de la plataforma (suscripciones, onboarding)
-/api/saas/webhook    ← webhook de MP PreApproval (billing del SaaS)
+/api/platform/                  ← superadmin (Marceloo)
+  GET  /tenants                 ← lista todos los tenants
+  POST /tenants                 ← crea un tenant
+  GET  /tenants/:slug/accounts  ← lista accounts de un tenant
 
-/api/v1/             ← API del tenant (requiere resolveTenant middleware)
-/api/v1/payments/webhook  ← webhook de pagos de compradores del tenant
+/api/tenant/                    ← tenant_owner (requiere tenantId en JWT)
+  GET  /accounts                ← sus accounts
+  POST /accounts                ← crea una account dentro de su tenant
+  GET  /billing                 ← estado de suscripción y pagos
+
+/api/saas/                      ← billing del SaaS (MP PreApproval)
+  POST /subscribe               ← inicia suscripción
+  POST /webhook                 ← webhook MP PreApproval
+
+/api/v1/                        ← operación de la account (requiere resolveAccount)
+  /products, /orders, /customers, /payments, /config, etc.
 ```
 
 ---
 
-## Estructura BFF multi-tenant
+## RLS — capa de seguridad adicional (Fase 2)
 
-```
-src/
-├── middleware/
-│   ├── auth.middleware.ts         ← JWT (incluye tenantId en el payload)
-│   ├── tenant.middleware.ts       ← resolveTenant (agrega req.tenantId)
-│   └── plan-guard.middleware.ts   ← requireFeature('point')
-│
-├── modules/
-│   ├── saas/                      ← billing de la plataforma
-│   │   ├── saas.controller.ts
-│   │   ├── saas.service.ts        ← PreApproval MP
-│   │   └── saas.routes.ts
-│   │
-│   ├── core/                      ← lógica del tenant (tenant_id en todas las queries)
-│   │   ├── products/
-│   │   ├── orders/
-│   │   ├── payments/              ← Checkout Pro / API / Point
-│   │   ├── auth/
-│   │   └── config/
-│   │
-│   └── verticals/                 ← módulos activables por tenant
-│       ├── clothing/              ← implementado actualmente
-│       ├── hardware/              ← backlog
-│       ├── grocery/               ← backlog
-│       └── restaurant/            ← backlog
-│
-└── app.ts
-```
+En Fase 1 cada query filtra con `WHERE account_id = $accountId` (desde el middleware).
+En Fase 2 se agrega RLS como segunda línea de defensa — si una query olvida el WHERE,
+PostgreSQL igual bloquea el acceso.
 
-### Registro dinámico de módulos verticales
+```sql
+ALTER TABLE products  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE orders    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
 
-```typescript
-// app.ts — las rutas de módulos se registran según tenant_modules
-const activeModules = await getTenantModules(tenantId);
+CREATE POLICY account_isolation ON products
+  USING (account_id = current_setting('app.account_id')::int);
 
-if (activeModules.includes('clothing'))   app.use('/api/v1', clothingRoutes);
-if (activeModules.includes('hardware'))   app.use('/api/v1', hardwareRoutes);
-if (activeModules.includes('grocery'))    app.use('/api/v1', groceryRoutes);
-if (activeModules.includes('restaurant')) app.use('/api/v1', restaurantRoutes);
+-- El middleware inyecta el account_id al inicio de cada request:
+await pool.query(`SET LOCAL app.account_id = $1`, [req.accountId]);
 ```
 
 ---
 
-## Planes sugeridos
+## Billing del SaaS — MP PreApproval (a nivel tenant)
 
-| Plan | Precio/mes | Productos | Módulos | Features especiales |
-|------|-----------|-----------|---------|---------------------|
-| Free | $0 | 10 | clothing | Solo Checkout Pro |
-| Basic | $X | 100 | clothing | Checkout Pro + API |
-| Pro | $XX | ilimitados | todos | + Point + Reports + Dominio custom |
+El billing vive en el **tenant**. Una suscripción cubre todas las accounts del tenant.
 
-La columna `features` en `plans` controla exactamente qué puede usar cada plan:
-```json
-{
-  "checkout_api":   true,
-  "point":          false,
-  "reports":        false,
-  "custom_domain":  false,
-  "discount_rules": true
-}
+```
+Tenant owner elige plan en el panel
+  → POST /api/saas/subscribe { planId, payerEmail }
+  → Backend crea PreApproval en MP → devuelve init_point
+  → Tenant owner completa el pago en MP
+  → MP envía webhook → /api/saas/webhook
+  → tenants.subscription_status = 'authorized'
+  → Todas las accounts del tenant quedan activas
 ```
 
----
+### Estados de suscripción
 
-## Comportamiento según estado de suscripción
-
-| Estado | El tenant puede operar | El admin puede entrar |
-|--------|----------------------|----------------------|
-| `free` | Sí (con límites del plan free) | Sí |
+| Estado | Las accounts operan | El tenant_owner puede entrar |
+|--------|---------------------|------------------------------|
+| `free` | Sí (límites del plan free) | Sí |
 | `pending` | Sí (grace period 24hs) | Sí |
 | `authorized` | Sí | Sí |
 | `paused` | No (compradores ven "servicio no disponible") | Sí (para reingresar tarjeta) |
@@ -449,55 +373,39 @@ La columna `features` en `plans` controla exactamente qué puede usar cada plan:
 
 ---
 
-## JWT multi-tenant
+## Planes sugeridos
 
-El token JWT incluye `tenantId` para que el middleware pueda validar que el usuario pertenece al tenant correcto:
-
-```typescript
-// Payload anterior (single-tenant):
-{ userId: 1, roles: ['admin'] }
-
-// Payload multi-tenant:
-{ userId: 1, tenantId: 1, roles: ['admin'] }
-```
-
----
-
-## Redis y caché multi-tenant
-
-Todas las claves de caché incluyen `tenantId` para evitar colisiones entre tenants:
-
-```
-catalog:{tenantId}:*           (antes: catalog:*)
-product:{tenantId}:{id}        (antes: product:{id})
-admin:{tenantId}:dashboard     (antes: admin:dashboard)
-config:{tenantId}              (antes: config)
-```
-
----
-
-## Credenciales MP por tenant (fase futura)
-
-Actualmente todos los tenants usan las credenciales MP del dueño de la plataforma. Si en el futuro cada tenant quiere usar sus propias credenciales MP (para que los pagos vayan directamente a su cuenta), se agrega `mp_access_token` en `tenants` y el cliente MP se construye por request en vez de uno global.
+| Plan | Precio/mes | Accounts | Productos | Features |
+|------|-----------|----------|-----------|----------|
+| Free | $0 | 1 | 10 | Solo Checkout Pro |
+| Basic | $XX | 3 | 100 | + Checkout API |
+| Pro | $XXX | ilimitadas | ilimitados | + Point + Reports + Dominio custom |
 
 ---
 
 ## Hoja de ruta de implementación
 
-### Fase 1 — Fundación (prerequisito para todo lo demás)
-1. Migraciones: tablas `plans`, `tenants`, `tenant_modules`, `subscription_payments`
-2. Agregar `tenant_id` a todas las tablas del core (con `DEFAULT 1` para no romper datos actuales)
-3. Middleware `resolveTenant` + ajustar todas las queries para filtrar por `tenant_id`
-4. Migrar el tenant actual de Jedami como `tenant_id = 1` (seed)
+### Fase 1 — Fundación
+1. Migraciones 044–052: plans, tenants, accounts, account_modules, subscription_payments
+2. `account_id` en todas las tablas del core (DEFAULT 1 para datos actuales)
+3. Nuevos roles: superadmin, tenant_owner, account_operator + renombrar admin → account_admin
+4. Middleware `resolveAccount` + ajustar todas las queries con `WHERE account_id = $accountId`
+5. JWT actualizado con `tenantId` + `accountId`
+6. Seed: tenant + account inicial para los datos existentes de Jedami
 
-### Fase 2 — Billing del SaaS
-5. Módulo `saas/` con suscripciones via MP PreApproval
-6. Webhook `/api/saas/webhook` para actualizar `subscription_status`
-7. Middleware `requireFeature()` protegiendo endpoints por plan
+### Fase 2 — Panel de gestión
+7. Rutas `/api/platform/` para superadmin (vos)
+8. Rutas `/api/tenant/` para tenant_owner (crear accounts, ver billing)
+9. Vista de onboarding: crear tenant → elegir plan → crear primera account
 
-### Fase 3 — Onboarding de nuevos tenants
-8. Flujo de registro: nombre → slug → plan → checkout MP → tenant activo
-9. Panel de administración de la plataforma (superadmin — para vos)
+### Fase 3 — Billing del SaaS
+10. Módulo `saas/` con suscripciones via MP PreApproval
+11. Webhook `/api/saas/webhook`
+12. Guard `requireFeature()` en endpoints por plan
 
-### Fase 4 — Módulos verticales adicionales
-10. `module_hardware`, `module_grocery`, `module_restaurant` según demanda
+### Fase 4 — Seguridad avanzada
+13. RLS en tablas críticas (products, orders, customers)
+14. Límites de plan: max_products, max_accounts, max_users por tenant
+
+### Fase 5 — Módulos verticales adicionales
+15. `hardware`, `grocery`, `restaurant` según demanda real
