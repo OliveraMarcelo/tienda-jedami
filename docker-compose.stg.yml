@@ -38,6 +38,9 @@ services:
       NODE_ENV: staging
     ports:
       - "3000:3000"
+    volumes:
+      # Imágenes subidas (productos, branding): sobreviven a los redeploys
+      - uploads_data:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -56,6 +59,9 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
+    volumes:
+      # nginx sin TLS para VMs locales (ver jedami-web/nginx.local.conf)
+      - ./nginx.local.conf:/etc/nginx/conf.d/jedami.conf:ro
     depends_on:
       jedami-bff:
         condition: service_healthy
@@ -65,6 +71,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  uploads_data:
 
 networks:
   jedami-internal:

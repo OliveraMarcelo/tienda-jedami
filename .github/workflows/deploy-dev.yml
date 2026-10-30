@@ -56,6 +56,21 @@ jobs:
     needs: build-and-push
     runs-on: [self-hosted, jedami-local]
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            docker-compose.dev.yml
+            jedami-web/nginx.local.conf
+          sparse-checkout-cone-mode: false
+
+      # Los .env.dev / .env quedan en la VM (no están en el repo); el resto se
+      # sincroniza en cada deploy para que la VM siga siempre a main.
+      - name: Copiar compose y nginx a la VM
+        run: |
+          scp -o StrictHostKeyChecking=no \
+            docker-compose.dev.yml jedami-web/nginx.local.conf \
+            jedami@jedami.dev.local:/opt/jedami/
+
       - name: Deploy en dev VM
         run: |
           ssh -o StrictHostKeyChecking=no jedami@jedami.dev.local "
@@ -70,4 +85,5 @@ jobs:
         run: |
           sleep 15
           wget -qO- http://jedami.dev.local:3000/api/v1/health || (echo "ERROR: BFF dev no responde" && exit 1)
+          wget -qO- http://jedami.dev.local/api/v1/health >/dev/null || (echo "ERROR: web dev no responde (nginx o proxy /api)" && exit 1)
           echo "Deploy dev OK"

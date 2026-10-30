@@ -56,6 +56,21 @@ jobs:
     needs: build-and-push
     runs-on: [self-hosted, jedami-local]
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            docker-compose.stg.yml
+            jedami-web/nginx.local.conf
+          sparse-checkout-cone-mode: false
+
+      # Los .env.stg / .env quedan en la VM (no están en el repo); el resto se
+      # sincroniza en cada deploy para que la VM siga siempre al tag.
+      - name: Copiar compose y nginx a la VM
+        run: |
+          scp -o StrictHostKeyChecking=no \
+            docker-compose.stg.yml jedami-web/nginx.local.conf \
+            jedami@jedami.stg.local:/opt/jedami/
+
       - name: Calcular versión RC
         id: ver
         run: echo "value=${{ github.ref_name }}" >> $GITHUB_OUTPUT
@@ -76,4 +91,5 @@ jobs:
         run: |
           sleep 15
           wget -qO- http://jedami.stg.local:3000/api/v1/health || (echo "ERROR: BFF stg no responde" && exit 1)
+          wget -qO- http://jedami.stg.local/api/v1/health >/dev/null || (echo "ERROR: web stg no responde (nginx o proxy /api)" && exit 1)
           echo "Deploy stg OK — versión ${{ steps.ver.outputs.value }}"
