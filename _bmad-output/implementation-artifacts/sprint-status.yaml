@@ -293,14 +293,15 @@ development_status:
   # EPIC 14: Infraestructura y Deuda Técnica
   # Refactors de arquitectura que no cambian funcionalidad visible
   # ─────────────────────────────────────────────────────────
-  epic-14: backlog
+  epic-14: in-progress
 
   # Infra Track — deploy y CI/CD
   14-8-cicd-github-actions: done               # GitHub Actions: push a main → deploy automático en el Droplet
   14-9-cicd-build-imagen-docker-hub: done            # Build imágenes en runner + push Docker Hub → deploy solo hace docker pull
   14-10-kubernetes: ready-for-dev                     # Migración de Docker Compose a Kubernetes (k3s o DOKS)
   14-11-dominio-y-ssl-produccion: ready-for-dev       # DNS GoDaddy (A records jedamiapp.com) + certbot Let's Encrypt en el Droplet
-  14-12-ambientes-dev-stg-kvm-terraform: ready-for-dev  # VMs locales dev+stg con KVM+Terraform + self-hosted runner + workflows RC
+  14-12-ambientes-dev-stg-kvm-terraform: review         # VMs locales dev+stg con KVM+Terraform + self-hosted runner + workflows RC
+  14-13-versionado-semantico-release-please: done      # release-please + tags vX.Y.Z en imágenes Docker; prod usa versión específica (sin latest)
 
   # BFF Track — jedami-bff
   14-1-media-table-centralizada: backlog       # migración de product_images + banners + branding a tabla media única

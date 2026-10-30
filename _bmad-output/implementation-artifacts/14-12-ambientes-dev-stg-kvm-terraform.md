@@ -1,6 +1,6 @@
 # Story 14.12: Infraestructura — Ambientes Dev y Staging con KVM + Terraform
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
