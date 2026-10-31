@@ -2,7 +2,8 @@ name: Deploy a producción
 
 on:
   push:
-    tags: ['v*.*.*']
+    # Los release candidates (vX.Y.Z-rc.N) van a stg (deploy-stg.yml), nunca a prod.
+    tags: ['v*.*.*', '!v*-rc.*']
   workflow_dispatch:
     inputs:
       version:
@@ -91,12 +92,14 @@ jobs:
     steps:
       - name: Calcular versión a deployar
         id: ver
+        # Las imágenes se publican sin la "v" (metadata-action semver): v1.0.1 → 1.0.1
         run: |
           if [[ "${{ github.ref_type }}" == "tag" ]]; then
-            echo "value=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            ref="${{ github.ref_name }}"
           else
-            echo "value=${{ inputs.version || 'latest' }}" >> $GITHUB_OUTPUT
+            ref="${{ inputs.version || 'latest' }}"
           fi
+          echo "value=${ref#v}" >> $GITHUB_OUTPUT
 
       - name: SSH deploy
         uses: appleboy/ssh-action@v1.0.3
@@ -106,6 +109,7 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           envs: DOCKERHUB_USERNAME,APP_VERSION
           script: |
+            set -e  # si falla el pull, el deploy debe fallar (no seguir con la imagen vieja)
             cd /opt/jedami
             git pull origin main
             echo "Deployando versión: $APP_VERSION"

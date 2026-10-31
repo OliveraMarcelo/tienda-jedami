@@ -73,7 +73,10 @@ jobs:
 
       - name: Calcular versión RC
         id: ver
-        run: echo "value=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+        # Las imágenes se publican sin la "v" (metadata-action semver): v1.1.0-rc.1 → 1.1.0-rc.1
+        run: |
+          ref="${{ github.ref_name }}"
+          echo "value=${ref#v}" >> $GITHUB_OUTPUT
 
       - name: Deploy en stg VM
         run: |
