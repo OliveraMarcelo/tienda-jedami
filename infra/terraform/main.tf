@@ -82,6 +82,9 @@ resource "libvirt_domain" "dev" {
   memory = var.dev_ram_mb
   vcpu   = var.dev_vcpu
 
+  # Arrancar la VM con el host (si no, quedan apagadas tras reiniciar)
+  autostart = true
+
   cloudinit = libvirt_cloudinit_disk.dev_init.id
 
   network_interface {
@@ -114,6 +117,9 @@ resource "libvirt_domain" "stg" {
   name   = "jedami-stg"
   memory = var.stg_ram_mb
   vcpu   = var.stg_vcpu
+
+  # Arrancar la VM con el host (si no, quedan apagadas tras reiniciar)
+  autostart = true
 
   cloudinit = libvirt_cloudinit_disk.stg_init.id
 
