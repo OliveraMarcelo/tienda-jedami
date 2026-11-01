@@ -3,6 +3,17 @@ name: Deploy → Dev
 on:
   push:
     branches: [main]
+    # No desplegar si el push solo toca cosas que no van en las imágenes de dev.
+    # Si un push mezcla estos archivos con código, el deploy corre igual.
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '_bmad-output/**'
+      - '_bmad/**'
+      - '.claude/**'
+      - '.vscode/**'
+      - 'infra/terraform/**'
+      - 'jedami-mobile/**'
 
 jobs:
   build-and-push:
