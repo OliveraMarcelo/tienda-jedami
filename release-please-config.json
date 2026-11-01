@@ -1,8 +1,23 @@
 {
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
-  "release-type": "node",
+  "release-type": "simple",
   "include-component-in-tag": false,
+  "bootstrap-sha": "6348cfa72effb13c5fdc513eebb1bbae6f7c0aa0",
   "packages": {
-    "jedami-bff": {}
+    ".": {
+      "package-name": "jedami",
+      "exclude-paths": [
+        "jedami-mobile",
+        "docs",
+        "_bmad",
+        "_bmad-output",
+        ".claude",
+        ".vscode"
+      ],
+      "extra-files": [
+        { "type": "json", "path": "jedami-bff/package.json", "jsonpath": "$.version" },
+        { "type": "json", "path": "jedami-web/package.json", "jsonpath": "$.version" }
+      ]
+    }
   }
 }

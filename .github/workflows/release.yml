@@ -7,6 +7,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write   # para disparar deploy.yml cuando se publica una versión
 
 jobs:
   release-please:
@@ -14,6 +15,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: googleapis/release-please-action@v4
+        id: release
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+      # Los tags que crea release-please con GITHUB_TOKEN no disparan otros
+      # workflows (regla de GitHub), así que el deploy a prod se lanza a mano
+      # sobre el tag nuevo. workflow_dispatch sí está permitido con GITHUB_TOKEN.
+      - name: Disparar deploy a producción
+        if: ${{ steps.release.outputs.release_created }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run deploy.yml \
+            --repo "${{ github.repository }}" \
+            --ref "${{ steps.release.outputs.tag_name }}" \
+            -f reason="release ${{ steps.release.outputs.tag_name }}"
