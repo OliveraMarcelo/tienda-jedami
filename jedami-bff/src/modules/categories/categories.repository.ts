@@ -3,7 +3,10 @@ import { Category } from './categories.entity.js';
 
 export const findAll = async (): Promise<Category[]> => {
   const result = await pool.query(
-    'SELECT id, name, slug, created_at FROM categories ORDER BY name',
+    `SELECT c.id, c.name, c.slug, c.created_at,
+            (SELECT COUNT(*)::int FROM products p WHERE p.category_id = c.id AND p.active = TRUE) AS product_count
+     FROM categories c
+     ORDER BY c.name`,
   );
   return result.rows;
 };

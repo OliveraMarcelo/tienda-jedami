@@ -12,7 +12,7 @@ function toSlug(name: string): string {
 
 export async function listCategories() {
   const categories = await categoriesRepository.findAll();
-  return categories.map(c => ({ id: c.id, name: c.name, slug: c.slug }));
+  return categories.map(c => ({ id: c.id, name: c.name, slug: c.slug, productCount: c.product_count ?? 0 }));
 }
 
 export async function createCategory(name: string) {

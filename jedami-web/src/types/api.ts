@@ -39,6 +39,8 @@ export interface Category {
   id: number
   name: string
   slug: string
+  /** Productos visibles en la categoría (lo devuelve GET /categories) */
+  productCount?: number
 }
 
 export interface PaginationMeta {
