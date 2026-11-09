@@ -12,6 +12,9 @@ import { UPLOADS_DIR, UPLOADS_BRANDING_DIR, UPLOADS_BANNERS_DIR, UPLOADS_ANNOUNC
 export function createApp() {
   const app = express();
 
+  // Detrás de nginx: respetar X-Forwarded-Proto para que las URLs generadas usen https
+  app.set('trust proxy', 1);
+
   // CORS — antes de cualquier ruta
   app.use(cors({
     origin: ENV.CORS_ORIGINS.length === 1 ? ENV.CORS_ORIGINS[0] : ENV.CORS_ORIGINS,
