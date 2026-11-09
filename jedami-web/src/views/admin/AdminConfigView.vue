@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import type { AxiosError } from 'axios'
-import AppLayout from '@/layouts/AppLayout.vue'
+import AdminLayout from '@/layouts/AdminLayout.vue'
 import { useConfigStore } from '@/stores/config.store'
 import {
   fetchPurchaseTypes, createPurchaseType, updatePurchaseType,
@@ -20,7 +19,6 @@ import { fetchPosDevices, syncPosDevices, updatePosDevice, type PosDevice } from
 type PosApiError = AxiosError<{ detail?: string }>
 type ConfigApiError = AxiosError<{ detail?: string }>
 
-const router = useRouter()
 const configStore = useConfigStore()
 
 type Tab = 'purchase-types' | 'customer-types' | 'sizes' | 'colors' | 'branding' | 'payments' | 'point'
@@ -406,11 +404,10 @@ const TABS: { key: Tab; label: string }[] = [
 </script>
 
 <template>
-  <AppLayout>
+  <AdminLayout>
     <div class="max-w-3xl mx-auto">
       <!-- Breadcrumb -->
       <div class="flex items-center gap-3 mb-6">
-        <button @click="router.push('/admin')" class="text-sm text-gray-500 hover:text-[var(--color-primary)]">← Admin</button>
         <h1 class="text-2xl font-bold text-gray-900">Configuración</h1>
       </div>
 
@@ -922,5 +919,5 @@ const TABS: { key: Tab; label: string }[] = [
         </div>
       </div>
     </div>
-  </AppLayout>
+  </AdminLayout>
 </template>

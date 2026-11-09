@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import AppLayout from '@/layouts/AppLayout.vue'
+import AdminLayout from '@/layouts/AdminLayout.vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { useRouter } from 'vue-router'
 import {
@@ -155,10 +155,9 @@ const audienceBadgeClass: Record<string, string> = {
 </script>
 
 <template>
-  <AppLayout>
+  <AdminLayout>
     <div class="flex items-center justify-between mb-6">
       <div class="flex items-center gap-3">
-        <button @click="router.push('/admin')" class="text-sm text-gray-500 hover:text-[var(--color-primary,#E91E8C)]">← Admin</button>
         <h1 class="text-2xl font-bold text-gray-900">Anuncios</h1>
       </div>
       <button
@@ -367,5 +366,5 @@ const audienceBadgeClass: Record<string, string> = {
       <p class="font-medium">Todavía no hay anuncios.</p>
       <p class="text-sm mt-1">Creá el primero con el botón de arriba.</p>
     </div>
-  </AppLayout>
+  </AdminLayout>
 </template>

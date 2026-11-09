@@ -14,6 +14,9 @@ watchEffect(() => {
   document.documentElement.setAttribute('data-mode', authStore.mode)
 })
 
+// Tema visual de la tienda (SaaS). Por ahora fijo; más adelante vendrá del branding de cada tienda.
+document.documentElement.setAttribute('data-theme', 'jugueton')
+
 // Aplicar branding dinámico cuando se cargue
 watchEffect(() => {
   const b = configStore.branding

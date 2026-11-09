@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import AppLayout from '@/layouts/AppLayout.vue'
+import AdminLayout from '@/layouts/AdminLayout.vue'
 import { fetchAdminReports, type ReportsData } from '@/api/admin.reports.api'
 
-const router = useRouter()
 
 const loading = ref(true)
 const error   = ref('')
@@ -29,11 +27,10 @@ const formatPrice = (n: number) =>
 </script>
 
 <template>
-  <AppLayout>
+  <AdminLayout>
     <div class="max-w-5xl mx-auto">
       <!-- Breadcrumb -->
       <div class="flex items-center gap-3 mb-6">
-        <button @click="router.push('/admin')" class="text-sm text-gray-500 hover:text-[var(--color-primary)]">← Admin</button>
         <h1 class="text-2xl font-bold text-gray-900">Reportes</h1>
       </div>
 
@@ -130,5 +127,5 @@ const formatPrice = (n: number) =>
         </div>
       </template>
     </div>
-  </AppLayout>
+  </AdminLayout>
 </template>

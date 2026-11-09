@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import type { AxiosError } from 'axios'
-import AppLayout from '@/layouts/AppLayout.vue'
+import AdminLayout from '@/layouts/AdminLayout.vue'
 import { useConfigStore } from '@/stores/config.store'
 import { fetchAdminPayments, type AdminPayment } from '@/api/admin.payments.api'
 import {
@@ -15,7 +14,6 @@ import {
 
 type ApiError = AxiosError<{ detail?: string; title?: string }>
 
-const router = useRouter()
 const configStore = useConfigStore()
 
 // ─── Pedidos pending ──────────────────────────────────────────────────────────
@@ -165,11 +163,10 @@ const hasActiveDevice = computed(() => !!configStore.pointDevice)
 </script>
 
 <template>
-  <AppLayout>
+  <AdminLayout>
     <div class="max-w-4xl mx-auto">
       <!-- Breadcrumb -->
       <div class="flex items-center gap-3 mb-6">
-        <button @click="router.push('/admin')" class="text-sm text-gray-500 hover:text-[#E91E8C]">← Admin</button>
         <h1 class="text-2xl font-bold text-gray-900">Cobros Point</h1>
       </div>
 
@@ -343,5 +340,5 @@ const hasActiveDevice = computed(() => !!configStore.pointDevice)
         </div>
       </div>
     </Teleport>
-  </AppLayout>
+  </AdminLayout>
 </template>

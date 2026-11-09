@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import AppLayout from '@/layouts/AppLayout.vue'
+import AdminLayout from '@/layouts/AdminLayout.vue'
 import { fetchAdminUsers, assignRole, removeRoleFromUser, type AdminUser } from '@/api/admin.users.api'
 import { useConfigStore } from '@/stores/config.store'
 import { ROLE_LABELS } from '@/lib/constants'
 import apiClient from '@/api/client'
 
-const router = useRouter()
 const configStore = useConfigStore()
 
 interface Role { id: number; name: string }
@@ -132,10 +130,9 @@ async function doRemoveRole(userId: number, roleName: string) {
 </script>
 
 <template>
-  <AppLayout>
+  <AdminLayout>
     <div class="max-w-3xl mx-auto">
       <div class="flex items-center gap-3 mb-6">
-        <button @click="router.push('/admin')" class="text-sm text-gray-500 hover:text-[#E91E8C]">← Admin</button>
         <h1 class="text-2xl font-bold text-gray-900">Usuarios</h1>
       </div>
 
@@ -266,5 +263,5 @@ async function doRemoveRole(userId: number, roleName: string) {
         </div>
       </template>
     </div>
-  </AppLayout>
+  </AdminLayout>
 </template>

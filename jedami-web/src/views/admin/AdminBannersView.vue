@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import AppLayout from '@/layouts/AppLayout.vue'
+import AdminLayout from '@/layouts/AdminLayout.vue'
 import {
   fetchAllBanners,
   uploadBanner,
@@ -11,7 +10,6 @@ import {
   type Banner,
 } from '@/api/banners.api'
 
-const router = useRouter()
 
 const loading = ref(true)
 const error = ref('')
@@ -113,11 +111,10 @@ onMounted(load)
 </script>
 
 <template>
-  <AppLayout>
+  <AdminLayout>
     <div class="max-w-3xl mx-auto">
       <!-- Breadcrumb -->
       <div class="flex items-center gap-3 mb-6">
-        <button @click="router.push('/admin')" class="text-sm text-gray-500 hover:text-[#E91E8C]">← Admin</button>
         <h1 class="text-2xl font-bold text-gray-900">Banners del catálogo</h1>
       </div>
 
@@ -248,5 +245,5 @@ onMounted(load)
         </div>
       </div>
     </div>
-  </AppLayout>
+  </AdminLayout>
 </template>

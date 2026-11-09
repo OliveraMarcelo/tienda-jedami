@@ -1,10 +1,53 @@
 @import "tailwindcss";
 
 @layer base {
+  /*
+   * Temas de tienda (SaaS): cada tienda elige un tema con data-theme en <html>.
+   * Los componentes de la tienda usan solo estas variables (--t-*), nunca colores fijos,
+   * así un tema nuevo se agrega definiendo otro bloque [data-theme="..."].
+   * El color de marca de cada tienda sigue viniendo de branding (--color-primary).
+   */
+  :root,
+  [data-theme="jugueton"] {
+    --t-font: 'Poppins', sans-serif;
+    --t-ink: #33363A;
+    --t-muted: #6B6F72;
+    --t-bg: #FFFFFF;
+    --t-surface: #F3F1EE;
+    --t-border: #E5E2DD;
+    --t-footer-bg: #F2F2F0;
+    --t-announce-bg: #F6CF6E;
+    --t-announce-ink: #33363A;
+    --t-hero-a: #F8E4D6;
+    --t-hero-b: #FCF4EC;
+    --t-price: #23795A;
+    --t-highlight: #23795A;
+    --t-highlight-ink: #FFFFFF;
+    --t-sun: #F6CF6E;
+    --t-sticker-1: #E87FAE;
+    --t-sticker-2: #E8573F;
+    --t-radius-card: 24px;
+    --t-radius-lg: 32px;
+  }
+
+  /* Panel de administración (estilo Tiendanube) — independiente del tema de la tienda */
+  .admin-ui {
+    --a-font: 'Inter', sans-serif;
+    --a-bg: #F4F5F7;
+    --a-surface: #FFFFFF;
+    --a-border: #E3E5E8;
+    --a-ink: #1E2022;
+    --a-muted: #5C6066;
+    --a-primary: #0050C3;
+    --a-primary-hover: #003A8F;
+    --a-primary-soft: #E8F0FC;
+    font-family: var(--a-font);
+  }
+
   :root {
     --mode-accent: #E91E8C;
     --mode-accent-text: white;
-    --mode-bg: #F0F8FF;
+    --mode-bg: var(--t-bg);
   }
 
   [data-mode="retail"] {
@@ -18,7 +61,8 @@
   }
 
   html {
-    font-family: 'Nunito', sans-serif;
+    font-family: var(--t-font);
+    color: var(--t-ink);
     background-color: var(--mode-bg);
   }
 }

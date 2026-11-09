@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import AppLayout from '@/layouts/AppLayout.vue'
+import AdminLayout from '@/layouts/AdminLayout.vue'
 import { fetchAdminPayments, confirmBankTransfer, type AdminPayment } from '@/api/admin.payments.api'
 import { cancelOrder } from '@/api/orders.api'
 import { retryPayment } from '@/api/payments.api'
 import { useConfigStore } from '@/stores/config.store'
 
-const router = useRouter()
 const configStore = useConfigStore()
 
 const loading = ref(true)
@@ -130,11 +128,10 @@ async function handleConfirmTransfer(orderId: number) {
 </script>
 
 <template>
-  <AppLayout>
+  <AdminLayout>
     <div class="max-w-5xl mx-auto">
       <!-- Breadcrumb -->
       <div class="flex items-center gap-3 mb-6">
-        <button @click="router.push('/admin')" class="text-sm text-gray-500 hover:text-[#E91E8C]">← Admin</button>
         <h1 class="text-2xl font-bold text-gray-900">Pagos</h1>
       </div>
 
@@ -303,5 +300,5 @@ async function handleConfirmTransfer(orderId: number) {
         </div>
       </template>
     </div>
-  </AppLayout>
+  </AdminLayout>
 </template>

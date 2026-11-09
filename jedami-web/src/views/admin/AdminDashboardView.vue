@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { Pie, Bar } from 'vue-chartjs'
 import {
   Chart as ChartJS,
@@ -12,13 +11,12 @@ import {
   BarElement,
   Title,
 } from 'chart.js'
-import AppLayout from '@/layouts/AppLayout.vue'
+import AdminLayout from '@/layouts/AdminLayout.vue'
 import { fetchDashboard, type DashboardData } from '@/api/admin.dashboard.api'
 import { useConfigStore } from '@/stores/config.store'
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, Title)
 
-const router = useRouter()
 const configStore = useConfigStore()
 
 const loading = ref(true)
@@ -120,11 +118,10 @@ const barOptions = {
 </script>
 
 <template>
-  <AppLayout>
+  <AdminLayout>
     <div class="max-w-5xl mx-auto">
       <!-- Breadcrumb -->
       <div class="flex items-center gap-3 mb-6">
-        <button @click="router.push('/admin')" class="text-sm text-gray-500 hover:text-[var(--color-primary)]">← Admin</button>
         <h1 class="text-2xl font-bold text-gray-900">Tablero</h1>
       </div>
 
@@ -219,5 +216,5 @@ const barOptions = {
         </div>
       </template>
     </div>
-  </AppLayout>
+  </AdminLayout>
 </template>

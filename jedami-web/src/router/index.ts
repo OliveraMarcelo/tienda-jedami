@@ -34,12 +34,8 @@ const router = createRouter({
       component: () => import('@/views/ProfileView.vue'),
       meta: { requiresAuth: true },
     },
-    {
-      path: '/admin',
-      name: 'admin',
-      component: () => import('@/views/admin/AdminView.vue'),
-      meta: { requiresRole: ROLES.ADMIN },
-    },
+    // El menú del admin ahora es la barra lateral de AdminLayout: /admin abre el inicio
+    { path: '/admin', name: 'admin', redirect: '/admin/dashboard' },
     {
       path: '/admin/dashboard',
       name: 'adminDashboard',
