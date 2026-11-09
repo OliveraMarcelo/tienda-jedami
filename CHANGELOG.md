@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/OliveraMarcelo/tienda-jedami/compare/v1.1.0...v1.1.1) (2026-11-09)
+
+
+### Bug Fixes
+
+* **infra:** servir imágenes subidas en /uploads y generar URLs https ([6a53b7f](https://github.com/OliveraMarcelo/tienda-jedami/commit/6a53b7fd70feac3a6fbdf25f9c0cd7fb9a06aee2))
+
 ## [1.1.0](https://github.com/OliveraMarcelo/tienda-jedami/compare/v1.0.0...v1.1.0) (2026-11-01)
 
 
