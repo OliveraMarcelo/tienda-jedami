@@ -135,6 +135,21 @@ async function handleDeleteProduct(product: Product) {
   })
 }
 
+async function handleToggleActive(product: Product) {
+  const hide = product.active !== false
+  const action = async () => {
+    actionError.value = null
+    try {
+      await adminStore.updateProduct(product.id, { active: !hide })
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } } }
+      actionError.value = e.response?.data?.detail ?? 'Error al cambiar la visibilidad del producto.'
+    }
+  }
+  if (hide) askConfirm(`¿Ocultar "${product.name}" del catálogo? Podés volver a mostrarlo cuando quieras.`, action)
+  else action()
+}
+
 async function handleDeleteVariant(productId: number, variantId: number, label: string) {
   askConfirm(`¿Eliminar la variante "${label}"?`, async () => {
     actionError.value = null
@@ -283,7 +298,7 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
         <tbody>
           <template v-for="product in adminStore.products" :key="product.id">
             <!-- Fila principal del producto -->
-            <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+            <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors" :class="{ 'opacity-60': product.active === false }">
               <td class="px-4 py-3">
                 <img
                   v-if="product.imageUrl"
@@ -295,7 +310,13 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
                   Sin foto
                 </div>
               </td>
-              <td class="px-4 py-3 font-medium text-gray-900">{{ product.name }}</td>
+              <td class="px-4 py-3 font-medium text-gray-900">
+                {{ product.name }}
+                <span
+                  v-if="product.active === false"
+                  class="ml-2 px-2 py-0.5 rounded-full bg-gray-200 text-gray-600 text-[10px] font-semibold uppercase align-middle"
+                >Oculto</span>
+              </td>
               <td class="px-4 py-3 text-gray-500 hidden md:table-cell">{{ product.categoryName ?? '—' }}</td>
               <td class="px-4 py-3 text-right text-gray-700 hidden lg:table-cell">
                 {{ product.retailPrice != null ? `$${product.retailPrice.toLocaleString('es-AR', { maximumFractionDigits: 0 })}` : '—' }}
@@ -323,6 +344,15 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
                     class="px-3 py-1 rounded-lg border border-green-300 text-xs font-medium text-green-700 hover:bg-green-50 transition-colors"
                   >
                     {{ expandedDiscounts.has(product.id) ? '▲' : '▶' }} Descuentos
+                  </button>
+                  <button
+                    @click="handleToggleActive(product)"
+                    class="px-3 py-1 rounded-lg border text-xs font-medium transition-colors"
+                    :class="product.active === false
+                      ? 'border-pink-300 text-pink-700 hover:bg-pink-50'
+                      : 'border-gray-300 text-gray-600 hover:bg-gray-100'"
+                  >
+                    {{ product.active === false ? 'Mostrar' : 'Ocultar' }}
                   </button>
                   <span
                     v-if="hasActiveStock(product)"

@@ -1,12 +1,14 @@
 import { PRICE_MODES } from '../../../lib/constants.js';
 
-// $1 = pageSize, $2 = offset, $3 = categoryId (INT | null), $4 = search (VARCHAR | null)
+// $1 = pageSize, $2 = offset, $3 = categoryId (INT | null), $4 = search (VARCHAR | null),
+// $5 = includeInactive (BOOLEAN) — true solo para admin
 export const FIND_ALL_WITH_VARIANTS = `
   SELECT
     p.id                      AS product_id,
     p.name                    AS product_name,
     p.description             AS product_description,
     p.category_id             AS product_category_id,
+    p.active                  AS product_active,
     c.name                    AS product_category_name,
     pi.url                    AS image_url,
     rp.price                  AS product_retail_price,
@@ -19,10 +21,11 @@ export const FIND_ALL_WITH_VARIANTS = `
     cl.hex_code               AS variant_color_hex,
     s.quantity                AS stock_quantity
   FROM (
-    SELECT id, name, description, category_id
+    SELECT id, name, description, category_id, active
     FROM products
     WHERE ($3::INT IS NULL OR category_id = $3)
       AND ($4::VARCHAR IS NULL OR name ILIKE '%' || $4 || '%')
+      AND ($5::BOOLEAN OR active = TRUE)
     ORDER BY id
     LIMIT $1 OFFSET $2
   ) p
@@ -50,10 +53,11 @@ export const FIND_ALL_WITH_VARIANTS = `
   ORDER BY p.id, sz.sort_order NULLS LAST, cl.name
 `;
 
-// $1 = categoryId (INT | null), $2 = search (VARCHAR | null)
+// $1 = categoryId (INT | null), $2 = search (VARCHAR | null), $3 = includeInactive (BOOLEAN)
 export const COUNT_PRODUCTS = `
   SELECT COUNT(*)::int AS total
   FROM products
   WHERE ($1::INT IS NULL OR category_id = $1)
     AND ($2::VARCHAR IS NULL OR name ILIKE '%' || $2 || '%')
+    AND ($3::BOOLEAN OR active = TRUE)
 `;

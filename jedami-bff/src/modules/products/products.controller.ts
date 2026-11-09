@@ -4,6 +4,7 @@ import * as productsService from './products.service.js';
 import { cacheGet, cacheSet, cacheDel } from '../../config/redis.js';
 import { ENV } from '../../config/env.js';
 import { uploadMiddleware } from '../../config/upload.js';
+import { ROLES } from '../../lib/constants.js';
 
 const CATALOG_KEY = 'catalog:*';
 const PRODUCT_KEY = (id: number) => `product:${id}`;
@@ -47,8 +48,12 @@ export async function updateProduct(req: Request, res: Response, next: NextFunct
       next(new AppError(400, 'ID inválido', 'https://jedami.com/errors/validation', 'El id del producto debe ser un entero positivo'));
       return;
     }
-    const { name, description, categoryId } = req.body;
-    const product = await productsService.updateProduct(id, { name, description, categoryId });
+    const { name, description, categoryId, active } = req.body;
+    if (active !== undefined && typeof active !== 'boolean') {
+      next(new AppError(400, 'Valor inválido', 'https://jedami.com/errors/validation', 'El campo active debe ser booleano'));
+      return;
+    }
+    const product = await productsService.updateProduct(id, { name, description, categoryId, active });
     await cacheDel(CATALOG_KEY, PRODUCT_KEY(id));
     res.status(200).json({ data: product });
   } catch (err) {
@@ -109,16 +114,21 @@ export async function listProducts(req: Request, res: Response, next: NextFuncti
     const rawSearch = req.query.search as string | undefined;
     const search = rawSearch?.trim() ? rawSearch.trim() : null;
 
+    // Los productos ocultos solo se listan para admin (vista de administración, sin caché)
+    const includeInactive = req.query.includeInactive === 'true' && (req.user?.roles?.includes(ROLES.ADMIN) ?? false);
+
     const cacheKey = `catalog:page:${page}:size:${pageSize}:cat:${categoryId ?? 'all'}:search:${search ?? ''}`;
-    const cached = await cacheGet(cacheKey);
-    if (cached) {
-      res.status(200).json(JSON.parse(cached));
-      return;
+    if (!includeInactive) {
+      const cached = await cacheGet(cacheKey);
+      if (cached) {
+        res.status(200).json(JSON.parse(cached));
+        return;
+      }
     }
 
-    const { products, total } = await productsService.getCatalog(page, pageSize, categoryId, search);
+    const { products, total } = await productsService.getCatalog(page, pageSize, categoryId, search, includeInactive);
     const body = { data: products, meta: { page, pageSize, total, categoryId, search } };
-    await cacheSet(cacheKey, JSON.stringify(body), ENV.CACHE_TTL);
+    if (!includeInactive) await cacheSet(cacheKey, JSON.stringify(body), ENV.CACHE_TTL);
     res.status(200).json(body);
   } catch (err) {
     next(err);

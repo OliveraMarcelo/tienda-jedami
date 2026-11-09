@@ -23,7 +23,7 @@ export const useAdminProductsStore = defineStore('adminProducts', () => {
     loading.value = true
     error.value = null
     try {
-      const res = await fetchProducts(1, 100)
+      const res = await fetchProducts(1, 100, null, null, true)
       products.value = res.data
       totalProducts.value = res.meta.total
     } catch (err: unknown) {
@@ -41,7 +41,7 @@ export const useAdminProductsStore = defineStore('adminProducts', () => {
     return res.data
   }
 
-  async function updateProduct(id: number, dto: { name?: string; description?: string; categoryId?: number | null }) {
+  async function updateProduct(id: number, dto: { name?: string; description?: string; categoryId?: number | null; active?: boolean }) {
     const res = await apiUpdate(id, dto)
     const idx = products.value.findIndex(p => p.id === id)
     if (idx !== -1) {

@@ -6,6 +6,7 @@ export const FIND_PRODUCT_BY_ID_WITH_VARIANTS = `
     p.name                    AS product_name,
     p.description             AS product_description,
     p.category_id             AS product_category_id,
+    p.active                  AS product_active,
     c.name                    AS product_category_name,
     rp.price                  AS product_retail_price,
     wp.price                  AS product_wholesale_price,

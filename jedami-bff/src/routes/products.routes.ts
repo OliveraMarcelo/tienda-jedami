@@ -22,7 +22,7 @@ import {
   reorderImagesHandler,
 } from '../modules/products/products.controller.js';
 import { getPublicDiscountRules } from '../modules/discounts/discounts.controller.js';
-import { authMiddleware } from '../middlewares/auth.middleware.js';
+import { authMiddleware, optionalAuthMiddleware } from '../middlewares/auth.middleware.js';
 import { requireRole } from '../middlewares/role.middleware.js';
 import { ROLES } from '../lib/constants.js';
 
@@ -273,6 +273,10 @@ router.patch('/colors/:id',  authMiddleware, requireRole([ROLES.ADMIN]), updateC
  *         name: search
  *         schema: { type: string }
  *         description: Búsqueda full-text por nombre y descripción
+ *       - in: query
+ *         name: includeInactive
+ *         schema: { type: boolean, default: false }
+ *         description: Incluir productos ocultos (solo tiene efecto con token de admin)
  *     responses:
  *       200:
  *         description: Lista paginada de productos
@@ -315,7 +319,7 @@ router.patch('/colors/:id',  authMiddleware, requireRole([ROLES.ADMIN]), updateC
  */
 router.get('/:id/discount-rules', getPublicDiscountRules);
 
-router.get('/', listProducts);
+router.get('/', optionalAuthMiddleware, listProducts);
 
 /**
  * @swagger
@@ -398,6 +402,7 @@ router.post('/', authMiddleware, requireRole([ROLES.ADMIN]), createProduct);
  *               name: { type: string }
  *               description: { type: string, nullable: true }
  *               categoryId: { type: integer, nullable: true }
+ *               active: { type: boolean, description: 'false oculta el producto del catálogo público' }
  *     responses:
  *       200:
  *         description: Producto actualizado

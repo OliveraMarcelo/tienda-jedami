@@ -26,6 +26,8 @@ export interface Product {
   description: string | null
   categoryId: number | null
   categoryName: string | null
+  /** false = oculto en el catálogo público (solo lo ve el admin) */
+  active?: boolean
   imageUrl: string | null
   retailPrice: number | null
   wholesalePrice: number | null

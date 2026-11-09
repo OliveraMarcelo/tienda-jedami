@@ -28,3 +28,20 @@ export const authMiddleware = (
     next(new AppError(401, 'Token inválido', 'https://jedami.com/errors/unauthorized', 'Token inválido o expirado'));
   }
 };
+
+// Igual que authMiddleware pero no exige token: si viene uno válido carga req.user,
+// si no viene o es inválido sigue como anónimo (rutas públicas con extras para admin).
+export const optionalAuthMiddleware = (
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith('Bearer ')) {
+    try {
+      const decoded = jwt.verify(authHeader.split(' ')[1], ENV.JWT_SECRET) as JwtUserPayload;
+      if (typeof decoded !== 'string') req.user = decoded;
+    } catch { /* token inválido: se trata como anónimo */ }
+  }
+  next();
+};

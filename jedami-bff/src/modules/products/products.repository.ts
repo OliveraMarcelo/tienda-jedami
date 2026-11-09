@@ -24,13 +24,14 @@ export const findById = async (id: number): Promise<Product | null> => {
 
 export const updateProduct = async (
   id: number,
-  data: { name?: string; description?: string | null; categoryId?: number | null },
+  data: { name?: string; description?: string | null; categoryId?: number | null; active?: boolean },
 ): Promise<Product | null> => {
   const result = await pool.query(UPDATE_PRODUCT, [
     id,
     data.name ?? null,
     data.description ?? null,
     data.categoryId !== undefined ? data.categoryId : null,
+    data.active ?? null,
   ]);
   return result.rows[0] ?? null;
 };
@@ -40,6 +41,7 @@ export type CatalogRow = {
   product_name: string;
   product_description: string | null;
   product_category_id: number | null;
+  product_active: boolean;
   product_category_name: string | null;
   image_url: string | null;
   product_retail_price: string | null;
@@ -58,13 +60,14 @@ export const findAllWithVariants = async (
   offset: number,
   categoryId?: number | null,
   search?: string | null,
+  includeInactive = false,
 ): Promise<CatalogRow[]> => {
-  const result = await pool.query(FIND_ALL_WITH_VARIANTS, [pageSize, offset, categoryId ?? null, search ?? null]);
+  const result = await pool.query(FIND_ALL_WITH_VARIANTS, [pageSize, offset, categoryId ?? null, search ?? null, includeInactive]);
   return result.rows;
 };
 
-export const countProducts = async (categoryId?: number | null, search?: string | null): Promise<number> => {
-  const result = await pool.query(COUNT_PRODUCTS, [categoryId ?? null, search ?? null]);
+export const countProducts = async (categoryId?: number | null, search?: string | null, includeInactive = false): Promise<number> => {
+  const result = await pool.query(COUNT_PRODUCTS, [categoryId ?? null, search ?? null, includeInactive]);
   return result.rows[0].total;
 };
 

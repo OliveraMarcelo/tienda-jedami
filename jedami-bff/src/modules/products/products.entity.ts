@@ -4,6 +4,7 @@ export interface Product {
   description: string | null;
   category_id: number | null;
   min_quantity_purchase: number | null;
+  active?: boolean;
 }
 
 export interface Variant {

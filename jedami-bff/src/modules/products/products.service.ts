@@ -21,6 +21,7 @@ interface ProductResponse {
   description: string | null;
   categoryId: number | null;
   categoryName: string | null;
+  active: boolean;
   imageUrl: string | null;
   retailPrice: number | null;
   wholesalePrice: number | null;
@@ -43,6 +44,7 @@ function groupRowsIntoProducts(rows: CatalogRow[]): ProductResponse[] {
         description: row.product_description,
         categoryId: row.product_category_id ?? null,
         categoryName: row.product_category_name ?? null,
+        active: row.product_active ?? true,
         imageUrl: row.image_url ?? null,
         retailPrice: row.product_retail_price != null ? Number(row.product_retail_price) : null,
         wholesalePrice: row.product_wholesale_price != null ? Number(row.product_wholesale_price) : null,
@@ -82,7 +84,7 @@ export async function createProduct(dto: CreateProductDTO) {
 
 export async function updateProduct(
   id: number,
-  dto: { name?: string; description?: string | null; categoryId?: number | null },
+  dto: { name?: string; description?: string | null; categoryId?: number | null; active?: boolean },
 ) {
   const existing = await productsRepository.findById(id);
   if (!existing) {
@@ -90,12 +92,13 @@ export async function updateProduct(
   }
   const description = dto.description === undefined ? existing.description : (dto.description ?? null);
   const categoryId = dto.categoryId === undefined ? existing.category_id : dto.categoryId;
-  const updated = await productsRepository.updateProduct(id, { name: dto.name, description, categoryId });
+  const updated = await productsRepository.updateProduct(id, { name: dto.name, description, categoryId, active: dto.active });
   return {
     id: updated!.id,
     name: updated!.name,
     description: updated!.description,
     categoryId: updated!.category_id ?? null,
+    active: updated!.active ?? true,
   };
 }
 
@@ -241,11 +244,11 @@ export async function findById(id: number) {
   return { id: product.id, name: product.name, description: product.description, categoryId: product.category_id ?? null };
 }
 
-export async function getCatalog(page: number, pageSize: number, categoryId?: number | null, search?: string | null) {
+export async function getCatalog(page: number, pageSize: number, categoryId?: number | null, search?: string | null, includeInactive = false) {
   const offset = (page - 1) * pageSize;
   const [rows, total] = await Promise.all([
-    productsRepository.findAllWithVariants(pageSize, offset, categoryId, search),
-    productsRepository.countProducts(categoryId, search),
+    productsRepository.findAllWithVariants(pageSize, offset, categoryId, search, includeInactive),
+    productsRepository.countProducts(categoryId, search, includeInactive),
   ]);
   return { products: groupRowsIntoProducts(rows), total };
 }

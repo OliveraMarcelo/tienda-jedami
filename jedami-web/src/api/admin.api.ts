@@ -11,6 +11,7 @@ interface UpdateProductDTO {
   name?: string
   description?: string
   categoryId?: number | null
+  active?: boolean
 }
 
 interface CreateVariantDTO {
