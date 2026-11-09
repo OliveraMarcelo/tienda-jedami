@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.3.0](https://github.com/OliveraMarcelo/tienda-jedami/compare/v1.2.0...v1.3.0) (2026-11-09)
+
+
+### Features
+
+* **categories:** devolver productCount en GET /categories ([b01ea9f](https://github.com/OliveraMarcelo/tienda-jedami/commit/b01ea9f5986f8e3b20929ddbe7b1adf6fc9c567b))
+* **web:** rediseño de la tienda estilo Cheeky y admin estilo Tiendanube ([d9f42f0](https://github.com/OliveraMarcelo/tienda-jedami/commit/d9f42f0713d94c750f80b2fc7c233d862e0f0e56))
+
+
+### Bug Fixes
+
+* **products:** no borrar la categoría al actualizar un producto sin categoryId ([ffa03a8](https://github.com/OliveraMarcelo/tienda-jedami/commit/ffa03a8a537f6ab5cbb3bc26f68f79760f750349))
+
 ## [1.2.0](https://github.com/OliveraMarcelo/tienda-jedami/compare/v1.1.1...v1.2.0) (2026-11-09)
 
 
