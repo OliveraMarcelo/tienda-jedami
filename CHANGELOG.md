@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/OliveraMarcelo/tienda-jedami/compare/v1.1.1...v1.2.0) (2026-11-09)
+
+
+### Features
+
+* **products:** ocultar productos del catálogo sin borrarlos ([3dc8c7a](https://github.com/OliveraMarcelo/tienda-jedami/commit/3dc8c7a74e48fb33c33e644818cd16f376b84027))
+
 ## [1.1.1](https://github.com/OliveraMarcelo/tienda-jedami/compare/v1.1.0...v1.1.1) (2026-11-09)
 
 
