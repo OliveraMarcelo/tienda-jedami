@@ -30,7 +30,7 @@ export const findByOrderId = async (orderId: number): Promise<Payment | null> =>
 export const updateStatus = async (mpPaymentId: string, status: 'approved' | 'rejected', amount?: number): Promise<void> => {
   await pool.query(
     `UPDATE payments
-     SET status = $2, amount = $3, paid_at = CASE WHEN $2 = 'approved' THEN NOW() ELSE NULL END
+     SET status = $2::VARCHAR, amount = $3, paid_at = CASE WHEN $2::VARCHAR = 'approved' THEN NOW() ELSE NULL END
      WHERE mp_payment_id = $1`,
     [mpPaymentId, status, amount ?? null],
   );

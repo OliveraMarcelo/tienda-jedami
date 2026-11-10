@@ -439,6 +439,13 @@ export async function processWebhook(
 
   const { action, data } = body;
 
+  // Avisos que no procesamos (merchant_order, IPN sin data.id, etc.): responder 200 sin
+  // validar firma, para que MP no los reintente indefinidamente
+  const isRelevant = action === 'point_integration_wh' || action === 'payment.updated' || action === 'payment.created';
+  if (!isRelevant || !data?.id) {
+    return { received: true };
+  }
+
   // Point webhooks usan MP_POINT_WEBHOOK_SECRET si está configurado (distinto del checkout online)
   const isPointWebhook = action === 'point_integration_wh';
   const secret = (isPointWebhook && ENV.MP_POINT_WEBHOOK_SECRET)
