@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.0](https://github.com/OliveraMarcelo/tienda-jedami/compare/v1.3.0...v1.4.0) (2026-11-10)
+
+
+### Features
+
+* **payments:** sincronizar el estado del pago con Mercado Pago y procesar reintentos en el webhook ([1494c1b](https://github.com/OliveraMarcelo/tienda-jedami/commit/1494c1b3b58652f766f9f04af7925ce97bdc76ef))
+* **web:** QR de Mercado Pago por pedido con confirmación automática ([d24abeb](https://github.com/OliveraMarcelo/tienda-jedami/commit/d24abebf3d6d1b661cbaec0e9545dd88bf519e24))
+
 ## [1.3.0](https://github.com/OliveraMarcelo/tienda-jedami/compare/v1.2.0...v1.3.0) (2026-11-09)
 
 
