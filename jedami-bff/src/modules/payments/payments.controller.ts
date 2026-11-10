@@ -85,3 +85,19 @@ export async function webhook(req: Request, res: Response, next: NextFunction): 
     next(err);
   }
 }
+
+export async function paymentStatusHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const user = req.user as JwtUserPayload;
+    const orderId = parseInt(req.params.orderId, 10);
+    if (isNaN(orderId) || orderId <= 0) {
+      next(new AppError(400, 'ID inválido', 'https://jedami.com/errors/validation', 'El id del pedido debe ser un entero positivo'));
+      return;
+    }
+    const isAdmin = user.roles?.includes('admin') ?? false;
+    const result = await paymentsService.syncPaymentStatus(orderId, user.id, isAdmin);
+    res.status(200).json({ data: result });
+  } catch (err) {
+    next(err);
+  }
+}

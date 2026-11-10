@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { authMiddleware } from '../middlewares/auth.middleware.js';
 import { requireRole } from '../middlewares/role.middleware.js';
 import { ROLES } from '../lib/constants.js';
-import { checkout, webhook, retryPaymentHandler, processPaymentHandler, smartCheckoutHandler } from '../modules/payments/payments.controller.js';
+import { checkout, webhook, retryPaymentHandler, processPaymentHandler, smartCheckoutHandler, paymentStatusHandler } from '../modules/payments/payments.controller.js';
 
 const router = Router();
 
@@ -230,5 +230,41 @@ router.post('/:orderId/retry', authMiddleware, retryPaymentHandler);
  *             schema: { $ref: '#/components/schemas/Error' }
  */
 router.post('/:orderId/process', authMiddleware, requireRole([ROLES.WHOLESALE, ROLES.RETAIL, ROLES.ADMIN]), processPaymentHandler);
+
+/**
+ * @swagger
+ * /payments/{orderId}/status:
+ *   get:
+ *     tags: [Payments]
+ *     summary: Estado del pago de un pedido (sincroniza con Mercado Pago)
+ *     description: |
+ *       Si el pedido está pendiente y se inició un pago con Mercado Pago, consulta los pagos
+ *       en MP por external_reference y marca el pedido como pagado si hay uno aprobado.
+ *       Lo usa la pantalla del pedido mientras muestra el QR.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: orderId
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Estado actual del pedido
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     orderStatus: { type: string, enum: [pending, paid, rejected, cancelled] }
+ *       403:
+ *         description: Sin permiso
+ *       404:
+ *         description: Pedido no encontrado
+ */
+router.get('/:orderId/status', authMiddleware, paymentStatusHandler);
 
 export default router;

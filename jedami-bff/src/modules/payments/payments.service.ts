@@ -92,7 +92,8 @@ async function executeGateway(
     const preferenceApi = new Preference(mpClient);
     try {
       const existing = await preferenceApi.get({ preferenceId: existingPayment.mp_preference_id });
-      if (existing.init_point) {
+      const sameAmount = Number(existing.items?.[0]?.unit_price) === Number(order.total_amount);
+      if (existing.init_point && sameAmount) {
         return { type: 'redirect' as const, checkoutUrl: existing.init_point };
       }
     } catch {
@@ -478,37 +479,111 @@ export async function processWebhook(
     return { received: true };
   }
 
-  // Buscar o vincular el pago por preferenceId / orderId
-  let payment = await paymentsRepository.findByMpPaymentId(mpPaymentId);
+  await applyMpPayment({ id: String(mpPaymentId), status, transaction_amount }, orderId);
+  return { received: true };
+}
+
+// ─── Aplicar un pago de MP al pedido (webhook y sincronización) ──────────────
+
+interface MpPaymentInfo {
+  id: string;
+  status?: string;
+  transaction_amount?: number;
+}
+
+/**
+ * Registra el pago de MP y actualiza el pedido. Idempotente.
+ * Cada intento de pago de MP tiene su propio id: un intento rechazado no
+ * bloquea que un intento posterior aprobado marque el pedido como pagado.
+ */
+async function applyMpPayment(mp: MpPaymentInfo, orderId: number): Promise<void> {
+  const order = await ordersRepository.findById(orderId);
+  if (!order) {
+    logger.warn({ mpPaymentId: mp.id, orderId }, '[PAYMENTS] Pago de MP para un pedido inexistente');
+    return;
+  }
+
+  let payment = await paymentsRepository.findByMpPaymentId(mp.id);
   if (!payment) {
-    // Intentar vincular por orderId
-    payment = await paymentsRepository.findByOrderId(orderId);
-    if (payment && !payment.mp_payment_id) {
-      await paymentsRepository.linkMpPaymentId(payment.mp_preference_id!, mpPaymentId);
+    // Vincular al registro pendiente creado en el checkout, o registrar el intento nuevo
+    const pendingRes = await pool.query(
+      `SELECT * FROM payments
+       WHERE order_id = $1 AND mp_payment_id IS NULL AND status = 'pending'
+         AND payment_method IN ('mercadopago', 'mp_point')
+       ORDER BY created_at DESC LIMIT 1`,
+      [orderId],
+    );
+    if (pendingRes.rows[0]) {
+      await pool.query('UPDATE payments SET mp_payment_id = $2 WHERE id = $1', [pendingRes.rows[0].id, mp.id]);
+    } else {
+      await pool.query(
+        `INSERT INTO payments (order_id, mp_payment_id, status, payment_method) VALUES ($1, $2, 'pending', 'mercadopago')`,
+        [orderId, mp.id],
+      );
+    }
+    payment = await paymentsRepository.findByMpPaymentId(mp.id);
+  }
+
+  // Idempotencia: el mismo intento ya fue procesado con estado final
+  if (!payment || payment.status === 'approved' || payment.status === 'rejected') return;
+
+  if (mp.status === 'approved') {
+    const paid = Number(mp.transaction_amount ?? 0);
+    const total = Number(order.total_amount);
+    if (paid + 0.01 < total) {
+      logger.warn({ orderId, mpPaymentId: mp.id, paid, total }, '[PAYMENTS] Pago aprobado por un monto menor al total del pedido');
+      return;
+    }
+    await paymentsRepository.updateStatus(mp.id, 'approved', mp.transaction_amount);
+    await pool.query("UPDATE orders SET status = 'paid' WHERE id = $1 AND status IN ('pending', 'rejected')", [orderId]);
+    logger.info({ orderId, mpPaymentId: mp.id }, '[PAYMENTS] Pedido marcado como pagado');
+  } else if (mp.status === 'rejected') {
+    await paymentsRepository.updateStatus(mp.id, 'rejected');
+    await pool.query("UPDATE orders SET status = 'rejected' WHERE id = $1 AND status = 'pending'", [orderId]);
+    logger.info({ orderId, mpPaymentId: mp.id }, '[PAYMENTS] Intento de pago rechazado');
+  }
+}
+
+// ─── Estado del pago (polling del cliente) ───────────────────────────────────
+
+/**
+ * Devuelve el estado del pedido. Si está pendiente y se inició un pago con MP,
+ * consulta a MP directamente: el pedido pasa a pagado aunque el webhook no llegue.
+ */
+export async function syncPaymentStatus(orderId: number, userId: number, isAdmin: boolean) {
+  const order = await ordersRepository.findById(orderId);
+  if (!order) {
+    throw new AppError(404, 'Pedido no encontrado', 'https://jedami.com/errors/order-not-found', `No existe pedido con id ${orderId}`);
+  }
+  if (!isAdmin) {
+    const customer = await customersRepository.findByUserId(userId);
+    if (!customer || order.customer_id !== customer.id) {
+      throw new AppError(403, 'Acceso denegado', 'https://jedami.com/errors/forbidden', 'No tenés permiso para acceder a este pedido');
     }
   }
 
-  if (!payment) {
-    logger.warn({ mpPaymentId, orderId }, '[PAYMENTS] No se encontró pago para el webhook');
-    return { received: true };
+  if (order.status !== 'pending' && order.status !== 'rejected') {
+    return { orderStatus: order.status };
   }
 
-  // Idempotencia: si el pago ya fue procesado con estado final, ignorar
-  if (payment.status === 'approved' || payment.status === 'rejected') {
-    logger.info({ orderId, mpPaymentId, status: payment.status }, '[PAYMENTS] Webhook duplicado ignorado');
-    return { received: true };
+  const startedRes = await pool.query(
+    "SELECT 1 FROM payments WHERE order_id = $1 AND payment_method = 'mercadopago' LIMIT 1",
+    [orderId],
+  );
+  if (!startedRes.rowCount) return { orderStatus: order.status };
+
+  try {
+    const search = await new MpPayment(mpClient).search({
+      options: { external_reference: String(orderId), sort: 'date_created', criteria: 'desc' },
+    });
+    for (const r of search.results ?? []) {
+      if (!r.id || r.external_reference !== String(orderId)) continue;
+      await applyMpPayment({ id: String(r.id), status: r.status, transaction_amount: r.transaction_amount }, orderId);
+    }
+  } catch (err) {
+    logger.error({ err, orderId }, '[PAYMENTS] Error consultando pagos en MP');
   }
 
-  // Actualizar estado del pago y del pedido (idempotente: no sobrescribir estados finales)
-  if (status === 'approved') {
-    await paymentsRepository.updateStatus(mpPaymentId, 'approved', transaction_amount);
-    await pool.query("UPDATE orders SET status = 'paid' WHERE id = $1 AND status != 'paid'", [orderId]);
-    logger.info({ orderId, mpPaymentId }, '[PAYMENTS] Pedido marcado como pagado');
-  } else if (status === 'rejected') {
-    await paymentsRepository.updateStatus(mpPaymentId, 'rejected');
-    await pool.query("UPDATE orders SET status = 'rejected' WHERE id = $1 AND status != 'paid'", [orderId]);
-    logger.info({ orderId, mpPaymentId }, '[PAYMENTS] Pedido marcado como rechazado');
-  }
-
-  return { received: true };
+  const updated = await ordersRepository.findById(orderId);
+  return { orderStatus: updated?.status ?? order.status };
 }
