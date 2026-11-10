@@ -43,3 +43,11 @@ export async function processPayment(
   const res = await apiClient.post<{ data: { status: string; statusDetail?: string } }>(`/payments/${orderId}/process`, dto)
   return res.data.data
 }
+
+export type PaymentOrderStatus = 'pending' | 'paid' | 'rejected' | 'cancelled'
+
+/** Estado del pedido; el backend consulta a Mercado Pago si el pago está pendiente. */
+export async function getPaymentStatus(orderId: number): Promise<{ orderStatus: PaymentOrderStatus }> {
+  const res = await apiClient.get<{ data: { orderStatus: PaymentOrderStatus } }>(`/payments/${orderId}/status`)
+  return res.data.data
+}

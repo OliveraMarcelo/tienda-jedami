@@ -8,6 +8,7 @@ import { usePaymentsStore } from '@/stores/payments.store'
 import { useConfigStore } from '@/stores/config.store'
 import { processPayment } from '@/api/payments.api'
 import PaymentMethodSelector from '@/components/features/checkout/PaymentMethodSelector.vue'
+import MercadoPagoQrPanel from '@/components/features/checkout/MercadoPagoQrPanel.vue'
 import WhatsAppShippingModal from '@/components/features/checkout/WhatsAppShippingModal.vue'
 import type { OrderStatus } from '@/api/orders.api'
 
@@ -29,6 +30,16 @@ onMounted(async () => {
 
 const order = computed(() => ordersStore.currentOrder)
 const bankDetails = computed(() => paymentsStore.bankDetails)
+// Se puede pagar si está pendiente o si un intento anterior fue rechazado
+const canPay = computed(() => !!order.value && ['pending', 'rejected'].includes(order.value.status) && order.value.totalAmount > 0)
+const justPaid = ref(false)
+
+async function onQrPaid() {
+  if (!order.value) return
+  paymentsStore.resetCheckoutState()
+  justPaid.value = true
+  await ordersStore.loadOrder(order.value.id)
+}
 
 const statusConfig: Record<OrderStatus, { label: string; classes: string }> = {
   pending:   { label: 'Pendiente de pago', classes: 'bg-amber-50 text-amber-700 border-amber-200' },
@@ -255,13 +266,13 @@ watch(() => paymentsStore.checkoutPublicKey, async (newKey) => {
               <p class="text-2xl font-bold text-gray-900">${{ order.totalAmount?.toLocaleString('es-AR', { maximumFractionDigits: 0 }) ?? '—' }}</p>
             </div>
 
-            <template v-if="order.status === 'pending' && order.totalAmount > 0">
+            <template v-if="canPay">
               <!-- Selector de medios de pago -->
               <template v-if="paymentsStore.pendingSelection">
                 <!-- placeholder: el selector se renderiza abajo -->
               </template>
               <!-- Botón de pago unificado -->
-              <template v-else-if="!bankDetails && !paymentsStore.checkoutPublicKey && !brickVisible">
+              <template v-else-if="!bankDetails && !paymentsStore.checkoutPublicKey && !paymentsStore.checkoutUrl && !brickVisible">
                 <button
                   :disabled="paymentsStore.loading"
                   @click="startPayment"
@@ -285,7 +296,7 @@ watch(() => paymentsStore.checkoutPublicKey, async (newKey) => {
           </div>
 
           <!-- Selector de medios de pago (múltiples gateways) -->
-          <div v-if="order.status === 'pending' && paymentsStore.pendingSelection" class="border-t border-gray-100 pt-4">
+          <div v-if="canPay && paymentsStore.pendingSelection" class="border-t border-gray-100 pt-4">
             <PaymentMethodSelector
               :gateways="paymentsStore.availableGateways"
               :loading="paymentsStore.loading"
@@ -293,6 +304,22 @@ watch(() => paymentsStore.checkoutPublicKey, async (newKey) => {
             />
           </div>
         </div>
+
+        <!-- Pago confirmado por Mercado Pago -->
+        <div v-if="justPaid && order.status === 'paid'" role="status" class="mt-4 rounded-2xl border border-green-200 bg-green-50 px-5 py-4">
+          <p class="font-bold text-green-800">¡Pago recibido!</p>
+          <p class="text-sm text-green-700">Mercado Pago confirmó el pago y tu pedido ya figura como pagado.</p>
+        </div>
+
+        <!-- QR de Mercado Pago (Checkout Pro) -->
+        <MercadoPagoQrPanel
+          v-if="canPay && paymentsStore.checkoutUrl"
+          :order-id="order.id"
+          :checkout-url="paymentsStore.checkoutUrl"
+          :amount="order.totalAmount"
+          @paid="onQrPaid"
+          @cancel="paymentsStore.resetCheckoutState()"
+        />
 
         <!-- Error de pago -->
         <p v-if="paymentsStore.error" class="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mt-4">

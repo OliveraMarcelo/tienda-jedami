@@ -13,12 +13,15 @@ export const usePaymentsStore = defineStore('payments', () => {
   const pendingOrderId = ref<number | null>(null)
   const bankDetails = ref<BankDetails | null>(null)
   const checkoutPublicKey = ref<string | null>(null)
+  // Link de Checkout Pro: se muestra como QR en lugar de redirigir
+  const checkoutUrl = ref<string | null>(null)
 
   function resetCheckoutState() {
     pendingSelection.value = false
     availableGateways.value = []
     bankDetails.value = null
     checkoutPublicKey.value = null
+    checkoutUrl.value = null
     error.value = null
   }
 
@@ -46,7 +49,7 @@ export const usePaymentsStore = defineStore('payments', () => {
       pendingSelection.value = true
       availableGateways.value = result.options
     } else if (result.type === 'redirect') {
-      window.location.href = result.checkoutUrl
+      checkoutUrl.value = result.checkoutUrl
     } else if (result.type === 'preference') {
       checkoutPublicKey.value = result.publicKey
     } else if (result.type === 'bank_transfer') {
@@ -95,6 +98,7 @@ export const usePaymentsStore = defineStore('payments', () => {
     pendingOrderId,
     bankDetails,
     checkoutPublicKey,
+    checkoutUrl,
     startCheckout,
     initiateSmartCheckout,
     selectGateway,
