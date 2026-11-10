@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.1](https://github.com/OliveraMarcelo/tienda-jedami/compare/v1.4.0...v1.4.1) (2026-11-10)
+
+
+### Bug Fixes
+
+* **payments:** marcar como aprobado el pago de Mercado Pago sin error de tipos en la query ([9d5d793](https://github.com/OliveraMarcelo/tienda-jedami/commit/9d5d79319fd459d4be65ea79efc80965b6976b5e))
+
 ## [1.4.0](https://github.com/OliveraMarcelo/tienda-jedami/compare/v1.3.0...v1.4.0) (2026-11-10)
 
 
