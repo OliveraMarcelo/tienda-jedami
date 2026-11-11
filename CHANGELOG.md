@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/OliveraMarcelo/tienda-jedami/compare/v1.6.0...v1.7.0) (2026-11-11)
+
+
+### Features
+
+* **payments:** email al cliente al confirmarse el pago y más datos en Pagos del admin ([e08ac70](https://github.com/OliveraMarcelo/tienda-jedami/commit/e08ac709df3067641af5535b8d8cc5a60954ebef))
+
 ## [1.6.0](https://github.com/OliveraMarcelo/tienda-jedami/compare/v1.5.0...v1.6.0) (2026-11-11)
 
 
