@@ -49,54 +49,63 @@ function selectColor(colorName: string) {
 </script>
 
 <template>
-  <div class="space-y-4">
-    <div>
-      <p class="text-sm font-semibold text-gray-700 mb-2">Color</p>
-      <div class="flex gap-2 flex-wrap">
+  <div class="flex flex-col gap-5">
+    <fieldset>
+      <legend class="mb-2.5 text-sm font-semibold">
+        Color<span v-if="selectedColor" class="font-normal text-[var(--t-muted)]">: {{ selectedColor }}</span>
+      </legend>
+      <div class="flex flex-wrap gap-2.5">
         <button
           v-for="c in uniqueColors"
           :key="c.name"
-          @click="selectColor(c.name)"
+          type="button"
           :aria-label="`Color ${c.name}`"
+          :aria-pressed="selectedColor === c.name"
           :title="c.name"
           :class="[
-            'w-8 h-8 rounded-full border-2 transition-all',
-            selectedColor === c.name ? 'border-[#E91E8C] scale-110 shadow' : needsDarkBorder(c.hexCode) ? 'border-gray-400' : 'border-gray-300 hover:border-gray-400'
+            'flex h-11 w-11 items-center justify-center rounded-full border-2 transition-colors',
+            selectedColor === c.name ? 'border-[var(--t-ink)]' : 'border-transparent hover:border-[var(--t-border)]',
           ]"
-          :style="c.hexCode ? { backgroundColor: c.hexCode } : { backgroundColor: '#BDBDBD' }"
-        />
+          @click="selectColor(c.name)"
+        >
+          <span
+            class="h-8 w-8 rounded-full border"
+            :class="needsDarkBorder(c.hexCode) ? 'border-gray-400' : 'border-black/10'"
+            :style="{ backgroundColor: c.hexCode ?? '#BDBDBD' }"
+          />
+        </button>
       </div>
-    </div>
+    </fieldset>
 
-    <div v-if="selectedColor">
-      <p class="text-sm font-semibold text-gray-700 mb-2">Talle</p>
-      <div class="flex gap-2 flex-wrap">
+    <fieldset v-if="selectedColor">
+      <legend class="mb-2.5 text-sm font-semibold">Talle</legend>
+      <div class="flex flex-wrap gap-2">
         <button
           v-for="item in sizesForColor"
           :key="item.size"
-          @click="item.inStock && emit('update:selectedSize', item.size)"
-          :aria-disabled="!item.inStock"
+          type="button"
+          :disabled="!item.inStock"
+          :aria-pressed="selectedSize === item.size"
           :class="[
-            'px-3 py-1 rounded-md border text-sm font-medium transition-all',
+            'min-h-11 min-w-[3.25rem] rounded-full border px-4 text-sm font-medium transition-colors',
             selectedSize === item.size
-              ? 'border-[#E91E8C] bg-[#E91E8C] text-white'
-              : 'border-gray-300 bg-white text-gray-900',
-            !item.inStock
-              ? 'line-through opacity-50 cursor-not-allowed'
-              : 'hover:border-[#E91E8C] cursor-pointer'
+              ? 'border-[var(--t-ink)] bg-[var(--t-ink)] text-white'
+              : 'border-[var(--t-border)] bg-white hover:border-[var(--t-ink)]',
+            !item.inStock ? 'cursor-not-allowed text-[var(--t-muted)] line-through opacity-50 hover:border-[var(--t-border)]' : '',
           ]"
+          @click="emit('update:selectedSize', item.size)"
         >
           {{ item.size }}
         </button>
       </div>
 
-      <p v-if="selectedVariant" class="mt-2 text-sm text-gray-500">
-        <span v-if="selectedVariant.stock.quantity === 0" class="text-[#F44336]">Sin stock</span>
-        <span v-else-if="selectedVariant.stock.quantity <= 3" class="text-[#FF9800]">
-          Últimas {{ selectedVariant.stock.quantity }} unidades
+      <p v-if="selectedVariant" class="mt-2.5 text-sm" aria-live="polite">
+        <span v-if="selectedVariant.stock.quantity === 0" class="text-red-700">Sin stock</span>
+        <span v-else-if="selectedVariant.stock.quantity <= 3" class="font-semibold text-[#B45309]">
+          ¡Quedan {{ selectedVariant.stock.quantity }}!
         </span>
-        <span v-else class="text-[#4CAF50]">{{ selectedVariant.stock.quantity }} disponibles</span>
+        <span v-else class="text-[var(--t-price)]">En stock</span>
       </p>
-    </div>
+    </fieldset>
   </div>
 </template>

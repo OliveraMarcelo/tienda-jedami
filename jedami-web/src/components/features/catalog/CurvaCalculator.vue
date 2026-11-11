@@ -35,48 +35,37 @@ const canConfirm = computed(() => curves.value > 0 && props.product.variants.len
 </script>
 
 <template>
-  <div class="space-y-4">
-    <div class="flex items-center gap-3">
-      <label class="text-sm font-semibold text-gray-700 whitespace-nowrap">Número de curvas</label>
-      <div class="flex items-center border border-gray-300 rounded-lg overflow-hidden">
-        <button
-          type="button"
-          @click="curves = Math.max(1, curves - 1)"
-          class="px-3 py-1.5 text-gray-600 hover:bg-gray-50 transition-colors"
-        >−</button>
-        <span class="px-3 py-1.5 text-sm font-semibold min-w-[2rem] text-center">{{ curves }}</span>
-        <button
-          type="button"
-          @click="curves++"
-          class="px-3 py-1.5 text-gray-600 hover:bg-gray-50 transition-colors"
-        >+</button>
+  <div class="flex flex-col gap-4">
+    <div class="flex items-center gap-4">
+      <span id="curvas-label" class="text-sm font-semibold">Curvas</span>
+      <div class="inline-flex items-center rounded-full border border-[var(--t-border)]" role="group" aria-labelledby="curvas-label">
+        <button type="button" aria-label="Restar curva" class="flex h-11 w-11 items-center justify-center rounded-full text-lg hover:bg-[var(--t-surface)]" @click="curves = Math.max(1, curves - 1)">−</button>
+        <span class="min-w-[2rem] text-center font-semibold" aria-live="polite">{{ curves }}</span>
+        <button type="button" aria-label="Sumar curva" class="flex h-11 w-11 items-center justify-center rounded-full text-lg hover:bg-[var(--t-surface)]" @click="curves++">+</button>
       </div>
     </div>
 
-    <!-- Tabla Talle × Unidades -->
-    <div class="overflow-x-auto rounded-xl border border-blue-100">
-      <table class="w-full text-xs border-collapse">
-        <thead class="bg-blue-50 border-b border-blue-100">
+    <p class="text-sm text-[var(--t-muted)]">Una curva es una unidad de cada talle.</p>
+
+    <div class="overflow-hidden rounded-2xl border border-[var(--t-border)]">
+      <table class="w-full text-sm">
+        <thead class="bg-[var(--t-surface)] text-xs text-[var(--t-muted)]">
           <tr>
-            <th class="px-3 py-2 text-left font-semibold text-gray-700">Talle</th>
-            <th class="px-3 py-2 text-center font-semibold text-gray-700">Uds. por curva</th>
+            <th class="px-4 py-2.5 text-left font-semibold">Talle</th>
+            <th class="px-4 py-2.5 text-right font-semibold">Unidades</th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-blue-100 bg-white">
-          <tr
-            v-for="size in uniqueSizes"
-            :key="size.id"
-            class="hover:bg-blue-50/30 transition-colors"
-          >
-            <td class="px-3 py-2 font-semibold text-gray-700">{{ size.label }}</td>
-            <td class="px-3 py-2 text-center text-gray-700">{{ curves }}</td>
+        <tbody>
+          <tr v-for="size in uniqueSizes" :key="size.id" class="border-t border-[var(--t-border)]">
+            <td class="px-4 py-2.5 font-medium">{{ size.label }}</td>
+            <td class="px-4 py-2.5 text-right">{{ curves }}</td>
           </tr>
         </tbody>
         <tfoot>
-          <tr class="border-t-2 border-blue-100 bg-blue-50/60 font-semibold text-sm">
-            <td class="px-3 py-2 text-gray-700">Total</td>
-            <td class="px-3 py-2 text-right text-[var(--color-primary)]">
-              {{ totalUnits }} uds. · ${{ totalAmount.toLocaleString('es-AR', { maximumFractionDigits: 0 }) }}
+          <tr class="border-t border-[var(--t-border)] bg-[var(--t-surface)] font-semibold">
+            <td class="px-4 py-2.5">Total</td>
+            <td class="px-4 py-2.5 text-right">
+              {{ totalUnits }} uds. · <span class="text-[var(--t-price)]">${{ totalAmount.toLocaleString('es-AR', { maximumFractionDigits: 0 }) }}</span>
             </td>
           </tr>
         </tfoot>
@@ -84,11 +73,12 @@ const canConfirm = computed(() => curves.value > 0 && props.product.variants.len
     </div>
 
     <button
+      type="button"
       :disabled="!canConfirm"
+      class="min-h-12 w-full rounded-full bg-[var(--t-ink)] px-6 text-base font-semibold text-white transition-opacity hover:opacity-90 disabled:pointer-events-none disabled:opacity-40"
       @click="emit('confirm', curves)"
-      class="w-full h-10 rounded-xl bg-[var(--color-primary)] text-white font-semibold text-sm shadow hover:opacity-90 transition-opacity disabled:opacity-40 disabled:pointer-events-none"
     >
-      Agregar {{ totalUnits }} uds. al pedido · ${{ totalAmount.toLocaleString('es-AR', { maximumFractionDigits: 0 }) }}
+      Agregar {{ totalUnits }} unidades al pedido
     </button>
   </div>
 </template>

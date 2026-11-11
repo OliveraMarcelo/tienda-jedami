@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import Sheet from '@/components/ui/Sheet.vue'
 import { useAuthStore } from '@/stores/auth.store'
+import { CUSTOMER_TYPES } from '@/lib/constants'
 
 defineProps<{ open: boolean }>()
 const emit = defineEmits<{
@@ -23,7 +24,7 @@ async function submit() {
     if (tab.value === 'login') {
       await authStore.login(email.value, password.value, false)
     } else {
-      await authStore.register(email.value, password.value, false)
+      await authStore.register(email.value, password.value, CUSTOMER_TYPES.RETAIL, false)
     }
     emit('update:open', false)
     emit('authenticated')
@@ -38,60 +39,61 @@ async function submit() {
 
 <template>
   <Sheet :open="open" side="bottom" @update:open="emit('update:open', $event)">
-    <div class="max-w-sm mx-auto">
-      <h2 class="text-lg font-bold text-gray-900 mb-1">Crear cuenta para comprar</h2>
-      <p class="text-sm text-gray-500 mb-5">Registrate o ingresá para continuar con tu compra.</p>
+    <div class="mx-auto max-w-sm">
+      <h2 class="mb-1 text-xl font-bold">Ingresá para comprar</h2>
+      <p class="mb-5 text-sm text-[var(--t-muted)]">Creá tu cuenta en un minuto o ingresá si ya tenés una.</p>
 
-      <!-- Tabs -->
-      <div class="flex gap-4 mb-5 border-b border-gray-200">
+      <div role="tablist" class="mb-5 inline-flex w-full rounded-full bg-[var(--t-surface)] p-1">
         <button
+          type="button"
+          role="tab"
+          :aria-selected="tab === 'registro'"
+          :class="['min-h-10 flex-1 rounded-full text-sm font-semibold transition-colors', tab === 'registro' ? 'bg-[var(--t-ink)] text-white' : 'hover:bg-white']"
           @click="tab = 'registro'"
-          :class="[
-            'pb-2 text-sm font-semibold border-b-2 transition-colors',
-            tab === 'registro' ? 'border-[#E91E8C] text-[#E91E8C]' : 'border-transparent text-gray-500'
-          ]"
         >
           Crear cuenta
         </button>
         <button
+          type="button"
+          role="tab"
+          :aria-selected="tab === 'login'"
+          :class="['min-h-10 flex-1 rounded-full text-sm font-semibold transition-colors', tab === 'login' ? 'bg-[var(--t-ink)] text-white' : 'hover:bg-white']"
           @click="tab = 'login'"
-          :class="[
-            'pb-2 text-sm font-semibold border-b-2 transition-colors',
-            tab === 'login' ? 'border-[#E91E8C] text-[#E91E8C]' : 'border-transparent text-gray-500'
-          ]"
         >
           Ya tengo cuenta
         </button>
       </div>
 
-      <form @submit.prevent="submit" class="space-y-4">
+      <form class="flex flex-col gap-4" @submit.prevent="submit">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+          <label for="gate-email" class="mb-1.5 block text-sm font-medium">Email</label>
           <input
+            id="gate-email"
             v-model="email"
             type="email"
             required
             autocomplete="email"
-            class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#E91E8C]"
+            class="h-12 w-full rounded-full border border-[var(--t-border)] px-5 text-sm outline-none focus:border-[var(--t-ink)]"
           />
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Contraseña</label>
+          <label for="gate-password" class="mb-1.5 block text-sm font-medium">Contraseña</label>
           <input
+            id="gate-password"
             v-model="password"
             type="password"
             required
-            autocomplete="current-password"
-            class="w-full h-10 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#E91E8C]"
+            :autocomplete="tab === 'login' ? 'current-password' : 'new-password'"
+            class="h-12 w-full rounded-full border border-[var(--t-border)] px-5 text-sm outline-none focus:border-[var(--t-ink)]"
           />
         </div>
 
-        <p v-if="errorMsg" class="text-sm text-red-600">{{ errorMsg }}</p>
+        <p v-if="errorMsg" role="alert" class="text-sm text-red-700">{{ errorMsg }}</p>
 
         <button
           type="submit"
           :disabled="loading"
-          class="w-full h-10 rounded-xl bg-[#E91E8C] text-white font-semibold text-sm shadow hover:opacity-90 transition-opacity disabled:opacity-50"
+          class="min-h-12 w-full rounded-full bg-[var(--t-ink)] text-base font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
         >
           {{ loading ? 'Procesando…' : tab === 'registro' ? 'Crear cuenta y comprar' : 'Ingresar y comprar' }}
         </button>
