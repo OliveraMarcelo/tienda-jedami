@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.1](https://github.com/OliveraMarcelo/tienda-jedami/compare/v1.7.0...v1.7.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* **web:** número de operación de Mercado Pago en una sola línea en Pagos ([e087c49](https://github.com/OliveraMarcelo/tienda-jedami/commit/e087c4960bb20ede58ae1bb0bed0d642f0f8b9b7))
+
 ## [1.7.0](https://github.com/OliveraMarcelo/tienda-jedami/compare/v1.6.0...v1.7.0) (2026-11-11)
 
 
