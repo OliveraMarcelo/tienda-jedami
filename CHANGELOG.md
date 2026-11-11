@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.6.0](https://github.com/OliveraMarcelo/tienda-jedami/compare/v1.5.0...v1.6.0) (2026-11-11)
+
+
+### Features
+
+* **web:** pantallas internas del admin con el estilo Tiendanube ([0931526](https://github.com/OliveraMarcelo/tienda-jedami/commit/093152696a62962849ec9d8829a89d1857f16f1d))
+* **web:** rediseño de la página de producto estilo Cheeky ([30d3052](https://github.com/OliveraMarcelo/tienda-jedami/commit/30d3052adfc70a1907f1c133ba4dae1890151e4c))
+* **web:** rediseño de login y registro ([67d6a1a](https://github.com/OliveraMarcelo/tienda-jedami/commit/67d6a1abb47b7d25ea90af5f83a50589b30d0993))
+* **web:** rediseño de Mis pedidos, detalle del pedido, perfil y confirmación de pago ([d66638d](https://github.com/OliveraMarcelo/tienda-jedami/commit/d66638d0a7f58195b5c8cea9441179856c58a168))
+
 ## [1.5.0](https://github.com/OliveraMarcelo/tienda-jedami/compare/v1.4.1...v1.5.0) (2026-11-11)
 
 
