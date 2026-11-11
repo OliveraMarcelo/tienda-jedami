@@ -26,6 +26,8 @@ onMounted(async () => {
   }
   paymentsStore.resetCheckoutState()
   await ordersStore.loadOrder(id)
+  // Mostrar los medios de pago directamente, sin tener que tocar "Pagar"
+  if (canPay.value) await paymentsStore.loadPaymentOptions(id)
 })
 
 const order = computed(() => ordersStore.currentOrder)
@@ -51,8 +53,13 @@ const statusConfig: Record<OrderStatus, { label: string; classes: string }> = {
 // ─── Smart Checkout ────────────────────────────────────────────────────────────
 async function startPayment() {
   if (!order.value) return
-  await paymentsStore.initiateSmartCheckout(order.value.id)
+  await paymentsStore.loadPaymentOptions(order.value.id)
 }
+
+const showCombined = computed(() => canPay.value && (!!paymentsStore.checkoutUrl || !!bankDetails.value))
+const bothMethods = computed(() => !!paymentsStore.checkoutUrl && !!bankDetails.value)
+// Otros medios activos (p. ej. tarjeta embebida) que no entran en la vista combinada
+const otherGateways = computed(() => showCombined.value ? paymentsStore.availableGateways : [])
 
 async function onGatewaySelected(gateway: string) {
   if (!order.value) return
@@ -160,7 +167,7 @@ watch(() => paymentsStore.checkoutPublicKey, async (newKey) => {
 
 <template>
   <AppLayout>
-    <div class="max-w-2xl mx-auto">
+    <div class="max-w-4xl mx-auto">
       <!-- Loading -->
       <div v-if="ordersStore.loading" class="animate-pulse space-y-4">
         <div class="h-8 bg-gray-200 rounded w-48"></div>
@@ -260,7 +267,7 @@ watch(() => paymentsStore.checkoutPublicKey, async (newKey) => {
 
         <!-- Total y CTA -->
         <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-          <div class="flex items-center justify-between gap-4 mb-4">
+          <div class="flex items-center justify-between gap-4">
             <div>
               <p class="text-xs text-gray-400 uppercase tracking-wide font-semibold mb-0.5">Total del pedido</p>
               <p class="text-2xl font-bold text-gray-900">${{ order.totalAmount?.toLocaleString('es-AR', { maximumFractionDigits: 0 }) ?? '—' }}</p>
@@ -296,7 +303,7 @@ watch(() => paymentsStore.checkoutPublicKey, async (newKey) => {
           </div>
 
           <!-- Selector de medios de pago (múltiples gateways) -->
-          <div v-if="canPay && paymentsStore.pendingSelection" class="border-t border-gray-100 pt-4">
+          <div v-if="canPay && paymentsStore.pendingSelection" class="mt-4 border-t border-gray-100 pt-4">
             <PaymentMethodSelector
               :gateways="paymentsStore.availableGateways"
               :loading="paymentsStore.loading"
@@ -311,74 +318,87 @@ watch(() => paymentsStore.checkoutPublicKey, async (newKey) => {
           <p class="text-sm text-green-700">Mercado Pago confirmó el pago y tu pedido ya figura como pagado.</p>
         </div>
 
-        <!-- QR de Mercado Pago (Checkout Pro) -->
-        <MercadoPagoQrPanel
-          v-if="canPay && paymentsStore.checkoutUrl"
-          :order-id="order.id"
-          :checkout-url="paymentsStore.checkoutUrl"
-          :amount="order.totalAmount"
-          @paid="onQrPaid"
-          @cancel="paymentsStore.resetCheckoutState()"
-        />
-
         <!-- Error de pago -->
         <p v-if="paymentsStore.error" class="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3 mt-4">
           {{ paymentsStore.error }}
         </p>
 
-        <!-- Datos de transferencia bancaria -->
-        <div v-if="bankDetails" class="rounded-xl border border-indigo-200 bg-indigo-50 p-4 space-y-2 mt-4">
-          <p class="text-sm font-semibold text-indigo-800 mb-3">Datos para la transferencia</p>
-          <div v-if="bankDetails.cvu" class="flex items-center justify-between text-sm">
-            <span class="text-gray-600 shrink-0 mr-2">CVU</span>
-            <div class="flex items-center gap-2 min-w-0">
-              <span class="font-mono font-semibold text-gray-800 truncate">{{ bankDetails.cvu }}</span>
-              <button @click="copyToClipboard(bankDetails!.cvu, 'cvu')" class="shrink-0 text-xs font-semibold text-indigo-600 hover:text-indigo-800">
-                {{ copied['cvu'] ? '✓ Copiado' : 'Copiar' }}
-              </button>
+        <!-- Medios de pago: QR de Mercado Pago y transferencia, lado a lado -->
+        <div v-if="showCombined" :class="['mt-4 grid gap-4', bothMethods ? 'md:grid-cols-2' : '']">
+          <MercadoPagoQrPanel
+            v-if="paymentsStore.checkoutUrl"
+            :order-id="order.id"
+            :checkout-url="paymentsStore.checkoutUrl"
+            :amount="order.totalAmount"
+            :show-cancel="false"
+            @paid="onQrPaid"
+          />
+          <!-- Datos de transferencia bancaria -->
+          <section v-if="bankDetails" class="h-full rounded-2xl border border-indigo-200 bg-indigo-50 p-5 space-y-2" aria-labelledby="transfer-title">
+            <div class="mb-3">
+              <h2 id="transfer-title" class="text-base font-bold text-indigo-900">Pagá por transferencia</h2>
+              <p class="mt-0.5 text-sm text-indigo-700/80">Desde cualquier banco o billetera, al alias o CVU.</p>
             </div>
-          </div>
-          <div v-if="bankDetails.alias" class="flex items-center justify-between text-sm">
-            <span class="text-gray-600 shrink-0 mr-2">Alias</span>
-            <div class="flex items-center gap-2">
-              <span class="font-mono font-semibold text-gray-800">{{ bankDetails.alias }}</span>
-              <button @click="copyToClipboard(bankDetails!.alias, 'alias')" class="shrink-0 text-xs font-semibold text-indigo-600 hover:text-indigo-800">
-                {{ copied['alias'] ? '✓ Copiado' : 'Copiar' }}
-              </button>
+            <div v-if="bankDetails.cvu" class="flex items-center justify-between text-sm">
+              <span class="text-gray-600 shrink-0 mr-2">CVU</span>
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="font-mono font-semibold text-gray-800 truncate">{{ bankDetails.cvu }}</span>
+                <button @click="copyToClipboard(bankDetails!.cvu, 'cvu')" class="shrink-0 text-xs font-semibold text-indigo-600 hover:text-indigo-800">
+              {{ copied['cvu'] ? '✓ Copiado' : 'Copiar' }}
+                </button>
+              </div>
             </div>
-          </div>
-          <div v-if="bankDetails.holderName" class="flex items-center justify-between text-sm">
-            <span class="text-gray-600">Titular</span>
-            <span class="font-semibold text-gray-800">{{ bankDetails.holderName }}</span>
-          </div>
-          <div v-if="bankDetails.bankName" class="flex items-center justify-between text-sm">
-            <span class="text-gray-600">Banco</span>
-            <span class="font-semibold text-gray-800">{{ bankDetails.bankName }}</span>
-          </div>
-          <div class="flex items-center justify-between text-sm">
-            <span class="text-gray-600">Monto a transferir</span>
-            <span class="font-bold text-gray-900">${{ Number(bankDetails.amount).toLocaleString('es-AR', { maximumFractionDigits: 0 }) }}</span>
-          </div>
-          <p v-if="bankDetails.notes" class="text-xs text-indigo-700 bg-indigo-100 rounded-lg px-3 py-2 mt-1">{{ bankDetails.notes }}</p>
+            <div v-if="bankDetails.alias" class="flex items-center justify-between text-sm">
+              <span class="text-gray-600 shrink-0 mr-2">Alias</span>
+              <div class="flex items-center gap-2">
+                <span class="font-mono font-semibold text-gray-800">{{ bankDetails.alias }}</span>
+                <button @click="copyToClipboard(bankDetails!.alias, 'alias')" class="shrink-0 text-xs font-semibold text-indigo-600 hover:text-indigo-800">
+              {{ copied['alias'] ? '✓ Copiado' : 'Copiar' }}
+                </button>
+              </div>
+            </div>
+            <div v-if="bankDetails.holderName" class="flex items-center justify-between text-sm">
+              <span class="text-gray-600">Titular</span>
+              <span class="font-semibold text-gray-800">{{ bankDetails.holderName }}</span>
+            </div>
+            <div v-if="bankDetails.bankName" class="flex items-center justify-between text-sm">
+              <span class="text-gray-600">Banco</span>
+              <span class="font-semibold text-gray-800">{{ bankDetails.bankName }}</span>
+            </div>
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-gray-600">Monto a transferir</span>
+              <span class="font-bold text-gray-900">${{ Number(bankDetails.amount).toLocaleString('es-AR', { maximumFractionDigits: 0 }) }}</span>
+            </div>
+            <p v-if="bankDetails.notes" class="text-xs text-indigo-700 bg-indigo-100 rounded-lg px-3 py-2 mt-1">{{ bankDetails.notes }}</p>
 
-          <!-- Instrucciones en 3 pasos -->
-          <ol class="text-sm text-gray-600 space-y-1 pt-2 border-t border-indigo-200">
-            <li><span class="font-semibold text-indigo-700">1.</span> Copiá el CVU o alias</li>
-            <li><span class="font-semibold text-indigo-700">2.</span> Realizá la transferencia desde tu homebanking por el monto exacto</li>
-            <li><span class="font-semibold text-indigo-700">3.</span> Avisanos por WhatsApp para que confirmemos tu pago</li>
-          </ol>
+            <!-- Instrucciones en 3 pasos -->
+            <ol class="text-sm text-gray-600 space-y-1 pt-2 border-t border-indigo-200">
+              <li><span class="font-semibold text-indigo-700">1.</span> Copiá el CVU o alias</li>
+              <li><span class="font-semibold text-indigo-700">2.</span> Realizá la transferencia desde tu homebanking por el monto exacto</li>
+              <li><span class="font-semibold text-indigo-700">3.</span> Avisanos por WhatsApp para que confirmemos tu pago</li>
+            </ol>
 
-          <!-- Botón WhatsApp -->
-          <button
-            v-if="configStore.branding.whatsappNumber"
-            @click="openWhatsApp"
-            class="mt-1 inline-flex items-center gap-2 rounded-xl bg-green-500 text-white px-4 py-2 text-sm font-semibold hover:opacity-90 transition-opacity w-full justify-center"
-          >
-            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-            </svg>
-            Avisar por WhatsApp
-          </button>
+            <!-- Botón WhatsApp -->
+            <button
+              v-if="configStore.branding.whatsappNumber"
+              @click="openWhatsApp"
+              class="mt-1 inline-flex items-center gap-2 rounded-xl bg-green-500 text-white px-4 py-2 text-sm font-semibold hover:opacity-90 transition-opacity w-full justify-center"
+            >
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+              </svg>
+              Avisar por WhatsApp
+            </button>
+          </section>
+        </div>
+
+        <!-- Otros medios activos -->
+        <div v-if="otherGateways.length" class="mt-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <PaymentMethodSelector
+            :gateways="otherGateways"
+            :loading="paymentsStore.loading"
+            @gateway-selected="onGatewaySelected"
+          />
         </div>
 
         <!-- CardPaymentBrick (checkout_api) -->

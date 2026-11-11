@@ -73,6 +73,45 @@ export const usePaymentsStore = defineStore('payments', () => {
     }
   }
 
+  // Medios que se muestran juntos en la pantalla del pedido (QR + transferencia)
+  const COMBINED_GATEWAYS = ['checkout_pro', 'bank_transfer']
+
+  /**
+   * Carga todos los medios de pago del pedido a la vez: Mercado Pago (QR) y transferencia
+   * se muestran lado a lado; el resto de los medios activos queda en el selector.
+   */
+  async function loadPaymentOptions(orderId: number) {
+    loading.value = true
+    pendingOrderId.value = orderId
+    resetCheckoutState()
+    try {
+      const first = await smartCheckout(orderId)
+      if (first.type !== 'select') {
+        await _handleSmartResult(first)
+        return
+      }
+      const combined = first.options.filter(g => COMBINED_GATEWAYS.includes(g))
+      const others = first.options.filter(g => !COMBINED_GATEWAYS.includes(g))
+      if (!combined.length) {
+        await _handleSmartResult(first)
+        return
+      }
+      const results = await Promise.allSettled(combined.map(g => smartCheckout(orderId, g)))
+      for (const r of results) {
+        if (r.status === 'fulfilled') await _handleSmartResult(r.value)
+      }
+      if (results.every(r => r.status === 'rejected')) {
+        error.value = 'No pudimos preparar los medios de pago. Probá de nuevo en unos minutos.'
+      }
+      availableGateways.value = others
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } } }
+      error.value = e.response?.data?.detail ?? 'Error al iniciar el pago'
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function selectGateway(orderId: number, gateway: string) {
     loading.value = true
     pendingSelection.value = false
@@ -101,6 +140,7 @@ export const usePaymentsStore = defineStore('payments', () => {
     checkoutUrl,
     startCheckout,
     initiateSmartCheckout,
+    loadPaymentOptions,
     selectGateway,
     resetCheckoutState,
   }
