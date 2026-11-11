@@ -6,6 +6,7 @@ import { pool } from '../../config/database.js';
 import * as posRepository from './pos.repository.js';
 import * as ordersRepository from '../orders/orders.repository.js';
 import { PosDevice, PosPaymentIntent, PosIntentStatus } from './pos.entity.js';
+import { notifyOrderPaid } from '../notifications/order-paid.js';
 
 const ACTIVE_STATUSES = new Set(['open', 'on_terminal', 'processing']);
 
@@ -238,12 +239,13 @@ export async function confirmPointPayment(
         [orderId, mpPaymentId ?? null],
       );
     }
-    await client.query(
+    const upd = await client.query(
       "UPDATE orders SET status = 'paid' WHERE id = $1 AND status != 'paid'",
       [orderId],
     );
 
     await client.query('COMMIT');
+    if (upd.rowCount) notifyOrderPaid(orderId);
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
@@ -318,10 +320,11 @@ export async function processPointWebhook(mpIntentId: string): Promise<void> {
        WHERE order_id = $1 AND payment_method = 'mp_point'`,
       [intent.order_id, mpPaymentId],
     );
-    await pool.query(
+    const upd = await pool.query(
       "UPDATE orders SET status = 'paid' WHERE id = $1 AND status != 'paid'",
       [intent.order_id],
     );
+    if (upd.rowCount) notifyOrderPaid(intent.order_id);
     logger.info({ mpIntentId, mpPaymentId, orderId: intent.order_id }, '[POS] Pedido pagado vía Point');
   } else if (mpStatus === 'abandoned' || mpStatus === 'error') {
     // Pago rechazado

@@ -9,6 +9,7 @@ import * as ordersRepository from '../orders/orders.repository.js';
 import * as customersRepository from '../customers/customers.repository.js';
 import { FIND_ACTIVE_GATEWAYS_BY_CUSTOMER_TYPE } from '../config/queries/find-active-gateways-by-customer-type.js';
 import { processPointWebhook } from '../pos/pos.service.js';
+import { notifyOrderPaid } from '../notifications/order-paid.js';
 
 type SupportedGateway = 'checkout_pro' | 'checkout_api' | 'bank_transfer' | 'mp_point';
 
@@ -306,7 +307,8 @@ export async function processPayment(orderId: number, userId: number, dto: Proce
 
   // Actualizar estado del pedido
   if (status === 'approved') {
-    await pool.query("UPDATE orders SET status = 'paid' WHERE id = $1 AND status != 'paid'", [orderId]);
+    const upd = await pool.query("UPDATE orders SET status = 'paid' WHERE id = $1 AND status != 'paid'", [orderId]);
+    if (upd.rowCount) notifyOrderPaid(orderId);
     logger.info({ orderId, mpPaymentId }, '[PAYMENTS] Pago aprobado (Checkout API)');
   } else if (status === 'rejected') {
     await pool.query("UPDATE orders SET status = 'rejected' WHERE id = $1 AND status != 'paid'", [orderId]);
@@ -542,7 +544,8 @@ async function applyMpPayment(mp: MpPaymentInfo, orderId: number): Promise<void>
       return;
     }
     await paymentsRepository.updateStatus(mp.id, 'approved', mp.transaction_amount);
-    await pool.query("UPDATE orders SET status = 'paid' WHERE id = $1 AND status IN ('pending', 'rejected')", [orderId]);
+    const upd = await pool.query("UPDATE orders SET status = 'paid' WHERE id = $1 AND status IN ('pending', 'rejected')", [orderId]);
+    if (upd.rowCount) notifyOrderPaid(orderId);
     logger.info({ orderId, mpPaymentId: mp.id }, '[PAYMENTS] Pedido marcado como pagado');
   } else if (mp.status === 'rejected') {
     await paymentsRepository.updateStatus(mp.id, 'rejected');

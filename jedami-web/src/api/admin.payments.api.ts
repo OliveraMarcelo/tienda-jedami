@@ -13,6 +13,8 @@ export interface AdminPayment {
   notes: string | null
   customerEmail: string
   paymentMethod: string
+  /** Número de operación de Mercado Pago (null en transferencias o intentos sin pagar) */
+  mpPaymentId: string | null
 }
 
 export interface Pagination {

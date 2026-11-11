@@ -24,6 +24,12 @@ export const ENV = {
   RATE_LIMIT_WINDOW_MS: Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
   RATE_LIMIT_MAX: Number(process.env.RATE_LIMIT_MAX) || 200,
   AUTH_RATE_LIMIT_MAX: Number(process.env.AUTH_RATE_LIMIT_MAX) || 20,
+  // Email (opcional): sin SMTP_HOST no se envían emails
+  SMTP_HOST: process.env.SMTP_HOST ?? '',
+  SMTP_PORT: Number(process.env.SMTP_PORT) || 587,
+  SMTP_USER: process.env.SMTP_USER ?? '',
+  SMTP_PASS: process.env.SMTP_PASS ?? '',
+  MAIL_FROM: process.env.MAIL_FROM ?? '',
 };
 
 if (!ENV.DATABASE_URL) {

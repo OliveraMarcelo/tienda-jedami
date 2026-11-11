@@ -75,6 +75,26 @@ const paymentStatusLabels: Record<string, string> = {
   cancelled: 'Cancelado',
 }
 
+const METHOD_LABELS: Record<string, { label: string; classes: string }> = {
+  mercadopago:   { label: 'Mercado Pago',  classes: 'bg-blue-50 text-blue-700 border-blue-200' },
+  bank_transfer: { label: 'Transferencia', classes: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+  mp_point:      { label: 'Point',         classes: 'bg-sky-50 text-sky-700 border-sky-200' },
+}
+
+// Intento pendiente de un pedido que ya se pagó por otro medio/intento o que se canceló
+function isStale(p: AdminPayment) {
+  return p.paymentStatus === 'pending' && (p.orderStatus === 'paid' || p.orderStatus === 'cancelled')
+}
+
+const copiedOp = ref<string | null>(null)
+async function copyOp(op: string) {
+  try {
+    await navigator.clipboard.writeText(op)
+    copiedOp.value = op
+    setTimeout(() => { copiedOp.value = null }, 1500)
+  } catch { /* sin soporte */ }
+}
+
 const confirmingCancel = ref<number | null>(null)
 const cancelError = ref<Record<number, string>>({})
 
@@ -187,7 +207,7 @@ async function handleConfirmTransfer(orderId: number) {
             <table class="w-full text-sm">
               <thead>
                 <tr class="text-left text-xs text-[var(--a-muted)] border-b border-[var(--a-border)]">
-                  <th class="px-4 py-3 font-medium">#</th>
+                  <th class="px-4 py-3 font-medium">Pedido</th>
                   <th class="px-4 py-3 font-medium">Cliente</th>
                   <th class="px-4 py-3 font-medium">Tipo compra</th>
                   <th class="px-4 py-3 font-medium text-right">Monto</th>
@@ -203,7 +223,7 @@ async function handleConfirmTransfer(orderId: number) {
                   :key="p.id"
                   class="border-b border-[var(--a-border)] hover:bg-[var(--a-bg)] transition-colors"
                 >
-                  <td class="px-4 py-3 text-[var(--a-muted)] text-xs">{{ p.id }}</td>
+                  <td class="px-4 py-3 font-semibold text-[var(--a-ink)]">#{{ p.orderId }}</td>
                   <td class="px-4 py-3 max-w-[220px]">
                     <p class="text-[var(--a-ink)] truncate">{{ p.customerEmail }}</p>
                     <p v-if="p.notes" class="text-xs text-amber-600 italic truncate mt-0.5" :title="p.notes">
@@ -215,15 +235,30 @@ async function handleConfirmTransfer(orderId: number) {
                   <td class="px-4 py-3">
                     <span
                       class="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold border"
-                      :class="p.paymentMethod === 'bank_transfer'
-                        ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                        : 'bg-blue-50 text-blue-700 border-blue-200'"
+                      :class="METHOD_LABELS[p.paymentMethod]?.classes ?? 'bg-blue-50 text-blue-700 border-blue-200'"
                     >
-                      {{ p.paymentMethod === 'bank_transfer' ? 'Transferencia' : 'Mercado Pago' }}
+                      {{ METHOD_LABELS[p.paymentMethod]?.label ?? 'Mercado Pago' }}
                     </span>
+                    <button
+                      v-if="p.mpPaymentId"
+                      type="button"
+                      class="mt-1 block font-mono text-xs text-[var(--a-muted)] hover:text-[var(--a-ink)]"
+                      :title="'Copiar número de operación'"
+                      @click="copyOp(p.mpPaymentId)"
+                    >
+                      Op. {{ p.mpPaymentId }}<span v-if="copiedOp === p.mpPaymentId" class="ml-1 font-sans text-green-700">✓</span>
+                    </button>
                   </td>
                   <td class="px-4 py-3">
                     <span
+                      v-if="isStale(p)"
+                      class="inline-flex rounded-full border border-[var(--a-border)] bg-[var(--a-bg)] px-2 py-0.5 text-xs font-semibold text-[var(--a-muted)]"
+                      :title="p.orderStatus === 'paid' ? 'El pedido se pagó con otro intento' : 'El pedido fue cancelado'"
+                    >
+                      {{ p.orderStatus === 'paid' ? 'Sin usar' : 'Pedido cancelado' }}
+                    </span>
+                    <span
+                      v-else
                       class="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold border"
                       :class="paymentStatusColors[p.paymentStatus] ?? 'bg-[var(--a-bg)] text-[var(--a-muted)] border-[var(--a-border)]'"
                     >
@@ -250,7 +285,7 @@ async function handleConfirmTransfer(orderId: number) {
                         </div>
                       </template>
                       <!-- Confirmar transferencia -->
-                      <template v-if="p.paymentMethod === 'bank_transfer' && p.paymentStatus === 'pending'">
+                      <template v-if="p.paymentMethod === 'bank_transfer' && p.paymentStatus === 'pending' && !isStale(p)">
                         <button
                           :disabled="confirming === p.orderId"
                           @click="handleConfirmTransfer(p.orderId)"

@@ -8,6 +8,7 @@ import { ADMIN_PAYMENTS_QUERY, ADMIN_PAYMENTS_COUNT_QUERY } from './queries/paym
 import { ADMIN_USERS_QUERY, ADMIN_USERS_COUNT_QUERY } from './queries/users.js';
 import { PENDING_FULFILLMENT_QUERY } from './queries/pending-fulfillment.js';
 import { REPORTS_QUERY } from './queries/reports.js';
+import { notifyOrderPaid } from '../notifications/order-paid.js';
 
 const DASHBOARD_CACHE_KEY = 'admin:dashboard';
 const REPORTS_CACHE_KEY = (limit: number) => `admin:reports:${limit}`;
@@ -265,6 +266,7 @@ export async function getAdminPayments(req: Request, res: Response) {
         orderId:       r.order_id,
         paymentStatus:  r.payment_status,
         paymentMethod:  r.payment_method ?? 'mercadopago',
+        mpPaymentId:    r.mp_payment_id ?? null,
         amount:         Number(r.amount),
         paidAt:        r.paid_at,
         createdAt:     r.created_at,
@@ -306,12 +308,13 @@ export async function confirmBankTransfer(req: Request, res: Response, next: Nex
       `UPDATE payments SET status = 'approved', paid_at = NOW() WHERE id = $1`,
       [paymentRes.rows[0].id],
     );
-    await client.query(
-      `UPDATE orders SET status = 'paid' WHERE id = $1`,
+    const upd = await client.query(
+      `UPDATE orders SET status = 'paid' WHERE id = $1 AND status != 'paid'`,
       [orderId],
     );
 
     await client.query('COMMIT');
+    if (upd.rowCount) notifyOrderPaid(orderId);
     res.status(200).json({ data: { orderId, status: 'paid' } });
   } catch (err) {
     await client.query('ROLLBACK');

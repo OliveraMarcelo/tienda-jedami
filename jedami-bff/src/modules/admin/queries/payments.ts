@@ -5,6 +5,7 @@ export const ADMIN_PAYMENTS_QUERY = `
     p.order_id,
     p.status         AS payment_status,
     p.payment_method,
+    p.mp_payment_id,
     p.amount,
     p.paid_at,
     p.created_at,
