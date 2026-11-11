@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/OliveraMarcelo/tienda-jedami/compare/v1.4.1...v1.5.0) (2026-11-11)
+
+
+### Features
+
+* **web:** mostrar QR de Mercado Pago y datos de transferencia juntos en el pedido ([67696ff](https://github.com/OliveraMarcelo/tienda-jedami/commit/67696ff5d84051b323dd8642f8d219b23ea0612b))
+
 ## [1.4.1](https://github.com/OliveraMarcelo/tienda-jedami/compare/v1.4.0...v1.4.1) (2026-11-10)
 
 
