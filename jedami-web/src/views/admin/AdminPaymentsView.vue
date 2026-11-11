@@ -242,7 +242,7 @@ async function handleConfirmTransfer(orderId: number) {
                     <button
                       v-if="p.mpPaymentId"
                       type="button"
-                      class="mt-1 block font-mono text-xs text-[var(--a-muted)] hover:text-[var(--a-ink)]"
+                      class="mt-1 block whitespace-nowrap font-mono text-xs text-[var(--a-muted)] hover:text-[var(--a-ink)]"
                       :title="'Copiar número de operación'"
                       @click="copyOp(p.mpPaymentId)"
                     >
