@@ -166,13 +166,13 @@ onMounted(load)
 
 <template>
   <div class="space-y-6 pt-4">
-    <div v-if="loading" class="text-sm text-gray-400 py-4 text-center">Cargando escalones…</div>
+    <div v-if="loading" class="text-sm text-[var(--a-muted)] py-4 text-center">Cargando escalones…</div>
     <div v-else-if="error" class="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{{ error }}</div>
 
     <template v-else>
       <!-- Mínimo de compra -->
       <div>
-        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Mínimo de compra (unidades)</p>
+        <p class="text-xs font-semibold text-[var(--a-muted)] uppercase tracking-wide mb-2">Mínimo de compra (unidades)</p>
         <div class="flex items-center gap-2">
           <input
             v-model.number="minQtyInput"
@@ -180,7 +180,7 @@ onMounted(load)
             min="1"
             step="1"
             placeholder="Sin mínimo"
-            class="w-36 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#1565C0]"
+            class="w-36 border border-[#C9CDD2] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#1565C0]"
           />
           <button
             @click="saveMinQuantity"
@@ -192,7 +192,7 @@ onMounted(load)
           <button
             v-if="minQtyInput"
             @click="minQtyInput = null; saveMinQuantity()"
-            class="px-3 py-1.5 rounded-lg border border-gray-300 text-xs text-gray-600 hover:bg-gray-50 transition-colors"
+            class="px-3 py-1.5 rounded-lg border border-[#C9CDD2] text-xs text-[var(--a-muted)] hover:bg-[var(--a-bg)] transition-colors"
           >
             Quitar mínimo
           </button>
@@ -201,10 +201,10 @@ onMounted(load)
 
       <!-- Escalones por cantidad -->
       <div>
-        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Escalones por cantidad</p>
+        <p class="text-xs font-semibold text-[var(--a-muted)] uppercase tracking-wide mb-2">Escalones por cantidad</p>
 
-        <table v-if="quantityRules.length" class="w-full text-sm border border-gray-100 rounded-xl overflow-hidden mb-3">
-          <thead class="bg-gray-50 text-gray-500 text-xs">
+        <table v-if="quantityRules.length" class="w-full text-sm border border-[var(--a-border)] rounded-xl overflow-hidden mb-3">
+          <thead class="bg-[var(--a-bg)] text-[var(--a-muted)] text-xs">
             <tr>
               <th class="px-3 py-2 text-left font-medium">Desde (uds.)</th>
               <th class="px-3 py-2 text-left font-medium">Descuento</th>
@@ -212,8 +212,8 @@ onMounted(load)
             </tr>
           </thead>
           <tbody>
-            <tr v-for="rule in quantityRules" :key="rule.id" class="border-t border-gray-100">
-              <td class="px-3 py-2 text-gray-700">{{ rule.min_quantity }}</td>
+            <tr v-for="rule in quantityRules" :key="rule.id" class="border-t border-[var(--a-border)]">
+              <td class="px-3 py-2 text-[#45494E]">{{ rule.min_quantity }}</td>
               <td class="px-3 py-2 text-green-700 font-semibold">{{ rule.discount_pct }}%</td>
               <td class="px-3 py-2 text-right">
                 <button
@@ -226,7 +226,7 @@ onMounted(load)
             </tr>
           </tbody>
         </table>
-        <p v-else class="text-xs text-gray-400 italic mb-3">Sin escalones configurados</p>
+        <p v-else class="text-xs text-[var(--a-muted)] italic mb-3">Sin escalones configurados</p>
 
         <!-- Formulario agregar -->
         <div class="flex items-start gap-2 flex-wrap">
@@ -236,7 +236,7 @@ onMounted(load)
               type="number"
               min="1"
               placeholder="Desde (uds.)"
-              class="w-32 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#1565C0]"
+              class="w-32 border border-[#C9CDD2] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#1565C0]"
             />
           </div>
           <div>
@@ -246,7 +246,7 @@ onMounted(load)
               min="1"
               max="99"
               placeholder="% descuento"
-              class="w-28 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#1565C0]"
+              class="w-28 border border-[#C9CDD2] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#1565C0]"
             />
           </div>
           <button
@@ -262,10 +262,10 @@ onMounted(load)
 
       <!-- Escalones por curva -->
       <div>
-        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Escalones por curva</p>
+        <p class="text-xs font-semibold text-[var(--a-muted)] uppercase tracking-wide mb-2">Escalones por curva</p>
 
-        <table v-if="curvaRules.length" class="w-full text-sm border border-gray-100 rounded-xl overflow-hidden mb-3">
-          <thead class="bg-gray-50 text-gray-500 text-xs">
+        <table v-if="curvaRules.length" class="w-full text-sm border border-[var(--a-border)] rounded-xl overflow-hidden mb-3">
+          <thead class="bg-[var(--a-bg)] text-[var(--a-muted)] text-xs">
             <tr>
               <th class="px-3 py-2 text-left font-medium">Desde (curvas)</th>
               <th class="px-3 py-2 text-left font-medium">Descuento</th>
@@ -273,8 +273,8 @@ onMounted(load)
             </tr>
           </thead>
           <tbody>
-            <tr v-for="rule in curvaRules" :key="rule.id" class="border-t border-gray-100">
-              <td class="px-3 py-2 text-gray-700">{{ rule.min_curves }}</td>
+            <tr v-for="rule in curvaRules" :key="rule.id" class="border-t border-[var(--a-border)]">
+              <td class="px-3 py-2 text-[#45494E]">{{ rule.min_curves }}</td>
               <td class="px-3 py-2 text-green-700 font-semibold">{{ rule.discount_pct }}%</td>
               <td class="px-3 py-2 text-right">
                 <button
@@ -287,7 +287,7 @@ onMounted(load)
             </tr>
           </tbody>
         </table>
-        <p v-else class="text-xs text-gray-400 italic mb-3">Sin escalones configurados</p>
+        <p v-else class="text-xs text-[var(--a-muted)] italic mb-3">Sin escalones configurados</p>
 
         <!-- Formulario agregar -->
         <div class="flex items-start gap-2 flex-wrap">
@@ -297,7 +297,7 @@ onMounted(load)
               type="number"
               min="1"
               placeholder="Desde (curvas)"
-              class="w-32 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#1565C0]"
+              class="w-32 border border-[#C9CDD2] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#1565C0]"
             />
           </div>
           <div>
@@ -307,7 +307,7 @@ onMounted(load)
               min="1"
               max="99"
               placeholder="% descuento"
-              class="w-28 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#1565C0]"
+              class="w-28 border border-[#C9CDD2] rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#1565C0]"
             />
           </div>
           <button

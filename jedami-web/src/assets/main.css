@@ -30,7 +30,9 @@
     --t-radius-lg: 32px;
   }
 
-  /* Panel de administración (estilo Tiendanube) — independiente del tema de la tienda */
+  /* Panel de administración (estilo Tiendanube) — independiente del tema de la tienda.
+     Los tokens van también en :root porque los diálogos se teletransportan fuera de .admin-ui */
+  :root,
   .admin-ui {
     --a-font: 'Inter', sans-serif;
     --a-bg: #F4F5F7;
@@ -41,6 +43,9 @@
     --a-primary: #0050C3;
     --a-primary-hover: #003A8F;
     --a-primary-soft: #E8F0FC;
+  }
+
+  .admin-ui {
     font-family: var(--a-font);
   }
 

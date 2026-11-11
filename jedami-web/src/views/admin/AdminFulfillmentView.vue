@@ -112,25 +112,25 @@ onMounted(load)
 
 <template>
   <AdminLayout>
-    <div class="max-w-4xl mx-auto">
+    <div class="max-w-4xl">
       <!-- Breadcrumb -->
       <div class="flex items-center gap-3 mb-6">
-        <h1 class="text-2xl font-bold text-gray-900">Gestión de despacho</h1>
+        <h1 class="text-[26px] font-bold">Gestión de despacho</h1>
       </div>
 
-      <p class="text-sm text-gray-500 mb-6">
+      <p class="text-sm text-[var(--a-muted)] mb-6">
         Pedidos pagados pendientes de despacho. Asigná colores para pedidos curva/cantidad,
         marcá como despachado y actualizá el stock cuando tengas tiempo.
       </p>
 
       <!-- Skeleton -->
       <div v-if="loading" class="space-y-4">
-        <div v-for="i in 3" :key="i" class="animate-pulse bg-white rounded-2xl border border-gray-200 h-32"></div>
+        <div v-for="i in 3" :key="i" class="animate-pulse bg-white rounded-xl border border-[var(--a-border)] h-32"></div>
       </div>
 
       <p v-else-if="error" class="text-red-500 text-sm">{{ error }}</p>
 
-      <p v-else-if="orders.length === 0" class="text-center text-gray-400 text-sm py-12">
+      <p v-else-if="orders.length === 0" class="text-center text-[var(--a-muted)] text-sm py-12">
         No hay pedidos pendientes de despacho.
       </p>
 
@@ -138,33 +138,33 @@ onMounted(load)
         <div
           v-for="order in orders"
           :key="order.id"
-          class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
+          class="bg-white rounded-xl border border-[var(--a-border)] overflow-hidden"
           :class="dispatched.has(order.id) ? 'opacity-60' : ''"
         >
           <!-- Cabecera del pedido -->
-          <div class="flex items-start justify-between px-5 py-4 border-b border-gray-100 bg-gray-50 gap-3">
+          <div class="flex items-start justify-between px-5 py-4 border-b border-[var(--a-border)] bg-[var(--a-bg)] gap-3">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 flex-wrap mb-1">
-                <p class="font-bold text-gray-900">Pedido #{{ order.id }}</p>
+                <p class="font-bold text-[var(--a-ink)]">Pedido #{{ order.id }}</p>
                 <!-- Badge tipo de pedido -->
                 <span
                   class="text-xs font-semibold px-2 py-0.5 rounded-full"
                   :class="{
                     'bg-purple-100 text-purple-700': order.purchaseType === 'curva',
                     'bg-blue-100 text-blue-700':    order.purchaseType === 'cantidad',
-                    'bg-gray-100 text-gray-600':    order.purchaseType === 'menor',
+                    'bg-gray-100 text-[var(--a-muted)]':    order.purchaseType === 'menor',
                   }"
                 >
                   {{ order.purchaseType === 'curva' ? 'Curva' : order.purchaseType === 'cantidad' ? 'Cantidad' : 'Menor' }}
                 </span>
               </div>
-              <p class="text-xs text-gray-500">{{ order.customerEmail }} — {{ formatDate(order.createdAt) }}</p>
+              <p class="text-xs text-[var(--a-muted)]">{{ order.customerEmail }} — {{ formatDate(order.createdAt) }}</p>
               <p v-if="order.notes" class="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 mt-1.5 italic">
                 Nota: "{{ order.notes }}"
               </p>
             </div>
             <div class="text-right shrink-0">
-              <p class="font-semibold text-gray-800">{{ formatCurrency(order.totalAmount) }}</p>
+              <p class="font-semibold text-[var(--a-ink)]">{{ formatCurrency(order.totalAmount) }}</p>
               <!-- Botón despachar -->
               <div class="mt-2">
                 <button
@@ -187,8 +187,8 @@ onMounted(load)
               <!-- Info del ítem -->
               <div class="flex items-start justify-between gap-3 mb-3">
                 <div>
-                  <p class="font-medium text-gray-900 text-sm">{{ item.productName }}</p>
-                  <p class="text-xs text-gray-500 mt-0.5">
+                  <p class="font-medium text-[var(--a-ink)] text-sm">{{ item.productName }}</p>
+                  <p class="text-xs text-[var(--a-muted)] mt-0.5">
                     Talle <strong>{{ item.size }}</strong> —
                     Cant. {{ item.quantity }} —
                     {{ formatCurrency(item.unitPrice) }} c/u
@@ -203,7 +203,7 @@ onMounted(load)
                       v-if="selections[item.id]"
                       @click="doAssignVariant(order, item)"
                       :disabled="assigning === item.id"
-                      class="h-8 px-3 rounded-lg bg-[#E91E8C] text-white text-xs font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:pointer-events-none"
+                      class="h-8 px-3 rounded-lg bg-[var(--a-primary)] text-white text-xs font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:pointer-events-none"
                     >
                       {{ assigning === item.id ? 'Guardando…' : 'Guardar color' }}
                     </button>
@@ -215,7 +215,7 @@ onMounted(load)
                       v-if="!stockUpdated.has(item.id)"
                       @click="doDecrementStock(order, item)"
                       :disabled="decrementing === item.id"
-                      class="h-8 px-3 rounded-lg border border-gray-300 text-xs text-gray-600 hover:border-gray-400 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                      class="h-8 px-3 rounded-lg border border-[#C9CDD2] text-xs text-[var(--a-muted)] hover:border-gray-400 transition-colors disabled:opacity-40 disabled:pointer-events-none"
                     >
                       {{ decrementing === item.id ? 'Actualizando…' : 'Descontar stock' }}
                     </button>
@@ -231,16 +231,16 @@ onMounted(load)
               <!-- Variante ya asignada (menor o guardada) -->
               <div
                 v-if="item.variantAssigned || assigned.has(item.id)"
-                class="flex items-center gap-2 text-sm text-gray-700 bg-gray-50 rounded-lg px-3 py-2"
+                class="flex items-center gap-2 text-sm text-[#45494E] bg-[var(--a-bg)] rounded-lg px-3 py-2"
               >
                 <span
-                  class="w-4 h-4 rounded-full border border-gray-200 shrink-0"
+                  class="w-4 h-4 rounded-full border border-[var(--a-border)] shrink-0"
                   :style="{ backgroundColor: item.variantAssigned ? (item.assignedHex ?? '#ccc') : (item.availableVariants.find(v => v.id === selections[item.id])?.hexCode ?? '#ccc') }"
                 ></span>
                 <span class="font-medium">
                   {{ item.variantAssigned ? item.assignedColor : item.availableVariants.find(v => v.id === selections[item.id])?.color }}
                 </span>
-                <span v-if="item.variantAssigned" class="text-xs text-gray-400">(asignado en la compra)</span>
+                <span v-if="item.variantAssigned" class="text-xs text-[var(--a-muted)]">(asignado en la compra)</span>
                 <span v-else class="text-xs text-green-600">✓ Color guardado</span>
               </div>
 
@@ -251,7 +251,7 @@ onMounted(load)
                 </div>
                 <table v-else class="w-full text-xs mt-1">
                   <thead>
-                    <tr class="text-gray-400 border-b border-gray-100">
+                    <tr class="text-[var(--a-muted)] border-b border-[var(--a-border)]">
                       <th class="text-left pb-1.5 font-medium">Color</th>
                       <th class="text-right pb-1.5 font-medium">Stock</th>
                       <th class="pb-1.5 w-8"></th>
@@ -261,26 +261,26 @@ onMounted(load)
                     <tr
                       v-for="v in item.availableVariants"
                       :key="v.id"
-                      class="border-b border-gray-50 last:border-0"
+                      class="border-b border-[var(--a-border)] last:border-0"
                       :class="v.stock === 0 ? 'opacity-40' : ''"
                     >
                       <td class="py-1.5">
                         <div class="flex items-center gap-2">
                           <span
-                            class="w-4 h-4 rounded-full border border-gray-200 shrink-0"
+                            class="w-4 h-4 rounded-full border border-[var(--a-border)] shrink-0"
                             :style="{ backgroundColor: v.hexCode ?? '#ccc' }"
                           ></span>
-                          <span class="text-gray-800">{{ v.color }}</span>
+                          <span class="text-[var(--a-ink)]">{{ v.color }}</span>
                         </div>
                       </td>
-                      <td class="py-1.5 text-right text-gray-500">{{ v.stock }}</td>
+                      <td class="py-1.5 text-right text-[var(--a-muted)]">{{ v.stock }}</td>
                       <td class="py-1.5 pl-3">
                         <input
                           type="radio"
                           :value="v.id"
                           v-model="selections[item.id]"
                           :disabled="v.stock === 0"
-                          class="accent-[#E91E8C] cursor-pointer"
+                          class="accent-[var(--a-primary)] cursor-pointer"
                         />
                       </td>
                     </tr>

@@ -405,14 +405,14 @@ const TABS: { key: Tab; label: string }[] = [
 
 <template>
   <AdminLayout>
-    <div class="max-w-3xl mx-auto">
+    <div class="max-w-3xl">
       <!-- Breadcrumb -->
       <div class="flex items-center gap-3 mb-6">
-        <h1 class="text-2xl font-bold text-gray-900">Configuración</h1>
+        <h1 class="text-[26px] font-bold">Configuración</h1>
       </div>
 
       <!-- Tabs -->
-      <div class="border-b border-gray-200 mb-6">
+      <div class="border-b border-[var(--a-border)] mb-6">
         <nav class="-mb-px flex gap-1 overflow-x-auto">
           <button
             v-for="tab in TABS"
@@ -420,8 +420,8 @@ const TABS: { key: Tab; label: string }[] = [
             @click="activeTab = tab.key"
             class="px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors"
             :class="activeTab === tab.key
-              ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+              ? 'border-[var(--a-primary)] text-[var(--a-primary)]'
+              : 'border-transparent text-[var(--a-muted)] hover:text-[#45494E] hover:border-[#C9CDD2]'"
           >{{ tab.label }}</button>
         </nav>
       </div>
@@ -435,37 +435,37 @@ const TABS: { key: Tab; label: string }[] = [
           <div class="space-y-2 mb-4">
             <div
               v-for="item in purchaseTypes" :key="item.id"
-              class="bg-white rounded-xl border border-gray-200 px-4 py-3 flex items-center justify-between"
+              class="bg-white rounded-xl border border-[var(--a-border)] px-4 py-3 flex items-center justify-between"
             >
               <div>
-                <span class="font-semibold text-gray-800 text-sm">{{ item.label }}</span>
-                <span class="ml-2 text-xs text-gray-400 font-mono">{{ item.code }}</span>
+                <span class="font-semibold text-[var(--a-ink)] text-sm">{{ item.label }}</span>
+                <span class="ml-2 text-xs text-[var(--a-muted)] font-mono">{{ item.code }}</span>
               </div>
               <button
                 @click="togglePurchaseType(item)"
                 class="text-xs font-semibold px-3 py-1 rounded-full border transition-colors"
                 :class="item.active
                   ? 'bg-green-50 text-green-700 border-green-200 hover:bg-red-50 hover:text-red-700 hover:border-red-200'
-                  : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-green-50 hover:text-green-700 hover:border-green-200'"
+                  : 'bg-[var(--a-bg)] text-[var(--a-muted)] border-[var(--a-border)] hover:bg-green-50 hover:text-green-700 hover:border-green-200'"
               >{{ item.active ? 'Activo' : 'Inactivo' }}</button>
             </div>
           </div>
           <!-- Formulario alta -->
-          <div class="bg-white rounded-xl border border-gray-200 p-4">
-            <p class="text-sm font-semibold text-gray-700 mb-3">Agregar tipo de compra</p>
+          <div class="bg-white rounded-xl border border-[var(--a-border)] p-4">
+            <p class="text-sm font-semibold text-[#45494E] mb-3">Agregar tipo de compra</p>
             <div class="flex flex-wrap gap-2 items-end">
               <div>
-                <label class="block text-xs text-gray-500 mb-1">Código</label>
-                <input v-model="ptNew.code" type="text" placeholder="ej: mayoreo" class="h-9 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]" />
+                <label class="block text-xs text-[var(--a-muted)] mb-1">Código</label>
+                <input v-model="ptNew.code" type="text" placeholder="ej: mayoreo" class="h-10 rounded-lg border border-[#C9CDD2] px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]" />
               </div>
               <div>
-                <label class="block text-xs text-gray-500 mb-1">Etiqueta</label>
-                <input v-model="ptNew.label" type="text" placeholder="ej: Por mayoreo" class="h-9 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]" />
+                <label class="block text-xs text-[var(--a-muted)] mb-1">Etiqueta</label>
+                <input v-model="ptNew.label" type="text" placeholder="ej: Por mayoreo" class="h-10 rounded-lg border border-[#C9CDD2] px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]" />
               </div>
               <button
                 @click="addPurchaseType"
                 :disabled="ptSaving || !ptNew.code || !ptNew.label"
-                class="h-9 px-4 rounded-lg bg-[var(--color-primary)] text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:pointer-events-none"
+                class="h-10 px-4 rounded-lg bg-[var(--a-primary)] text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:pointer-events-none"
               >Agregar</button>
             </div>
             <p v-if="ptError" class="text-xs text-red-500 mt-2">{{ ptError }}</p>
@@ -482,36 +482,36 @@ const TABS: { key: Tab; label: string }[] = [
           <div class="space-y-2 mb-4">
             <div
               v-for="item in customerTypes" :key="item.id"
-              class="bg-white rounded-xl border border-gray-200 px-4 py-3 flex items-center justify-between"
+              class="bg-white rounded-xl border border-[var(--a-border)] px-4 py-3 flex items-center justify-between"
             >
               <div>
-                <span class="font-semibold text-gray-800 text-sm">{{ item.label }}</span>
-                <span class="ml-2 text-xs text-gray-400 font-mono">{{ item.code }}</span>
+                <span class="font-semibold text-[var(--a-ink)] text-sm">{{ item.label }}</span>
+                <span class="ml-2 text-xs text-[var(--a-muted)] font-mono">{{ item.code }}</span>
               </div>
               <button
                 @click="toggleCustomerType(item)"
                 class="text-xs font-semibold px-3 py-1 rounded-full border transition-colors"
                 :class="item.active
                   ? 'bg-green-50 text-green-700 border-green-200 hover:bg-red-50 hover:text-red-700 hover:border-red-200'
-                  : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-green-50 hover:text-green-700 hover:border-green-200'"
+                  : 'bg-[var(--a-bg)] text-[var(--a-muted)] border-[var(--a-border)] hover:bg-green-50 hover:text-green-700 hover:border-green-200'"
               >{{ item.active ? 'Activo' : 'Inactivo' }}</button>
             </div>
           </div>
-          <div class="bg-white rounded-xl border border-gray-200 p-4">
-            <p class="text-sm font-semibold text-gray-700 mb-3">Agregar tipo de cliente</p>
+          <div class="bg-white rounded-xl border border-[var(--a-border)] p-4">
+            <p class="text-sm font-semibold text-[#45494E] mb-3">Agregar tipo de cliente</p>
             <div class="flex flex-wrap gap-2 items-end">
               <div>
-                <label class="block text-xs text-gray-500 mb-1">Código</label>
-                <input v-model="ctNew.code" type="text" placeholder="ej: vip" class="h-9 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]" />
+                <label class="block text-xs text-[var(--a-muted)] mb-1">Código</label>
+                <input v-model="ctNew.code" type="text" placeholder="ej: vip" class="h-10 rounded-lg border border-[#C9CDD2] px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]" />
               </div>
               <div>
-                <label class="block text-xs text-gray-500 mb-1">Etiqueta</label>
-                <input v-model="ctNew.label" type="text" placeholder="ej: VIP" class="h-9 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]" />
+                <label class="block text-xs text-[var(--a-muted)] mb-1">Etiqueta</label>
+                <input v-model="ctNew.label" type="text" placeholder="ej: VIP" class="h-10 rounded-lg border border-[#C9CDD2] px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]" />
               </div>
               <button
                 @click="addCustomerType"
                 :disabled="ctSaving || !ctNew.code || !ctNew.label"
-                class="h-9 px-4 rounded-lg bg-[var(--color-primary)] text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:pointer-events-none"
+                class="h-10 px-4 rounded-lg bg-[var(--a-primary)] text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:pointer-events-none"
               >Agregar</button>
             </div>
             <p v-if="ctError" class="text-xs text-red-500 mt-2">{{ ctError }}</p>
@@ -525,36 +525,36 @@ const TABS: { key: Tab; label: string }[] = [
           <div v-for="i in 4" :key="i" class="animate-pulse bg-white rounded-xl border h-12"></div>
         </div>
         <template v-else>
-          <div class="bg-white rounded-xl border border-gray-200 overflow-hidden mb-4">
-            <div class="grid grid-cols-[1fr_auto_auto] text-xs text-gray-500 font-medium px-4 py-2 border-b border-gray-100">
+          <div class="bg-white rounded-xl border border-[var(--a-border)] overflow-hidden mb-4">
+            <div class="grid grid-cols-[1fr_auto_auto] text-xs text-[var(--a-muted)] font-medium px-4 py-2 border-b border-[var(--a-border)]">
               <span>Talle</span><span class="pr-6">Orden</span><span></span>
             </div>
-            <div v-for="size in sizes" :key="size.id" class="grid grid-cols-[1fr_auto_auto] items-center px-4 py-2.5 border-b border-gray-50 last:border-0">
-              <span class="text-sm font-semibold text-gray-800">{{ size.label }}</span>
-              <span class="text-xs text-gray-400 pr-6">{{ size.sort_order }}</span>
+            <div v-for="size in sizes" :key="size.id" class="grid grid-cols-[1fr_auto_auto] items-center px-4 py-2.5 border-b border-[var(--a-border)] last:border-0">
+              <span class="text-sm font-semibold text-[var(--a-ink)]">{{ size.label }}</span>
+              <span class="text-xs text-[var(--a-muted)] pr-6">{{ size.sort_order }}</span>
               <button
                 @click="removeSize(size.id)"
                 :disabled="szDeleting === size.id"
                 class="text-xs text-red-500 hover:text-red-700 disabled:opacity-40"
               >Eliminar</button>
             </div>
-            <p v-if="sizes.length === 0" class="text-center text-gray-400 text-sm py-6">Sin talles.</p>
+            <p v-if="sizes.length === 0" class="text-center text-[var(--a-muted)] text-sm py-6">Sin talles.</p>
           </div>
-          <div class="bg-white rounded-xl border border-gray-200 p-4">
-            <p class="text-sm font-semibold text-gray-700 mb-3">Agregar talle</p>
+          <div class="bg-white rounded-xl border border-[var(--a-border)] p-4">
+            <p class="text-sm font-semibold text-[#45494E] mb-3">Agregar talle</p>
             <div class="flex flex-wrap gap-2 items-end">
               <div>
-                <label class="block text-xs text-gray-500 mb-1">Etiqueta</label>
-                <input v-model="szNew.label" type="text" placeholder="ej: XXL" class="h-9 w-24 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]" />
+                <label class="block text-xs text-[var(--a-muted)] mb-1">Etiqueta</label>
+                <input v-model="szNew.label" type="text" placeholder="ej: XXL" class="h-10 w-24 rounded-lg border border-[#C9CDD2] px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]" />
               </div>
               <div>
-                <label class="block text-xs text-gray-500 mb-1">Orden</label>
-                <input v-model.number="szNew.sortOrder" type="number" min="0" class="h-9 w-20 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]" />
+                <label class="block text-xs text-[var(--a-muted)] mb-1">Orden</label>
+                <input v-model.number="szNew.sortOrder" type="number" min="0" class="h-10 w-20 rounded-lg border border-[#C9CDD2] px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]" />
               </div>
               <button
                 @click="addSize"
                 :disabled="szSaving || !szNew.label"
-                class="h-9 px-4 rounded-lg bg-[var(--color-primary)] text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:pointer-events-none"
+                class="h-10 px-4 rounded-lg bg-[var(--a-primary)] text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:pointer-events-none"
               >Agregar</button>
             </div>
             <p v-if="szError" class="text-xs text-red-500 mt-2">{{ szError }}</p>
@@ -568,17 +568,17 @@ const TABS: { key: Tab; label: string }[] = [
           <div v-for="i in 4" :key="i" class="animate-pulse bg-white rounded-xl border h-12"></div>
         </div>
         <template v-else>
-          <div class="bg-white rounded-xl border border-gray-200 overflow-hidden mb-4">
-            <div class="grid grid-cols-[auto_1fr_auto] text-xs text-gray-500 font-medium px-4 py-2 border-b border-gray-100">
+          <div class="bg-white rounded-xl border border-[var(--a-border)] overflow-hidden mb-4">
+            <div class="grid grid-cols-[auto_1fr_auto] text-xs text-[var(--a-muted)] font-medium px-4 py-2 border-b border-[var(--a-border)]">
               <span class="pr-3">Color</span><span>Nombre</span><span></span>
             </div>
-            <div v-for="color in colors" :key="color.id" class="grid grid-cols-[auto_1fr_auto] items-center px-4 py-2.5 border-b border-gray-50 last:border-0">
+            <div v-for="color in colors" :key="color.id" class="grid grid-cols-[auto_1fr_auto] items-center px-4 py-2.5 border-b border-[var(--a-border)] last:border-0">
               <div
-                class="w-6 h-6 rounded-full border border-gray-200 mr-3 shrink-0"
+                class="w-6 h-6 rounded-full border border-[var(--a-border)] mr-3 shrink-0"
                 :style="color.hex_code ? { backgroundColor: color.hex_code } : {}"
               ></div>
-              <span class="text-sm text-gray-800">{{ color.name }}
-                <span v-if="color.hex_code" class="text-xs text-gray-400 font-mono ml-1">{{ color.hex_code }}</span>
+              <span class="text-sm text-[var(--a-ink)]">{{ color.name }}
+                <span v-if="color.hex_code" class="text-xs text-[var(--a-muted)] font-mono ml-1">{{ color.hex_code }}</span>
               </span>
               <button
                 @click="removeColor(color.id)"
@@ -586,26 +586,26 @@ const TABS: { key: Tab; label: string }[] = [
                 class="text-xs text-red-500 hover:text-red-700 disabled:opacity-40"
               >Eliminar</button>
             </div>
-            <p v-if="colors.length === 0" class="text-center text-gray-400 text-sm py-6">Sin colores.</p>
+            <p v-if="colors.length === 0" class="text-center text-[var(--a-muted)] text-sm py-6">Sin colores.</p>
           </div>
-          <div class="bg-white rounded-xl border border-gray-200 p-4">
-            <p class="text-sm font-semibold text-gray-700 mb-3">Agregar color</p>
+          <div class="bg-white rounded-xl border border-[var(--a-border)] p-4">
+            <p class="text-sm font-semibold text-[#45494E] mb-3">Agregar color</p>
             <div class="flex flex-wrap gap-2 items-end">
               <div>
-                <label class="block text-xs text-gray-500 mb-1">Nombre</label>
-                <input v-model="clNew.name" type="text" placeholder="ej: Turquesa" class="h-9 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]" />
+                <label class="block text-xs text-[var(--a-muted)] mb-1">Nombre</label>
+                <input v-model="clNew.name" type="text" placeholder="ej: Turquesa" class="h-10 rounded-lg border border-[#C9CDD2] px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]" />
               </div>
               <div>
-                <label class="block text-xs text-gray-500 mb-1">Hex</label>
+                <label class="block text-xs text-[var(--a-muted)] mb-1">Hex</label>
                 <div class="flex items-center gap-1">
-                  <input v-model="clNew.hexCode" type="color" class="h-9 w-10 rounded-lg border border-gray-300 p-0.5 cursor-pointer" />
-                  <input v-model="clNew.hexCode" type="text" placeholder="#000000" class="h-9 w-24 rounded-lg border border-gray-300 px-3 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]" />
+                  <input v-model="clNew.hexCode" type="color" class="h-10 w-10 rounded-lg border border-[#C9CDD2] p-0.5 cursor-pointer" />
+                  <input v-model="clNew.hexCode" type="text" placeholder="#000000" class="h-10 w-24 rounded-lg border border-[#C9CDD2] px-3 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]" />
                 </div>
               </div>
               <button
                 @click="addColor"
                 :disabled="clSaving || !clNew.name"
-                class="h-9 px-4 rounded-lg bg-[var(--color-primary)] text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:pointer-events-none"
+                class="h-10 px-4 rounded-lg bg-[var(--a-primary)] text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:pointer-events-none"
               >Agregar</button>
             </div>
             <p v-if="clError" class="text-xs text-red-500 mt-2">{{ clError }}</p>
@@ -616,20 +616,20 @@ const TABS: { key: Tab; label: string }[] = [
       <!-- ── Pagos ── -->
       <div v-if="activeTab === 'payments'" class="space-y-4">
         <!-- Gateway selector -->
-        <div class="bg-white rounded-xl border border-gray-200 p-5">
-          <p class="text-sm font-semibold text-gray-700 mb-4">Pasarela de pago</p>
+        <div class="bg-white rounded-xl border border-[var(--a-border)] p-5">
+          <p class="text-sm font-semibold text-[#45494E] mb-4">Pasarela de pago</p>
           <div class="space-y-3 max-w-sm">
             <div>
-              <label class="block text-xs text-gray-500 mb-1">Método de pago activo</label>
+              <label class="block text-xs text-[var(--a-muted)] mb-1">Método de pago activo</label>
               <select
                 v-model="paymentGateway"
-                class="w-full h-9 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+                class="w-full h-10 rounded-lg border border-[#C9CDD2] px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]"
               >
                 <option value="checkout_pro">Checkout Pro (redirige a Mercado Pago)</option>
                 <option value="checkout_api">Checkout API (formulario embebido)</option>
                 <option value="bank_transfer">Transferencia bancaria</option>
               </select>
-              <p class="text-xs text-gray-400 mt-1">
+              <p class="text-xs text-[var(--a-muted)] mt-1">
                 <template v-if="paymentGateway === 'checkout_api'">Checkout API requiere aprobación de MP en tu cuenta.</template>
                 <template v-else-if="paymentGateway === 'bank_transfer'">Los compradores verán los datos bancarios y vos confirmás el pago manualmente.</template>
               </p>
@@ -638,7 +638,7 @@ const TABS: { key: Tab; label: string }[] = [
               <button
                 @click="savePaymentGateway"
                 :disabled="gatewaySaving"
-                class="h-9 px-5 rounded-lg bg-[var(--color-primary)] text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:pointer-events-none"
+                class="h-10 px-5 rounded-lg bg-[var(--a-primary)] text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:pointer-events-none"
               >{{ gatewaySaving ? 'Guardando…' : 'Guardar' }}</button>
               <span v-if="gatewaySuccess" class="text-xs text-green-600 font-semibold">✓ Guardado</span>
               <span v-if="gatewayError" class="text-xs text-red-500">{{ gatewayError }}</span>
@@ -647,77 +647,77 @@ const TABS: { key: Tab; label: string }[] = [
         </div>
 
         <!-- Datos bancarios (siempre visible para configurar de antemano) -->
-        <div class="bg-white rounded-xl border border-gray-200 p-5">
-          <p class="text-sm font-semibold text-gray-700 mb-1">Datos bancarios para transferencia</p>
-          <p class="text-xs text-gray-400 mb-4">Se mostrarán al comprador cuando la pasarela sea "Transferencia bancaria".</p>
+        <div class="bg-white rounded-xl border border-[var(--a-border)] p-5">
+          <p class="text-sm font-semibold text-[#45494E] mb-1">Datos bancarios para transferencia</p>
+          <p class="text-xs text-[var(--a-muted)] mb-4">Se mostrarán al comprador cuando la pasarela sea "Transferencia bancaria".</p>
           <div class="space-y-3 max-w-sm">
             <div>
-              <label class="block text-xs text-gray-500 mb-1">CVU <span class="text-gray-400">(22 dígitos)</span></label>
+              <label class="block text-xs text-[var(--a-muted)] mb-1">CVU <span class="text-[var(--a-muted)]">(22 dígitos)</span></label>
               <input
                 v-model="bankTransferForm.bankTransferCvu"
                 type="text"
                 maxlength="22"
                 placeholder="0000000000000000000000"
-                class="w-full h-9 rounded-lg border border-gray-300 px-3 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+                class="w-full h-10 rounded-lg border border-[#C9CDD2] px-3 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]"
               />
             </div>
             <div>
-              <label class="block text-xs text-gray-500 mb-1">Alias</label>
+              <label class="block text-xs text-[var(--a-muted)] mb-1">Alias</label>
               <input
                 v-model="bankTransferForm.bankTransferAlias"
                 type="text"
                 maxlength="50"
                 placeholder="ej: jedami.mp"
-                class="w-full h-9 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+                class="w-full h-10 rounded-lg border border-[#C9CDD2] px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]"
               />
             </div>
             <div>
-              <label class="block text-xs text-gray-500 mb-1">Nombre del titular</label>
+              <label class="block text-xs text-[var(--a-muted)] mb-1">Nombre del titular</label>
               <input
                 v-model="bankTransferForm.bankTransferHolderName"
                 type="text"
                 maxlength="100"
                 placeholder="ej: Jedami SRL"
-                class="w-full h-9 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+                class="w-full h-10 rounded-lg border border-[#C9CDD2] px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]"
               />
             </div>
             <div>
-              <label class="block text-xs text-gray-500 mb-1">Banco</label>
+              <label class="block text-xs text-[var(--a-muted)] mb-1">Banco</label>
               <input
                 v-model="bankTransferForm.bankTransferBankName"
                 type="text"
                 maxlength="100"
                 placeholder="ej: Mercado Pago / Banco Nación"
-                class="w-full h-9 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+                class="w-full h-10 rounded-lg border border-[#C9CDD2] px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]"
               />
             </div>
             <div>
-              <label class="block text-xs text-gray-500 mb-1">Notas adicionales <span class="text-gray-400">(opcional)</span></label>
+              <label class="block text-xs text-[var(--a-muted)] mb-1">Notas adicionales <span class="text-[var(--a-muted)]">(opcional)</span></label>
               <textarea
                 v-model="bankTransferForm.bankTransferNotes"
                 rows="2"
                 placeholder="ej: Indicar número de pedido en el concepto"
-                class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] resize-none"
+                class="w-full rounded-lg border border-[#C9CDD2] px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)] resize-none"
               ></textarea>
             </div>
             <div>
-              <label class="block text-xs text-gray-500 mb-1">
-                WhatsApp del negocio <span class="text-gray-400">(para recibir avisos de transferencia)</span>
+              <label class="block text-xs text-[var(--a-muted)] mb-1">
+                WhatsApp del negocio <span class="text-[var(--a-muted)]">(para recibir avisos de transferencia)</span>
               </label>
               <input
                 v-model="bankTransferForm.whatsappNumber"
                 type="text"
                 maxlength="20"
                 placeholder="ej: 5491112345678"
-                class="w-full h-9 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+                class="w-full h-10 rounded-lg border border-[#C9CDD2] px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]"
               />
-              <p class="text-xs text-gray-400 mt-0.5">Sin + ni espacios. Código de país incluido (54 para Argentina).</p>
+              <p class="text-xs text-[var(--a-muted)] mt-0.5">Sin + ni espacios. Código de país incluido (54 para Argentina).</p>
             </div>
             <div class="flex items-center gap-3 pt-1">
               <button
                 @click="saveBankTransfer"
                 :disabled="bankTransferSaving"
-                class="h-9 px-5 rounded-lg bg-[var(--color-primary)] text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:pointer-events-none"
+                class="h-10 px-5 rounded-lg bg-[var(--a-primary)] text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:pointer-events-none"
               >{{ bankTransferSaving ? 'Guardando…' : 'Guardar datos bancarios' }}</button>
               <span v-if="bankTransferSuccess" class="text-xs text-green-600 font-semibold">✓ Guardado</span>
               <span v-if="bankTransferError" class="text-xs text-red-500">{{ bankTransferError }}</span>
@@ -726,9 +726,9 @@ const TABS: { key: Tab; label: string }[] = [
         </div>
 
         <!-- Medios de pago por tipo de cliente -->
-        <div class="bg-white rounded-xl border border-gray-200 p-5">
-          <p class="text-sm font-semibold text-gray-700 mb-1">Medios de pago por tipo de cliente</p>
-          <p class="text-xs text-gray-400 mb-4">Habilitá o deshabilitá cada gateway para minoristas y mayoristas.</p>
+        <div class="bg-white rounded-xl border border-[var(--a-border)] p-5">
+          <p class="text-sm font-semibold text-[#45494E] mb-1">Medios de pago por tipo de cliente</p>
+          <p class="text-xs text-[var(--a-muted)] mb-4">Habilitá o deshabilitá cada gateway para minoristas y mayoristas.</p>
 
           <div v-if="pgRulesLoading" class="space-y-2">
             <div v-for="i in 4" :key="i" class="animate-pulse bg-gray-100 rounded-lg h-10"></div>
@@ -737,21 +737,21 @@ const TABS: { key: Tab; label: string }[] = [
           <div v-else class="overflow-x-auto">
             <table class="w-full text-sm">
               <thead>
-                <tr class="border-b border-gray-100">
-                  <th class="py-2 pr-4 text-left text-xs text-gray-500 font-medium">Pasarela</th>
-                  <th class="py-2 px-4 text-center text-xs text-gray-500 font-medium">Minorista</th>
-                  <th class="py-2 px-4 text-center text-xs text-gray-500 font-medium">Mayorista</th>
+                <tr class="border-b border-[var(--a-border)]">
+                  <th class="py-2 pr-4 text-left text-xs text-[var(--a-muted)] font-medium">Pasarela</th>
+                  <th class="py-2 px-4 text-center text-xs text-[var(--a-muted)] font-medium">Minorista</th>
+                  <th class="py-2 px-4 text-center text-xs text-[var(--a-muted)] font-medium">Mayorista</th>
                 </tr>
               </thead>
               <tbody>
                 <tr
                   v-for="gw in ALL_GATEWAYS"
                   :key="gw"
-                  class="border-t border-gray-50"
+                  class="border-t border-[var(--a-border)]"
                 >
                   <td class="py-3 pr-4">
-                    <p class="font-semibold text-gray-800 text-sm">{{ GATEWAY_LABELS[gw].label }}</p>
-                    <p class="text-xs text-gray-400 font-mono">{{ gw }}</p>
+                    <p class="font-semibold text-[var(--a-ink)] text-sm">{{ GATEWAY_LABELS[gw].label }}</p>
+                    <p class="text-xs text-[var(--a-muted)] font-mono">{{ gw }}</p>
                   </td>
                   <td class="py-3 px-4 text-center">
                     <button
@@ -760,7 +760,7 @@ const TABS: { key: Tab; label: string }[] = [
                       class="text-xs font-semibold px-3 py-1 rounded-full border transition-colors disabled:opacity-40 disabled:pointer-events-none"
                       :class="isGatewayActive('retail', gw)
                         ? 'bg-green-50 text-green-700 border-green-200 hover:bg-red-50 hover:text-red-700 hover:border-red-200'
-                        : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-green-50 hover:text-green-700 hover:border-green-200'"
+                        : 'bg-[var(--a-bg)] text-[var(--a-muted)] border-[var(--a-border)] hover:bg-green-50 hover:text-green-700 hover:border-green-200'"
                     >
                       {{ pgRulesUpdating === `retail:${gw}` ? '…' : (isGatewayActive('retail', gw) ? 'Activo' : 'Inactivo') }}
                     </button>
@@ -772,7 +772,7 @@ const TABS: { key: Tab; label: string }[] = [
                       class="text-xs font-semibold px-3 py-1 rounded-full border transition-colors disabled:opacity-40 disabled:pointer-events-none"
                       :class="isGatewayActive('wholesale', gw)
                         ? 'bg-green-50 text-green-700 border-green-200 hover:bg-red-50 hover:text-red-700 hover:border-red-200'
-                        : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-green-50 hover:text-green-700 hover:border-green-200'"
+                        : 'bg-[var(--a-bg)] text-[var(--a-muted)] border-[var(--a-border)] hover:bg-green-50 hover:text-green-700 hover:border-green-200'"
                     >
                       {{ pgRulesUpdating === `wholesale:${gw}` ? '…' : (isGatewayActive('wholesale', gw) ? 'Activo' : 'Inactivo') }}
                     </button>
@@ -791,39 +791,39 @@ const TABS: { key: Tab; label: string }[] = [
 
       <!-- ── Branding ── -->
       <div v-if="activeTab === 'branding'">
-        <div class="bg-white rounded-xl border border-gray-200 p-5">
-          <p class="text-sm font-semibold text-gray-700 mb-4">Branding de la tienda</p>
+        <div class="bg-white rounded-xl border border-[var(--a-border)] p-5">
+          <p class="text-sm font-semibold text-[#45494E] mb-4">Branding de la tienda</p>
           <div class="space-y-4 max-w-sm">
             <div>
-              <label class="block text-xs text-gray-500 mb-1">Nombre de la tienda</label>
+              <label class="block text-xs text-[var(--a-muted)] mb-1">Nombre de la tienda</label>
               <input
                 v-model="brandingForm.storeName"
                 type="text"
-                class="w-full h-9 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]"
+                class="w-full h-10 rounded-lg border border-[#C9CDD2] px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]"
               />
             </div>
             <div class="flex gap-4">
               <div>
-                <label class="block text-xs text-gray-500 mb-1">Color primario</label>
+                <label class="block text-xs text-[var(--a-muted)] mb-1">Color primario</label>
                 <div class="flex items-center gap-1">
-                  <input v-model="brandingForm.primaryColor" type="color" class="h-9 w-10 rounded-lg border border-gray-300 p-0.5 cursor-pointer" />
-                  <input v-model="brandingForm.primaryColor" type="text" class="h-9 w-24 rounded-lg border border-gray-300 px-3 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]" />
+                  <input v-model="brandingForm.primaryColor" type="color" class="h-10 w-10 rounded-lg border border-[#C9CDD2] p-0.5 cursor-pointer" />
+                  <input v-model="brandingForm.primaryColor" type="text" class="h-10 w-24 rounded-lg border border-[#C9CDD2] px-3 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]" />
                 </div>
               </div>
               <div>
-                <label class="block text-xs text-gray-500 mb-1">Color secundario</label>
+                <label class="block text-xs text-[var(--a-muted)] mb-1">Color secundario</label>
                 <div class="flex items-center gap-1">
-                  <input v-model="brandingForm.secondaryColor" type="color" class="h-9 w-10 rounded-lg border border-gray-300 p-0.5 cursor-pointer" />
-                  <input v-model="brandingForm.secondaryColor" type="text" class="h-9 w-24 rounded-lg border border-gray-300 px-3 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)]" />
+                  <input v-model="brandingForm.secondaryColor" type="color" class="h-10 w-10 rounded-lg border border-[#C9CDD2] p-0.5 cursor-pointer" />
+                  <input v-model="brandingForm.secondaryColor" type="text" class="h-10 w-24 rounded-lg border border-[#C9CDD2] px-3 text-sm font-mono focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]" />
                 </div>
               </div>
             </div>
             <!-- Logo -->
             <div>
-              <label class="block text-xs text-gray-500 mb-2">Logo <span class="text-gray-400">(opcional)</span></label>
+              <label class="block text-xs text-[var(--a-muted)] mb-2">Logo <span class="text-[var(--a-muted)]">(opcional)</span></label>
               <!-- Preview actual -->
               <div v-if="brandingForm.logoUrl" class="mb-2 flex items-center gap-3">
-                <img :src="brandingForm.logoUrl" alt="Logo actual" class="h-12 w-auto rounded border border-gray-200 bg-gray-50 p-1" />
+                <img :src="brandingForm.logoUrl" alt="Logo actual" class="h-12 w-auto rounded border border-[var(--a-border)] bg-[var(--a-bg)] p-1" />
                 <button
                   @click="brandingForm.logoUrl = null; saveBranding()"
                   class="text-xs text-red-500 hover:text-red-700"
@@ -832,7 +832,7 @@ const TABS: { key: Tab; label: string }[] = [
               <!-- Upload -->
               <label class="inline-flex items-center gap-2 cursor-pointer">
                 <span
-                  class="h-9 px-4 rounded-lg border border-gray-300 text-sm text-gray-600 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] transition-colors inline-flex items-center gap-2"
+                  class="h-10 px-4 rounded-lg border border-[#C9CDD2] text-sm text-[var(--a-muted)] hover:border-[var(--a-primary)] hover:text-[var(--a-primary)] transition-colors inline-flex items-center gap-2"
                   :class="logoUploading ? 'opacity-50 pointer-events-none' : ''"
                 >
                   <svg v-if="!logoUploading" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -853,13 +853,13 @@ const TABS: { key: Tab; label: string }[] = [
                 />
               </label>
               <p v-if="logoError" class="text-xs text-red-500 mt-1">{{ logoError }}</p>
-              <p class="text-xs text-gray-400 mt-1">JPG, PNG, WebP o GIF · máx. 5 MB</p>
+              <p class="text-xs text-[var(--a-muted)] mt-1">JPG, PNG, WebP o GIF · máx. 5 MB</p>
             </div>
             <div class="flex items-center gap-3 pt-2">
               <button
                 @click="saveBranding"
                 :disabled="brandingSaving"
-                class="h-9 px-5 rounded-lg bg-[var(--color-primary)] text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:pointer-events-none"
+                class="h-10 px-5 rounded-lg bg-[var(--a-primary)] text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:pointer-events-none"
               >{{ brandingSaving ? 'Guardando…' : 'Guardar' }}</button>
               <span v-if="brandingSuccess" class="text-xs text-green-600 font-semibold">✓ Branding actualizado</span>
             </div>
@@ -868,13 +868,13 @@ const TABS: { key: Tab; label: string }[] = [
       </div>
       <!-- ── Point POS ── -->
       <div v-if="activeTab === 'point'">
-        <div class="bg-white rounded-xl border border-gray-200 p-5">
+        <div class="bg-white rounded-xl border border-[var(--a-border)] p-5">
           <div class="flex items-center justify-between mb-4">
-            <p class="text-sm font-semibold text-gray-700">Dispositivos Mercado Pago Point</p>
+            <p class="text-sm font-semibold text-[#45494E]">Dispositivos Mercado Pago Point</p>
             <button
               @click="handleSyncDevices"
               :disabled="syncingDevices"
-              class="h-8 px-4 rounded-lg border border-gray-300 text-sm text-gray-600 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] transition-colors disabled:opacity-40 disabled:pointer-events-none flex items-center gap-2"
+              class="h-8 px-4 rounded-lg border border-[#C9CDD2] text-sm text-[var(--a-muted)] hover:border-[var(--a-primary)] hover:text-[var(--a-primary)] transition-colors disabled:opacity-40 disabled:pointer-events-none flex items-center gap-2"
             >
               <svg v-if="syncingDevices" class="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
@@ -888,7 +888,7 @@ const TABS: { key: Tab; label: string }[] = [
             <div v-for="i in 2" :key="i" class="animate-pulse bg-gray-100 rounded-xl h-12"></div>
           </div>
 
-          <div v-else-if="posDevices.length === 0" class="text-center text-sm text-gray-400 py-6">
+          <div v-else-if="posDevices.length === 0" class="text-center text-sm text-[var(--a-muted)] py-6">
             No hay dispositivos registrados. Hacé clic en "Sincronizar con MP" para importarlos.
           </div>
 
@@ -896,18 +896,18 @@ const TABS: { key: Tab; label: string }[] = [
             <div
               v-for="device in posDevices"
               :key="device.id"
-              class="flex items-center justify-between px-4 py-3 border border-gray-100 rounded-xl"
+              class="flex items-center justify-between px-4 py-3 border border-[var(--a-border)] rounded-xl"
             >
               <div>
-                <p class="font-semibold text-gray-800 text-sm">{{ device.name }}</p>
-                <p class="text-xs text-gray-400 font-mono">{{ device.mp_device_id }} · {{ device.operating_mode }}</p>
+                <p class="font-semibold text-[var(--a-ink)] text-sm">{{ device.name }}</p>
+                <p class="text-xs text-[var(--a-muted)] font-mono">{{ device.mp_device_id }} · {{ device.operating_mode }}</p>
               </div>
               <button
                 @click="togglePosDevice(device)"
                 class="text-xs font-semibold px-3 py-1 rounded-full border transition-colors"
                 :class="device.active
                   ? 'bg-green-50 text-green-700 border-green-200 hover:bg-red-50 hover:text-red-700 hover:border-red-200'
-                  : 'bg-gray-50 text-gray-500 border-gray-200 hover:bg-green-50 hover:text-green-700 hover:border-green-200'"
+                  : 'bg-[var(--a-bg)] text-[var(--a-muted)] border-[var(--a-border)] hover:bg-green-50 hover:text-green-700 hover:border-green-200'"
               >{{ device.active ? 'Activo' : 'Inactivo' }}</button>
             </div>
           </div>

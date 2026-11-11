@@ -82,7 +82,7 @@ const pieOptions = {
 const barData = computed(() => {
   const t = data.value?.ordersByType
   if (!t) return null
-  const primary = configStore.branding.primaryColor
+  const primary = '#0050C3' // azul del panel (var(--a-primary))
   const labels = Object.keys(t).map(k => configStore.purchaseTypeLabel[k] ?? k)
   return {
     labels,
@@ -119,22 +119,22 @@ const barOptions = {
 
 <template>
   <AdminLayout>
-    <div class="max-w-5xl mx-auto">
+    <div class="max-w-5xl">
       <!-- Breadcrumb -->
       <div class="flex items-center gap-3 mb-6">
-        <h1 class="text-2xl font-bold text-gray-900">Tablero</h1>
+        <h1 class="text-[26px] font-bold">Tablero</h1>
       </div>
 
       <!-- Skeleton -->
       <div v-if="loading" class="space-y-4">
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div v-for="i in 3" :key="i" class="animate-pulse bg-white rounded-2xl border border-gray-200 h-24"></div>
+          <div v-for="i in 3" :key="i" class="animate-pulse bg-white rounded-xl border border-[var(--a-border)] h-24"></div>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div class="animate-pulse bg-white rounded-2xl border border-gray-200 h-64"></div>
-          <div class="animate-pulse bg-white rounded-2xl border border-gray-200 h-64"></div>
+          <div class="animate-pulse bg-white rounded-xl border border-[var(--a-border)] h-64"></div>
+          <div class="animate-pulse bg-white rounded-xl border border-[var(--a-border)] h-64"></div>
         </div>
-        <div class="animate-pulse bg-white rounded-2xl border border-gray-200 h-64"></div>
+        <div class="animate-pulse bg-white rounded-xl border border-[var(--a-border)] h-64"></div>
       </div>
 
       <p v-else-if="error" class="text-red-500 text-sm">{{ error }}</p>
@@ -142,33 +142,33 @@ const barOptions = {
       <template v-else-if="data">
         <!-- Métricas -->
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-            <p class="text-sm text-gray-500 mb-1">Total Pedidos</p>
-            <p class="text-3xl font-bold text-gray-900">{{ data.totalOrders }}</p>
+          <div class="bg-white rounded-xl border border-[var(--a-border)] p-5">
+            <p class="text-sm text-[var(--a-muted)] mb-1">Total Pedidos</p>
+            <p class="text-3xl font-bold text-[var(--a-ink)]">{{ data.totalOrders }}</p>
           </div>
-          <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-            <p class="text-sm text-gray-500 mb-1">Ventas totales</p>
-            <p class="text-3xl font-bold text-gray-900">{{ formatCurrency(data.totalRevenue) }}</p>
+          <div class="bg-white rounded-xl border border-[var(--a-border)] p-5">
+            <p class="text-sm text-[var(--a-muted)] mb-1">Ventas totales</p>
+            <p class="text-3xl font-bold text-[var(--a-ink)]">{{ formatCurrency(data.totalRevenue) }}</p>
           </div>
-          <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-            <p class="text-sm text-gray-500 mb-1">Últimos 30 días</p>
-            <p class="text-3xl font-bold text-[var(--color-primary)]">{{ formatCurrency(data.revenueLast30d) }}</p>
+          <div class="bg-white rounded-xl border border-[var(--a-border)] p-5">
+            <p class="text-sm text-[var(--a-muted)] mb-1">Últimos 30 días</p>
+            <p class="text-3xl font-bold text-[var(--a-primary)]">{{ formatCurrency(data.revenueLast30d) }}</p>
           </div>
         </div>
 
         <!-- Gráficos -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
           <!-- Torta: pedidos por estado -->
-          <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-            <p class="text-sm font-semibold text-gray-700 mb-4">Pedidos por estado</p>
+          <div class="bg-white rounded-xl border border-[var(--a-border)] p-5">
+            <p class="text-sm font-semibold text-[#45494E] mb-4">Pedidos por estado</p>
             <div class="h-56">
               <Pie v-if="pieData" :data="pieData" :options="pieOptions" />
             </div>
           </div>
 
           <!-- Barras: pedidos por tipo -->
-          <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-            <p class="text-sm font-semibold text-gray-700 mb-4">Pedidos por tipo</p>
+          <div class="bg-white rounded-xl border border-[var(--a-border)] p-5">
+            <p class="text-sm font-semibold text-[#45494E] mb-4">Pedidos por tipo</p>
             <div class="h-56">
               <Bar v-if="barData" :data="barData" :options="barOptions" />
             </div>
@@ -176,14 +176,14 @@ const barOptions = {
         </div>
 
         <!-- Pedidos recientes -->
-        <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-          <div class="px-5 py-4 border-b border-gray-100">
-            <p class="text-sm font-semibold text-gray-700">Últimos pedidos</p>
+        <div class="bg-white rounded-xl border border-[var(--a-border)] overflow-hidden">
+          <div class="px-5 py-4 border-b border-[var(--a-border)]">
+            <p class="text-sm font-semibold text-[#45494E]">Últimos pedidos</p>
           </div>
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
               <thead>
-                <tr class="text-left text-xs text-gray-500 border-b border-gray-100">
+                <tr class="text-left text-xs text-[var(--a-muted)] border-b border-[var(--a-border)]">
                   <th class="px-5 py-3 font-medium">Cliente</th>
                   <th class="px-5 py-3 font-medium">Tipo</th>
                   <th class="px-5 py-3 font-medium">Estado</th>
@@ -195,20 +195,20 @@ const barOptions = {
                 <tr
                   v-for="order in data.recentOrders"
                   :key="order.id"
-                  class="border-b border-gray-50 hover:bg-gray-50 transition-colors"
+                  class="border-b border-[var(--a-border)] hover:bg-[var(--a-bg)] transition-colors"
                 >
-                  <td class="px-5 py-3 text-gray-800 truncate max-w-[180px]">{{ order.customerEmail }}</td>
-                  <td class="px-5 py-3 text-gray-600">{{ configStore.purchaseTypeLabel[order.purchaseType] ?? order.purchaseType }}</td>
+                  <td class="px-5 py-3 text-[var(--a-ink)] truncate max-w-[180px]">{{ order.customerEmail }}</td>
+                  <td class="px-5 py-3 text-[var(--a-muted)]">{{ configStore.purchaseTypeLabel[order.purchaseType] ?? order.purchaseType }}</td>
                   <td class="px-5 py-3">
                     <span
                       class="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold border"
-                      :class="statusColors[order.status] ?? 'bg-gray-50 text-gray-600 border-gray-200'"
+                      :class="statusColors[order.status] ?? 'bg-[var(--a-bg)] text-[var(--a-muted)] border-[var(--a-border)]'"
                     >
                       {{ statusLabels[order.status] ?? order.status }}
                     </span>
                   </td>
-                  <td class="px-5 py-3 text-right font-semibold text-gray-800">{{ formatCurrency(order.totalAmount) }}</td>
-                  <td class="px-5 py-3 text-gray-500">{{ formatDate(order.createdAt) }}</td>
+                  <td class="px-5 py-3 text-right font-semibold text-[var(--a-ink)]">{{ formatCurrency(order.totalAmount) }}</td>
+                  <td class="px-5 py-3 text-[var(--a-muted)]">{{ formatDate(order.createdAt) }}</td>
                 </tr>
               </tbody>
             </table>

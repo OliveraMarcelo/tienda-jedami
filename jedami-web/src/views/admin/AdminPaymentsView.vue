@@ -129,19 +129,19 @@ async function handleConfirmTransfer(orderId: number) {
 
 <template>
   <AdminLayout>
-    <div class="max-w-5xl mx-auto">
+    <div class="max-w-5xl">
       <!-- Breadcrumb -->
       <div class="flex items-center gap-3 mb-6">
-        <h1 class="text-2xl font-bold text-gray-900">Pagos</h1>
+        <h1 class="text-[26px] font-bold">Pagos</h1>
       </div>
 
       <!-- Filtros -->
-      <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 mb-4 flex flex-wrap gap-3 items-end">
+      <div class="bg-white rounded-xl border border-[var(--a-border)] p-4 mb-4 flex flex-wrap gap-3 items-end">
         <div>
-          <label class="block text-xs text-gray-500 mb-1">Estado</label>
+          <label class="block text-xs text-[var(--a-muted)] mb-1">Estado</label>
           <select
             v-model="filterStatus"
-            class="h-9 rounded-lg border border-gray-300 px-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#E91E8C]"
+            class="h-10 rounded-lg border border-[#C9CDD2] px-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]"
           >
             <option value="">Todos</option>
             <option value="approved">Aprobado</option>
@@ -150,24 +150,24 @@ async function handleConfirmTransfer(orderId: number) {
           </select>
         </div>
         <div>
-          <label class="block text-xs text-gray-500 mb-1">Desde</label>
+          <label class="block text-xs text-[var(--a-muted)] mb-1">Desde</label>
           <input
             v-model="filterDateFrom"
             type="date"
-            class="h-9 rounded-lg border border-gray-300 px-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#E91E8C]"
+            class="h-10 rounded-lg border border-[#C9CDD2] px-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]"
           />
         </div>
         <div>
-          <label class="block text-xs text-gray-500 mb-1">Hasta</label>
+          <label class="block text-xs text-[var(--a-muted)] mb-1">Hasta</label>
           <input
             v-model="filterDateTo"
             type="date"
-            class="h-9 rounded-lg border border-gray-300 px-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#E91E8C]"
+            class="h-10 rounded-lg border border-[#C9CDD2] px-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]"
           />
         </div>
         <button
           @click="applyFilters"
-          class="h-9 px-4 rounded-lg bg-[#E91E8C] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+          class="h-10 px-4 rounded-lg bg-[var(--a-primary)] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
         >
           Filtrar
         </button>
@@ -175,18 +175,18 @@ async function handleConfirmTransfer(orderId: number) {
 
       <!-- Skeleton -->
       <div v-if="loading" class="space-y-3">
-        <div v-for="i in 5" :key="i" class="animate-pulse bg-white rounded-2xl border border-gray-200 h-14"></div>
+        <div v-for="i in 5" :key="i" class="animate-pulse bg-white rounded-xl border border-[var(--a-border)] h-14"></div>
       </div>
 
       <p v-else-if="error" class="text-red-500 text-sm">{{ error }}</p>
 
       <template v-else>
         <!-- Tabla -->
-        <div class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mb-4">
+        <div class="bg-white rounded-xl border border-[var(--a-border)] overflow-hidden mb-4">
           <div class="overflow-x-auto">
             <table class="w-full text-sm">
               <thead>
-                <tr class="text-left text-xs text-gray-500 border-b border-gray-100">
+                <tr class="text-left text-xs text-[var(--a-muted)] border-b border-[var(--a-border)]">
                   <th class="px-4 py-3 font-medium">#</th>
                   <th class="px-4 py-3 font-medium">Cliente</th>
                   <th class="px-4 py-3 font-medium">Tipo compra</th>
@@ -201,17 +201,17 @@ async function handleConfirmTransfer(orderId: number) {
                 <tr
                   v-for="p in payments"
                   :key="p.id"
-                  class="border-b border-gray-50 hover:bg-gray-50 transition-colors"
+                  class="border-b border-[var(--a-border)] hover:bg-[var(--a-bg)] transition-colors"
                 >
-                  <td class="px-4 py-3 text-gray-400 text-xs">{{ p.id }}</td>
+                  <td class="px-4 py-3 text-[var(--a-muted)] text-xs">{{ p.id }}</td>
                   <td class="px-4 py-3 max-w-[220px]">
-                    <p class="text-gray-800 truncate">{{ p.customerEmail }}</p>
+                    <p class="text-[var(--a-ink)] truncate">{{ p.customerEmail }}</p>
                     <p v-if="p.notes" class="text-xs text-amber-600 italic truncate mt-0.5" :title="p.notes">
                       "{{ p.notes }}"
                     </p>
                   </td>
-                  <td class="px-4 py-3 text-gray-600">{{ configStore.purchaseTypeLabel[p.purchaseType] ?? p.purchaseType }}</td>
-                  <td class="px-4 py-3 text-right font-semibold text-gray-800">{{ formatCurrency(p.totalAmount) }}</td>
+                  <td class="px-4 py-3 text-[var(--a-muted)]">{{ configStore.purchaseTypeLabel[p.purchaseType] ?? p.purchaseType }}</td>
+                  <td class="px-4 py-3 text-right font-semibold text-[var(--a-ink)]">{{ formatCurrency(p.totalAmount) }}</td>
                   <td class="px-4 py-3">
                     <span
                       class="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold border"
@@ -225,12 +225,12 @@ async function handleConfirmTransfer(orderId: number) {
                   <td class="px-4 py-3">
                     <span
                       class="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold border"
-                      :class="paymentStatusColors[p.paymentStatus] ?? 'bg-gray-50 text-gray-600 border-gray-200'"
+                      :class="paymentStatusColors[p.paymentStatus] ?? 'bg-[var(--a-bg)] text-[var(--a-muted)] border-[var(--a-border)]'"
                     >
                       {{ paymentStatusLabels[p.paymentStatus] ?? p.paymentStatus }}
                     </span>
                   </td>
-                  <td class="px-4 py-3 text-gray-500">{{ formatDate(p.paidAt) }}</td>
+                  <td class="px-4 py-3 text-[var(--a-muted)]">{{ formatDate(p.paidAt) }}</td>
                   <td class="px-4 py-3">
                     <div class="flex flex-col gap-1">
                       <!-- Cancelar (solo pending) -->
@@ -241,10 +241,10 @@ async function handleConfirmTransfer(orderId: number) {
                           class="text-xs text-red-500 hover:text-red-700 font-medium text-left"
                         >Cancelar</button>
                         <div v-else class="flex flex-col gap-0.5">
-                          <p class="text-xs text-gray-600">¿Confirmar?</p>
+                          <p class="text-xs text-[var(--a-muted)]">¿Confirmar?</p>
                           <div class="flex gap-2">
                             <button @click="doCancel(p.orderId)" class="text-xs text-red-600 font-semibold hover:underline">Sí</button>
-                            <button @click="confirmingCancel = null" class="text-xs text-gray-500 hover:underline">No</button>
+                            <button @click="confirmingCancel = null" class="text-xs text-[var(--a-muted)] hover:underline">No</button>
                           </div>
                           <p v-if="cancelError[p.orderId]" class="text-xs text-red-500">{{ cancelError[p.orderId] }}</p>
                         </div>
@@ -271,7 +271,7 @@ async function handleConfirmTransfer(orderId: number) {
                   </td>
                 </tr>
                 <tr v-if="payments.length === 0">
-                  <td colspan="8" class="px-4 py-8 text-center text-gray-400 text-sm">No hay pagos para mostrar.</td>
+                  <td colspan="8" class="px-4 py-8 text-center text-[var(--a-muted)] text-sm">No hay pagos para mostrar.</td>
                 </tr>
               </tbody>
             </table>
@@ -279,20 +279,20 @@ async function handleConfirmTransfer(orderId: number) {
         </div>
 
         <!-- Paginación -->
-        <div class="flex items-center justify-between text-sm text-gray-500">
+        <div class="flex items-center justify-between text-sm text-[var(--a-muted)]">
           <span>{{ total }} resultados — Página {{ page }} de {{ pages || 1 }}</span>
           <div class="flex gap-2">
             <button
               :disabled="page <= 1"
               @click="goToPage(page - 1)"
-              class="h-8 px-3 rounded-lg border border-gray-300 hover:border-[#E91E8C] hover:text-[#E91E8C] transition-colors disabled:opacity-40 disabled:pointer-events-none"
+              class="h-8 px-3 rounded-lg border border-[#C9CDD2] hover:border-[var(--a-primary)] hover:text-[var(--a-primary)] transition-colors disabled:opacity-40 disabled:pointer-events-none"
             >
               ← Anterior
             </button>
             <button
               :disabled="page >= pages"
               @click="goToPage(page + 1)"
-              class="h-8 px-3 rounded-lg border border-gray-300 hover:border-[#E91E8C] hover:text-[#E91E8C] transition-colors disabled:opacity-40 disabled:pointer-events-none"
+              class="h-8 px-3 rounded-lg border border-[#C9CDD2] hover:border-[var(--a-primary)] hover:text-[var(--a-primary)] transition-colors disabled:opacity-40 disabled:pointer-events-none"
             >
               Siguiente →
             </button>

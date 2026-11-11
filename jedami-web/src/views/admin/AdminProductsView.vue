@@ -301,7 +301,7 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
       <div v-for="n in 5" :key="n" class="h-12 bg-gray-200 rounded-xl animate-pulse" />
     </div>
 
-    <div v-else-if="!adminStore.error && adminStore.products.length === 0" class="text-center py-16 text-gray-400">
+    <div v-else-if="!adminStore.error && adminStore.products.length === 0" class="text-center py-16 text-[var(--a-muted)]">
       No hay productos. Creá el primero.
     </div>
 
@@ -335,20 +335,20 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
       <table class="w-full min-w-[820px] text-sm">
         <thead class="border-y border-[var(--a-border)] bg-[#F9FAFB]">
           <tr>
-            <th class="text-left px-4 py-3 font-semibold text-gray-700 w-12">Foto</th>
-            <th class="text-left px-4 py-3 font-semibold text-gray-700">Nombre</th>
-            <th class="text-left px-4 py-3 font-semibold text-gray-700 hidden md:table-cell">Categoría</th>
-            <th class="text-right px-4 py-3 font-semibold text-gray-700 hidden lg:table-cell">Min.</th>
-            <th class="text-right px-4 py-3 font-semibold text-gray-700 hidden lg:table-cell">May.</th>
-            <th class="text-center px-4 py-3 font-semibold text-gray-700">Stock</th>
-            <th class="text-center px-4 py-3 font-semibold text-gray-700">Visible</th>
+            <th class="text-left px-4 py-3 font-semibold text-[#45494E] w-12">Foto</th>
+            <th class="text-left px-4 py-3 font-semibold text-[#45494E]">Nombre</th>
+            <th class="text-left px-4 py-3 font-semibold text-[#45494E] hidden md:table-cell">Categoría</th>
+            <th class="text-right px-4 py-3 font-semibold text-[#45494E] hidden lg:table-cell">Min.</th>
+            <th class="text-right px-4 py-3 font-semibold text-[#45494E] hidden lg:table-cell">May.</th>
+            <th class="text-center px-4 py-3 font-semibold text-[#45494E]">Stock</th>
+            <th class="text-center px-4 py-3 font-semibold text-[#45494E]">Visible</th>
             <th class="px-4 py-3"><span class="sr-only">Acciones</span></th>
           </tr>
         </thead>
         <tbody>
           <template v-for="product in filteredProducts" :key="product.id">
             <!-- Fila principal del producto -->
-            <tr class="border-b border-gray-100 hover:bg-gray-50 transition-colors" :class="{ 'opacity-60': product.active === false }">
+            <tr class="border-b border-[var(--a-border)] hover:bg-[var(--a-bg)] transition-colors" :class="{ 'opacity-60': product.active === false }">
               <td class="px-4 py-3">
                 <img
                   v-if="product.imageUrl"
@@ -356,25 +356,25 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
                   :alt="product.name"
                   class="w-12 h-12 object-cover object-top rounded-lg border border-[var(--a-border)]"
                 />
-                <div v-else class="w-12 h-12 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center text-gray-400 text-xs">
+                <div v-else class="w-12 h-12 bg-gray-100 rounded-lg border border-[var(--a-border)] flex items-center justify-center text-[var(--a-muted)] text-xs">
                   Sin foto
                 </div>
               </td>
-              <td class="px-4 py-3 font-medium text-gray-900">
+              <td class="px-4 py-3 font-medium text-[var(--a-ink)]">
                 {{ product.name }}
                 <span
                   v-if="product.active === false"
-                  class="ml-2 px-2 py-0.5 rounded-full bg-gray-200 text-gray-600 text-[10px] font-semibold uppercase align-middle"
+                  class="ml-2 px-2 py-0.5 rounded-full bg-gray-200 text-[var(--a-muted)] text-[10px] font-semibold uppercase align-middle"
                 >Oculto</span>
               </td>
-              <td class="px-4 py-3 text-gray-500 hidden md:table-cell">{{ product.categoryName ?? '—' }}</td>
-              <td class="px-4 py-3 text-right text-gray-700 hidden lg:table-cell">
+              <td class="px-4 py-3 text-[var(--a-muted)] hidden md:table-cell">{{ product.categoryName ?? '—' }}</td>
+              <td class="px-4 py-3 text-right text-[#45494E] hidden lg:table-cell">
                 {{ product.retailPrice != null ? `$${product.retailPrice.toLocaleString('es-AR', { maximumFractionDigits: 0 })}` : '—' }}
               </td>
-              <td class="px-4 py-3 text-right text-gray-500 hidden lg:table-cell">
+              <td class="px-4 py-3 text-right text-[var(--a-muted)] hidden lg:table-cell">
                 {{ product.wholesalePrice != null ? `$${product.wholesalePrice.toLocaleString('es-AR', { maximumFractionDigits: 0 })}` : '—' }}
               </td>
-              <td class="px-4 py-3 text-center text-gray-600">{{ totalStock(product) }}</td>
+              <td class="px-4 py-3 text-center text-[var(--a-muted)]">{{ totalStock(product) }}</td>
               <td class="px-4 py-3 text-center">
                 <button
                   type="button"
@@ -400,7 +400,7 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
                   <button
                     type="button"
                     @click="openEditProduct(product)"
-                    class="whitespace-nowrap min-h-9 px-3 rounded-lg border border-[#C9CDD2] text-xs font-semibold text-[var(--a-ink)] hover:bg-[var(--a-bg)] transition-colors"
+                    class="whitespace-nowrap min-h-10 px-3 rounded-lg border border-[#C9CDD2] text-xs font-semibold text-[var(--a-ink)] hover:bg-[var(--a-bg)] transition-colors"
                   >
                     Editar
                   </button>
@@ -408,7 +408,7 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
                     type="button"
                     @click="toggleVariants(product)"
                     :aria-expanded="expandedProducts.has(product.id)"
-                    class="whitespace-nowrap min-h-9 px-3 rounded-lg border border-[#C9CDD2] text-xs font-semibold text-[var(--a-ink)] hover:bg-[var(--a-bg)] transition-colors"
+                    class="whitespace-nowrap min-h-10 px-3 rounded-lg border border-[#C9CDD2] text-xs font-semibold text-[var(--a-ink)] hover:bg-[var(--a-bg)] transition-colors"
                   >
                     {{ expandedProducts.has(product.id) ? '▲' : '▶' }} Variantes ({{ product.variants.length }})
                   </button>
@@ -416,13 +416,13 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
                     type="button"
                     @click="toggleDiscounts(product.id)"
                     :aria-expanded="expandedDiscounts.has(product.id)"
-                    class="whitespace-nowrap min-h-9 px-3 rounded-lg border border-[#C9CDD2] text-xs font-semibold text-[var(--a-ink)] hover:bg-[var(--a-bg)] transition-colors"
+                    class="whitespace-nowrap min-h-10 px-3 rounded-lg border border-[#C9CDD2] text-xs font-semibold text-[var(--a-ink)] hover:bg-[var(--a-bg)] transition-colors"
                   >
                     {{ expandedDiscounts.has(product.id) ? '▲' : '▶' }} Descuentos
                   </button>
                   <span
                     v-if="hasActiveStock(product)"
-                    class="whitespace-nowrap inline-flex items-center min-h-9 px-3 rounded-lg text-xs font-semibold text-gray-400 cursor-not-allowed"
+                    class="whitespace-nowrap inline-flex items-center min-h-10 px-3 rounded-lg text-xs font-semibold text-[var(--a-muted)] cursor-not-allowed"
                     title="No se puede eliminar: tiene stock activo"
                   >
                     Eliminar
@@ -431,7 +431,7 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
                     v-else
                     type="button"
                     @click="handleDeleteProduct(product)"
-                    class="whitespace-nowrap min-h-9 px-3 rounded-lg text-xs font-semibold text-red-700 hover:bg-red-50 transition-colors"
+                    class="whitespace-nowrap min-h-10 px-3 rounded-lg text-xs font-semibold text-red-700 hover:bg-red-50 transition-colors"
                   >
                     Eliminar
                   </button>
@@ -443,23 +443,23 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
             <tr v-if="expandedProducts.has(product.id)" class="bg-blue-50/40">
               <td colspan="8" class="px-6 py-3">
                 <div class="rounded-xl border border-blue-100 overflow-hidden">
-                  <div v-if="product.variants.length === 0" class="px-4 py-4 text-center text-gray-400 italic text-xs bg-white">
+                  <div v-if="product.variants.length === 0" class="px-4 py-4 text-center text-[var(--a-muted)] italic text-xs bg-white">
                     Sin variantes
                   </div>
                   <div v-else class="overflow-x-auto">
                     <table class="w-full text-xs border-collapse">
                       <thead class="bg-blue-100/60 border-b border-blue-100">
                         <tr>
-                          <th class="px-3 py-2 text-left font-semibold text-gray-700 whitespace-nowrap">Talle \ Color</th>
+                          <th class="px-3 py-2 text-left font-semibold text-[#45494E] whitespace-nowrap">Talle \ Color</th>
                           <th
                             v-for="color in getProductColors(product)"
                             :key="color.id"
-                            class="px-3 py-2 text-center font-semibold text-gray-700 whitespace-nowrap"
+                            class="px-3 py-2 text-center font-semibold text-[#45494E] whitespace-nowrap"
                           >
                             <div class="flex items-center justify-center gap-1">
                               <span
                                 v-if="color.hexCode"
-                                class="w-2.5 h-2.5 rounded-full border border-gray-300 flex-none"
+                                class="w-2.5 h-2.5 rounded-full border border-[#C9CDD2] flex-none"
                                 :style="{ backgroundColor: color.hexCode }"
                               />
                               {{ color.name }}
@@ -473,7 +473,7 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
                           :key="size.id"
                           class="border-t border-blue-100 bg-white hover:bg-blue-50/30 transition-colors"
                         >
-                          <td class="px-3 py-2 font-semibold text-gray-700 whitespace-nowrap">{{ size.label }}</td>
+                          <td class="px-3 py-2 font-semibold text-[#45494E] whitespace-nowrap">{{ size.label }}</td>
                           <td
                             v-for="color in getProductColors(product)"
                             :key="color.id"
@@ -486,7 +486,7 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
                                 step="1"
                                 :value="editMap.get(getVariantByCell(product, size.id, color.id)!.id)?.stock ?? getVariantByCell(product, size.id, color.id)!.stock.quantity"
                                 @input="editMap.get(getVariantByCell(product, size.id, color.id)!.id)!.stock = Number(($event.target as HTMLInputElement).value)"
-                                class="w-14 px-1 py-0.5 border border-gray-300 rounded text-center focus:outline-none focus:ring-1 focus:ring-[#1565C0]"
+                                class="w-14 px-1 py-0.5 border border-[#C9CDD2] rounded text-center focus:outline-none focus:ring-1 focus:ring-[#1565C0]"
                               />
                               <button
                                 @click="handleDeleteVariant(product.id, getVariantByCell(product, size.id, color.id)!.id, `${size.label} / ${color.name}`)"
@@ -498,7 +498,7 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
                               v-else
                               @click="handleAddVariantFromCell(product.id, size.id, color.id)"
                               :disabled="creatingCell.has(`${product.id}-${size.id}-${color.id}`)"
-                              class="w-14 h-6 rounded border border-dashed border-gray-300 text-gray-400 text-xs hover:border-[#E91E8C] hover:text-[#E91E8C] transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                              class="w-14 h-6 rounded border border-dashed border-[#C9CDD2] text-[var(--a-muted)] text-xs hover:border-[var(--a-primary)] hover:text-[var(--a-primary)] transition-colors disabled:opacity-40 disabled:pointer-events-none"
                               title="Agregar esta combinación con stock 0"
                             >
                               {{ creatingCell.has(`${product.id}-${size.id}-${color.id}`) ? '…' : '+' }}
@@ -508,8 +508,8 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
                       </tbody>
                       <tfoot>
                         <tr class="border-t-2 border-blue-100 bg-blue-50/60">
-                          <td class="px-3 py-2 text-gray-500 font-semibold" :colspan="getProductColors(product).length + 1">
-                            Total de stock: <span class="text-gray-800 font-bold">{{ totalStock(product) }}</span>
+                          <td class="px-3 py-2 text-[var(--a-muted)] font-semibold" :colspan="getProductColors(product).length + 1">
+                            Total de stock: <span class="text-[var(--a-ink)] font-bold">{{ totalStock(product) }}</span>
                           </td>
                         </tr>
                       </tfoot>
@@ -518,7 +518,7 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
                   <div class="px-3 py-2 bg-white border-t border-blue-100 flex items-center gap-3">
                     <button
                       @click="openAddVariant(product.id)"
-                      class="px-3 py-1 rounded-lg border border-[#E91E8C] text-xs font-medium text-[#E91E8C] hover:bg-[#E91E8C] hover:text-white transition-colors"
+                      class="px-3 py-1 rounded-lg border border-[var(--a-primary)] text-xs font-medium text-[var(--a-primary)] hover:bg-[var(--a-primary)] hover:text-white transition-colors"
                     >
                       + Agregar variante
                     </button>

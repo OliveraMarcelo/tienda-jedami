@@ -147,35 +147,35 @@ async function handleSubmit() {
 
 <template>
   <Dialog :open="open" @update:open="$emit('update:open', $event)">
-    <h2 class="text-lg font-bold text-gray-900 mb-4">{{ title() }}</h2>
+    <h2 class="text-lg font-bold text-[var(--a-ink)] mb-4">{{ title() }}</h2>
 
     <form @submit.prevent="handleSubmit" class="space-y-4">
       <div>
-        <label class="block text-sm font-semibold text-gray-700 mb-1">Nombre *</label>
+        <label class="block text-sm font-semibold text-[#45494E] mb-1">Nombre *</label>
         <input
           v-model="name"
           type="text"
           placeholder="Nombre del producto"
-          class="flex h-9 w-full rounded-md border border-gray-300 px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#E91E8C]"
+          class="flex h-10 w-full rounded-md border border-[#C9CDD2] px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--a-primary)]"
         />
       </div>
 
       <div>
-        <label class="block text-sm font-semibold text-gray-700 mb-1">Descripción</label>
+        <label class="block text-sm font-semibold text-[#45494E] mb-1">Descripción</label>
         <textarea
           v-model="description"
           rows="3"
           placeholder="Descripción opcional"
-          class="flex w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm resize-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#E91E8C]"
+          class="flex w-full rounded-md border border-[#C9CDD2] px-3 py-2 text-sm resize-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--a-primary)]"
         />
       </div>
 
       <!-- Categoría -->
       <div>
-        <label class="block text-sm font-semibold text-gray-700 mb-1">Categoría</label>
+        <label class="block text-sm font-semibold text-[#45494E] mb-1">Categoría</label>
         <select
           v-model="categoryId"
-          class="flex h-9 w-full rounded-md border border-gray-300 px-3 py-1 text-sm shadow-sm bg-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#E91E8C]"
+          class="flex h-10 w-full rounded-md border border-[#C9CDD2] px-3 py-1 text-sm bg-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--a-primary)]"
         >
           <option :value="null">Sin categoría</option>
           <option v-for="cat in productsStore.categories" :key="cat.id" :value="cat.id">
@@ -187,45 +187,45 @@ async function handleSubmit() {
       <!-- Precios -->
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-1">Precio minorista (ARS) *</label>
+          <label class="block text-sm font-semibold text-[#45494E] mb-1">Precio minorista (ARS) *</label>
           <input
             v-model="retailPrice"
             type="number"
             min="0"
             step="1"
             placeholder="0"
-            class="flex h-9 w-full rounded-md border border-gray-300 px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#E91E8C]"
+            class="flex h-10 w-full rounded-md border border-[#C9CDD2] px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--a-primary)]"
           />
         </div>
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-1">Precio mayorista (ARS)</label>
+          <label class="block text-sm font-semibold text-[#45494E] mb-1">Precio mayorista (ARS)</label>
           <input
             v-model="wholesalePrice"
             type="number"
             min="0"
             step="1"
             placeholder="Opcional"
-            class="flex h-9 w-full rounded-md border border-gray-300 px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#E91E8C]"
+            class="flex h-10 w-full rounded-md border border-[#C9CDD2] px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--a-primary)]"
           />
         </div>
       </div>
 
       <!-- Fotos -->
       <div>
-        <label class="block text-sm font-semibold text-gray-700 mb-2">Fotos</label>
+        <label class="block text-sm font-semibold text-[#45494E] mb-2">Fotos</label>
 
         <div v-if="localImages.length > 0" class="mb-3">
           <div class="flex gap-2 flex-wrap">
             <div
               v-for="(img, index) in localImages"
               :key="img.id"
-              class="relative w-20 h-20 rounded-lg overflow-hidden border border-gray-200 group"
+              class="relative w-20 h-20 rounded-lg overflow-hidden border border-[var(--a-border)] group"
             >
               <img :src="img.url" class="w-full h-full object-cover" />
               <!-- Badge Principal -->
               <span
                 v-if="index === 0"
-                class="absolute bottom-0 left-0 right-0 text-center text-[9px] font-semibold bg-[#E91E8C] text-white py-0.5 leading-tight"
+                class="absolute bottom-0 left-0 right-0 text-center text-[9px] font-semibold bg-[var(--a-primary)] text-white py-0.5 leading-tight"
               >Principal</span>
               <!-- Botón eliminar -->
               <button
@@ -258,7 +258,7 @@ async function handleSubmit() {
               type="button"
               @click="saveImageOrder"
               :disabled="reorderSaving"
-              class="text-xs px-3 py-1 rounded border border-gray-300 font-medium text-gray-700 hover:border-[#E91E8C] hover:text-[#E91E8C] transition-colors disabled:opacity-50 disabled:pointer-events-none"
+              class="text-xs px-3 py-1 rounded border border-[#C9CDD2] font-medium text-[#45494E] hover:border-[var(--a-primary)] hover:text-[var(--a-primary)] transition-colors disabled:opacity-50 disabled:pointer-events-none"
             >
               {{ reorderSaving ? 'Guardando...' : 'Guardar orden' }}
             </button>
@@ -266,16 +266,16 @@ async function handleSubmit() {
             <span v-if="reorderError" class="text-xs text-red-500">{{ reorderError }}</span>
           </div>
         </div>
-        <p v-else-if="product" class="text-xs text-gray-400 mb-2">Sin fotos. Agregá la primera.</p>
-        <p v-else class="text-xs text-gray-500 mb-2">Hacé clic en <strong>Guardar</strong> — el producto se crea y podés subir fotos sin cerrar este panel.</p>
+        <p v-else-if="product" class="text-xs text-[var(--a-muted)] mb-2">Sin fotos. Agregá la primera.</p>
+        <p v-else class="text-xs text-[var(--a-muted)] mb-2">Hacé clic en <strong>Guardar</strong> — el producto se crea y podés subir fotos sin cerrar este panel.</p>
 
         <div v-if="product">
           <label
             :class="[
-              'flex items-center justify-center gap-2 h-9 px-4 rounded-md border-2 border-dashed text-sm font-medium cursor-pointer transition-colors',
+              'flex items-center justify-center gap-2 h-10 px-4 rounded-md border-2 border-dashed text-sm font-medium cursor-pointer transition-colors',
               imageLoading
-                ? 'border-gray-200 text-gray-400 cursor-not-allowed'
-                : 'border-gray-300 text-gray-600 hover:border-[#E91E8C] hover:text-[#E91E8C]',
+                ? 'border-[var(--a-border)] text-[var(--a-muted)] cursor-not-allowed'
+                : 'border-[#C9CDD2] text-[var(--a-muted)] hover:border-[var(--a-primary)] hover:text-[var(--a-primary)]',
             ]"
           >
             <span v-if="imageLoading">Subiendo...</span>
@@ -298,14 +298,14 @@ async function handleSubmit() {
         <button
           type="button"
           @click="$emit('update:open', false)"
-          class="px-4 py-2 rounded-md border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          class="px-4 py-2 rounded-md border border-[#C9CDD2] text-sm font-medium text-[#45494E] hover:bg-[var(--a-bg)] transition-colors"
         >
           Cancelar
         </button>
         <button
           type="submit"
           :disabled="loading || !isValid()"
-          class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-[#E91E8C] text-white text-sm font-semibold shadow hover:opacity-90 transition-opacity disabled:opacity-50 disabled:pointer-events-none"
+          class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-md bg-[var(--a-primary)] text-white text-sm font-semibold shadow hover:opacity-90 transition-opacity disabled:opacity-50 disabled:pointer-events-none"
         >
           <svg v-if="loading" class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />

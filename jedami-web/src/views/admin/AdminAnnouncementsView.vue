@@ -158,78 +158,78 @@ const audienceBadgeClass: Record<string, string> = {
   <AdminLayout>
     <div class="flex items-center justify-between mb-6">
       <div class="flex items-center gap-3">
-        <h1 class="text-2xl font-bold text-gray-900">Anuncios</h1>
+        <h1 class="text-[26px] font-bold">Anuncios</h1>
       </div>
       <button
         @click="showForm = !showForm"
-        class="px-4 py-2 rounded-xl bg-[var(--color-primary,#E91E8C)] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+        class="px-4 py-2 rounded-xl bg-[var(--a-primary)] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
       >
         {{ showForm ? 'Cancelar' : '+ Nuevo anuncio' }}
       </button>
     </div>
 
     <!-- Formulario de creación -->
-    <div v-if="showForm" class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 mb-6 space-y-4">
-      <h2 class="font-semibold text-gray-800">Nuevo anuncio</h2>
+    <div v-if="showForm" class="bg-white rounded-xl border border-[var(--a-border)] p-6 mb-6 space-y-4">
+      <h2 class="font-semibold text-[var(--a-ink)]">Nuevo anuncio</h2>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <!-- Título -->
         <div class="sm:col-span-2">
-          <label class="block text-xs font-semibold text-gray-600 mb-1">Título *</label>
+          <label class="block text-xs font-semibold text-[var(--a-muted)] mb-1">Título *</label>
           <input
             v-model="form.title"
             type="text"
             placeholder="Título del anuncio"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--color-primary,#E91E8C)]"
+            class="w-full rounded-lg border border-[#C9CDD2] px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]"
           />
         </div>
 
         <!-- Body -->
         <div class="sm:col-span-2">
-          <label class="block text-xs font-semibold text-gray-600 mb-1">Texto</label>
+          <label class="block text-xs font-semibold text-[var(--a-muted)] mb-1">Texto</label>
           <textarea
             v-model="form.body"
             rows="3"
             placeholder="Descripción o detalle del anuncio..."
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--color-primary,#E91E8C)] resize-none"
+            class="w-full rounded-lg border border-[#C9CDD2] px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)] resize-none"
           />
         </div>
 
         <!-- Imagen -->
         <div class="sm:col-span-2">
-          <label class="block text-xs font-semibold text-gray-600 mb-1">Imagen (opcional)</label>
-          <input ref="fileInput" type="file" accept="image/*" @change="onFileChange" class="text-sm text-gray-600" />
-          <img v-if="previewUrl" :src="previewUrl" alt="Preview" class="mt-2 h-24 w-auto rounded-lg object-cover border border-gray-200" />
+          <label class="block text-xs font-semibold text-[var(--a-muted)] mb-1">Imagen (opcional)</label>
+          <input ref="fileInput" type="file" accept="image/*" @change="onFileChange" class="text-sm text-[var(--a-muted)]" />
+          <img v-if="previewUrl" :src="previewUrl" alt="Preview" class="mt-2 h-24 w-auto rounded-lg object-cover border border-[var(--a-border)]" />
         </div>
 
         <!-- Link URL -->
         <div>
-          <label class="block text-xs font-semibold text-gray-600 mb-1">URL destino (opcional)</label>
+          <label class="block text-xs font-semibold text-[var(--a-muted)] mb-1">URL destino (opcional)</label>
           <input
             v-model="form.linkUrl"
             type="text"
             placeholder="/catalogo o https://..."
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--color-primary,#E91E8C)]"
+            class="w-full rounded-lg border border-[#C9CDD2] px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]"
           />
         </div>
 
         <!-- Link label -->
         <div>
-          <label class="block text-xs font-semibold text-gray-600 mb-1">Texto del botón CTA</label>
+          <label class="block text-xs font-semibold text-[var(--a-muted)] mb-1">Texto del botón CTA</label>
           <input
             v-model="form.linkLabel"
             type="text"
             placeholder="Ver más"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--color-primary,#E91E8C)]"
+            class="w-full rounded-lg border border-[#C9CDD2] px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]"
           />
         </div>
 
         <!-- Target audience -->
         <div>
-          <label class="block text-xs font-semibold text-gray-600 mb-1">Audiencia</label>
+          <label class="block text-xs font-semibold text-[var(--a-muted)] mb-1">Audiencia</label>
           <select
             v-model="form.targetAudience"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--color-primary,#E91E8C)]"
+            class="w-full rounded-lg border border-[#C9CDD2] px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]"
           >
             <option value="all">Todos (visitantes + autenticados)</option>
             <option value="authenticated">Solo autenticados</option>
@@ -240,21 +240,21 @@ const audienceBadgeClass: Record<string, string> = {
 
         <!-- Vigencia desde -->
         <div>
-          <label class="block text-xs font-semibold text-gray-600 mb-1">Vigente desde (opcional)</label>
+          <label class="block text-xs font-semibold text-[var(--a-muted)] mb-1">Vigente desde (opcional)</label>
           <input
             v-model="form.validFrom"
             type="datetime-local"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--color-primary,#E91E8C)]"
+            class="w-full rounded-lg border border-[#C9CDD2] px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]"
           />
         </div>
 
         <!-- Vigencia hasta -->
         <div>
-          <label class="block text-xs font-semibold text-gray-600 mb-1">Vigente hasta (opcional)</label>
+          <label class="block text-xs font-semibold text-[var(--a-muted)] mb-1">Vigente hasta (opcional)</label>
           <input
             v-model="form.validUntil"
             type="datetime-local"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--color-primary,#E91E8C)]"
+            class="w-full rounded-lg border border-[#C9CDD2] px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]"
           />
         </div>
       </div>
@@ -264,7 +264,7 @@ const audienceBadgeClass: Record<string, string> = {
       <button
         @click="submitCreate"
         :disabled="saving"
-        class="px-5 py-2 rounded-xl bg-[var(--color-primary,#E91E8C)] text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40"
+        class="px-5 py-2 rounded-xl bg-[var(--a-primary)] text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40"
       >
         {{ saving ? 'Guardando…' : 'Crear anuncio' }}
       </button>
@@ -275,7 +275,7 @@ const audienceBadgeClass: Record<string, string> = {
 
     <!-- Loading -->
     <div v-if="loading" class="space-y-3">
-      <div v-for="n in 3" :key="n" class="h-20 rounded-2xl bg-gray-200 animate-pulse" />
+      <div v-for="n in 3" :key="n" class="h-20 rounded-xl bg-gray-200 animate-pulse" />
     </div>
 
     <!-- Lista de anuncios -->
@@ -283,7 +283,7 @@ const audienceBadgeClass: Record<string, string> = {
       <div
         v-for="(a, index) in items"
         :key="a.id"
-        class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 flex items-start gap-4"
+        class="bg-white rounded-xl border border-[var(--a-border)] p-4 flex items-start gap-4"
         :class="{ 'opacity-50': !a.active }"
       >
         <!-- Thumbnail -->
@@ -291,25 +291,25 @@ const audienceBadgeClass: Record<string, string> = {
           v-if="a.imageUrl"
           :src="a.imageUrl"
           :alt="a.title"
-          class="w-16 h-16 rounded-xl object-cover flex-none border border-gray-100"
+          class="w-16 h-16 rounded-xl object-cover flex-none border border-[var(--a-border)]"
         />
         <div v-else class="w-16 h-16 rounded-xl bg-gray-100 flex-none flex items-center justify-center text-2xl text-gray-300">📢</div>
 
         <!-- Info -->
         <div class="flex-1 min-w-0">
           <div class="flex flex-wrap items-center gap-2 mb-1">
-            <p class="font-semibold text-gray-900 text-sm">{{ a.title }}</p>
+            <p class="font-semibold text-[var(--a-ink)] text-sm">{{ a.title }}</p>
             <span
               class="text-xs px-2 py-0.5 rounded-full font-medium"
               :class="audienceBadgeClass[a.targetAudience]"
             >{{ audienceLabels[a.targetAudience] }}</span>
             <span
               class="text-xs px-2 py-0.5 rounded-full font-medium"
-              :class="a.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'"
+              :class="a.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-[var(--a-muted)]'"
             >{{ a.active ? 'Activo' : 'Inactivo' }}</span>
           </div>
-          <p v-if="a.body" class="text-xs text-gray-500 truncate">{{ a.body }}</p>
-          <p v-if="a.validFrom || a.validUntil" class="text-xs text-gray-400 mt-1">
+          <p v-if="a.body" class="text-xs text-[var(--a-muted)] truncate">{{ a.body }}</p>
+          <p v-if="a.validFrom || a.validUntil" class="text-xs text-[var(--a-muted)] mt-1">
             <span v-if="a.validFrom">Desde {{ new Date(a.validFrom).toLocaleDateString('es-AR') }}</span>
             <span v-if="a.validFrom && a.validUntil"> · </span>
             <span v-if="a.validUntil">Hasta {{ new Date(a.validUntil).toLocaleDateString('es-AR') }}</span>
@@ -322,7 +322,7 @@ const audienceBadgeClass: Record<string, string> = {
             @click="toggleActive(a)"
             class="px-3 py-1 rounded-lg text-xs font-semibold border transition-colors"
             :class="a.active
-              ? 'border-gray-300 text-gray-600 hover:border-red-300 hover:text-red-600'
+              ? 'border-[#C9CDD2] text-[var(--a-muted)] hover:border-red-300 hover:text-red-600'
               : 'border-green-300 text-green-700 hover:bg-green-50'"
           >{{ a.active ? 'Desactivar' : 'Activar' }}</button>
 
@@ -330,13 +330,13 @@ const audienceBadgeClass: Record<string, string> = {
             <button
               @click="moveUp(index)"
               :disabled="index === 0"
-              class="px-2 py-1 rounded-lg text-xs border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-30 disabled:pointer-events-none"
+              class="px-2 py-1 rounded-lg text-xs border border-[#C9CDD2] text-[var(--a-muted)] hover:bg-[var(--a-bg)] disabled:opacity-30 disabled:pointer-events-none"
               title="Subir"
             >↑</button>
             <button
               @click="moveDown(index)"
               :disabled="index === items.length - 1"
-              class="px-2 py-1 rounded-lg text-xs border border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-30 disabled:pointer-events-none"
+              class="px-2 py-1 rounded-lg text-xs border border-[#C9CDD2] text-[var(--a-muted)] hover:bg-[var(--a-bg)] disabled:opacity-30 disabled:pointer-events-none"
               title="Bajar"
             >↓</button>
           </div>
@@ -348,7 +348,7 @@ const audienceBadgeClass: Record<string, string> = {
             >Confirmar</button>
             <button
               @click="deleteConfirmId = null"
-              class="px-3 py-1 rounded-lg text-xs border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
+              class="px-3 py-1 rounded-lg text-xs border border-[#C9CDD2] text-[var(--a-muted)] hover:bg-[var(--a-bg)] transition-colors"
             >Cancelar</button>
           </template>
           <button
@@ -361,7 +361,7 @@ const audienceBadgeClass: Record<string, string> = {
     </div>
 
     <!-- Sin anuncios -->
-    <div v-else class="text-center py-16 text-gray-500">
+    <div v-else class="text-center py-16 text-[var(--a-muted)]">
       <p class="text-4xl mb-4">📢</p>
       <p class="font-medium">Todavía no hay anuncios.</p>
       <p class="text-sm mt-1">Creá el primero con el botón de arriba.</p>

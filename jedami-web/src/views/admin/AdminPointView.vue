@@ -26,7 +26,15 @@ async function loadPendingOrders() {
   error.value = ''
   try {
     const res = await fetchAdminPayments({ status: 'pending', limit: 100 })
-    orders.value = res.payments.filter(p => Number(p.totalAmount) > 0)
+    // La API devuelve intentos de pago: quedarse con un registro por pedido y solo
+    // con pedidos que todavía falta cobrar (un pedido pagado puede tener intentos viejos)
+    const seen = new Set<number>()
+    orders.value = res.payments.filter(p => {
+      if (seen.has(p.orderId)) return false
+      if (!['pending', 'rejected'].includes(p.orderStatus) || Number(p.totalAmount) <= 0) return false
+      seen.add(p.orderId)
+      return true
+    })
   } catch {
     error.value = 'Error al cargar los pedidos pendientes.'
   } finally {
@@ -164,16 +172,16 @@ const hasActiveDevice = computed(() => !!configStore.pointDevice)
 
 <template>
   <AdminLayout>
-    <div class="max-w-4xl mx-auto">
+    <div class="max-w-4xl">
       <!-- Breadcrumb -->
       <div class="flex items-center gap-3 mb-6">
-        <h1 class="text-2xl font-bold text-gray-900">Cobros Point</h1>
+        <h1 class="text-[26px] font-bold">Cobros Point</h1>
       </div>
 
       <!-- Aviso: sin device activo -->
       <div
         v-if="!loading && !hasActiveDevice"
-        class="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-2xl p-4 mb-4 text-sm"
+        class="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-xl p-4 mb-4 text-sm"
       >
         ⚠️ No hay dispositivo Point activo.
         <RouterLink to="/admin/configuracion" class="underline font-semibold ml-1">
@@ -184,26 +192,26 @@ const hasActiveDevice = computed(() => !!configStore.pointDevice)
       <!-- Device activo info -->
       <div
         v-if="hasActiveDevice"
-        class="bg-green-50 border border-green-200 text-green-800 rounded-2xl p-3 mb-4 text-sm flex items-center gap-2"
+        class="bg-green-50 border border-green-200 text-green-800 rounded-xl p-3 mb-4 text-sm flex items-center gap-2"
       >
         <span>🖲️</span>
         <span>Dispositivo activo: <strong>{{ configStore.pointDevice?.name }}</strong></span>
       </div>
 
       <!-- Error general -->
-      <div v-if="error" class="bg-red-50 border border-red-200 text-red-700 rounded-2xl p-4 mb-4 text-sm">
+      <div v-if="error" class="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 mb-4 text-sm">
         {{ error }}
       </div>
 
       <!-- Skeleton -->
       <div v-if="loading" class="space-y-3">
-        <div v-for="i in 4" :key="i" class="bg-white rounded-2xl border border-gray-200 h-20 animate-pulse" />
+        <div v-for="i in 4" :key="i" class="bg-white rounded-xl border border-[var(--a-border)] h-20 animate-pulse" />
       </div>
 
       <!-- Lista vacía -->
       <div
         v-else-if="orders.length === 0"
-        class="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 text-center text-gray-500"
+        class="bg-white rounded-xl border border-[var(--a-border)] p-8 text-center text-[var(--a-muted)]"
       >
         No hay pedidos pendientes para cobrar.
       </div>
@@ -213,14 +221,14 @@ const hasActiveDevice = computed(() => !!configStore.pointDevice)
         <div
           v-for="order in orders"
           :key="order.orderId"
-          class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4"
+          class="bg-white rounded-xl border border-[var(--a-border)] p-4"
         >
           <div class="flex items-center justify-between flex-wrap gap-3">
             <!-- Info pedido -->
             <div>
-              <p class="font-semibold text-gray-900">Pedido #{{ order.orderId }}</p>
-              <p class="text-sm text-gray-500">{{ order.customerEmail }}</p>
-              <p class="text-sm font-bold text-gray-800 mt-1">{{ formatCurrency(order.totalAmount) }}</p>
+              <p class="font-semibold text-[var(--a-ink)]">Pedido #{{ order.orderId }}</p>
+              <p class="text-sm text-[var(--a-muted)]">{{ order.customerEmail }}</p>
+              <p class="text-sm font-bold text-[var(--a-ink)] mt-1">{{ formatCurrency(order.totalAmount) }}</p>
             </div>
 
             <!-- Acciones -->
@@ -231,7 +239,7 @@ const hasActiveDevice = computed(() => !!configStore.pointDevice)
                   v-if="hasActiveDevice"
                   @click="handleCreateIntent(order.orderId)"
                   :disabled="getState(order.orderId).loading"
-                  class="px-4 py-2 rounded-xl bg-[#E91E8C] text-white text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
+                  class="px-4 py-2 rounded-xl bg-[var(--a-primary)] text-white text-sm font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
                 >
                   {{ getState(order.orderId).loading ? 'Iniciando...' : '🖲️ Cobrar con Point' }}
                 </button>
@@ -248,7 +256,7 @@ const hasActiveDevice = computed(() => !!configStore.pointDevice)
                   <button
                     @click="handleGetIntent(order.orderId)"
                     :disabled="getState(order.orderId).loading"
-                    class="px-3 py-1.5 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                    class="px-3 py-1.5 rounded-lg border border-[#C9CDD2] text-sm text-[#45494E] hover:bg-[var(--a-bg)] disabled:opacity-50"
                   >
                     {{ getState(order.orderId).loading ? '...' : '↻ Verificar estado' }}
                   </button>
@@ -272,7 +280,7 @@ const hasActiveDevice = computed(() => !!configStore.pointDevice)
               <button
                 v-if="!isIntentActive(order.orderId)"
                 @click="openConfirmModal(order.orderId)"
-                class="px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-500 hover:bg-gray-50"
+                class="px-3 py-1.5 rounded-lg border border-[var(--a-border)] text-xs text-[var(--a-muted)] hover:bg-[var(--a-bg)]"
               >
                 Confirmar pago manual
               </button>
@@ -290,7 +298,7 @@ const hasActiveDevice = computed(() => !!configStore.pointDevice)
       <div class="mt-4 text-center">
         <button
           @click="loadPendingOrders"
-          class="text-sm text-gray-500 hover:text-[#E91E8C] underline"
+          class="text-sm text-[var(--a-muted)] hover:text-[var(--a-primary)] underline"
         >
           Recargar lista
         </button>
@@ -304,20 +312,20 @@ const hasActiveDevice = computed(() => !!configStore.pointDevice)
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
         @click.self="closeConfirmModal"
       >
-        <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4">
-          <h2 class="text-lg font-bold text-gray-900 mb-1">Confirmar pago manual</h2>
-          <p class="text-sm text-gray-500 mb-4">
+        <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-sm mx-4">
+          <h2 class="text-lg font-bold text-[var(--a-ink)] mb-1">Confirmar pago manual</h2>
+          <p class="text-sm text-[var(--a-muted)] mb-4">
             Pedido #{{ confirmingOrderId }} — podés ingresar el ID de pago de MP si lo tenés disponible.
           </p>
 
-          <label class="block text-sm font-medium text-gray-700 mb-1">
-            ID de pago MP <span class="text-gray-400 font-normal">(opcional)</span>
+          <label class="block text-sm font-medium text-[#45494E] mb-1">
+            ID de pago MP <span class="text-[var(--a-muted)] font-normal">(opcional)</span>
           </label>
           <input
             v-model="confirmMpPaymentId"
             type="text"
             placeholder="ej: 1234567890"
-            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#E91E8C] mb-4"
+            class="w-full rounded-lg border border-[#C9CDD2] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--a-primary)] mb-4"
           />
 
           <p v-if="confirmError" class="text-sm text-red-600 mb-3">{{ confirmError }}</p>
@@ -325,14 +333,14 @@ const hasActiveDevice = computed(() => !!configStore.pointDevice)
           <div class="flex gap-3 justify-end">
             <button
               @click="closeConfirmModal"
-              class="px-4 py-2 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50"
+              class="px-4 py-2 rounded-xl border border-[var(--a-border)] text-sm text-[var(--a-muted)] hover:bg-[var(--a-bg)]"
             >
               Cancelar
             </button>
             <button
               @click="handleConfirm"
               :disabled="confirmLoading"
-              class="px-4 py-2 rounded-xl bg-[#E91E8C] text-white text-sm font-semibold hover:opacity-90 disabled:opacity-50"
+              class="px-4 py-2 rounded-xl bg-[var(--a-primary)] text-white text-sm font-semibold hover:opacity-90 disabled:opacity-50"
             >
               {{ confirmLoading ? 'Confirmando...' : 'Confirmar pago' }}
             </button>

@@ -131,28 +131,28 @@ async function doRemoveRole(userId: number, roleName: string) {
 
 <template>
   <AdminLayout>
-    <div class="max-w-3xl mx-auto">
+    <div class="max-w-3xl">
       <div class="flex items-center gap-3 mb-6">
-        <h1 class="text-2xl font-bold text-gray-900">Usuarios</h1>
+        <h1 class="text-[26px] font-bold">Usuarios</h1>
       </div>
 
       <!-- Filtros -->
-      <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 mb-4 flex flex-wrap gap-3 items-end">
+      <div class="bg-white rounded-xl border border-[var(--a-border)] p-4 mb-4 flex flex-wrap gap-3 items-end">
         <div class="flex-1 min-w-[160px]">
-          <label class="block text-xs text-gray-500 mb-1">Buscar por email</label>
+          <label class="block text-xs text-[var(--a-muted)] mb-1">Buscar por email</label>
           <input
             v-model="filterSearch"
             type="text"
             placeholder="email@..."
-            class="w-full h-9 rounded-lg border border-gray-300 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#E91E8C]"
+            class="w-full h-10 rounded-lg border border-[#C9CDD2] px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]"
             @keydown.enter="applyFilters"
           />
         </div>
         <div>
-          <label class="block text-xs text-gray-500 mb-1">Rol</label>
+          <label class="block text-xs text-[var(--a-muted)] mb-1">Rol</label>
           <select
             v-model="filterRole"
-            class="h-9 rounded-lg border border-gray-300 px-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#E91E8C]"
+            class="h-10 rounded-lg border border-[#C9CDD2] px-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]"
           >
             <option value="">Todos</option>
             <option v-for="role in roles" :key="role.id" :value="role.name">{{ ROLE_LABELS[role.name] ?? role.name }}</option>
@@ -160,7 +160,7 @@ async function doRemoveRole(userId: number, roleName: string) {
         </div>
         <button
           @click="applyFilters"
-          class="h-9 px-4 rounded-lg bg-[#E91E8C] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+          class="h-10 px-4 rounded-lg bg-[var(--a-primary)] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
         >
           Buscar
         </button>
@@ -168,7 +168,7 @@ async function doRemoveRole(userId: number, roleName: string) {
 
       <!-- Skeleton -->
       <div v-if="loading" class="space-y-3">
-        <div v-for="i in 4" :key="i" class="animate-pulse bg-white rounded-2xl border border-gray-200 h-16"></div>
+        <div v-for="i in 4" :key="i" class="animate-pulse bg-white rounded-xl border border-[var(--a-border)] h-16"></div>
       </div>
 
       <p v-else-if="error" class="text-red-500 text-sm">{{ error }}</p>
@@ -178,17 +178,17 @@ async function doRemoveRole(userId: number, roleName: string) {
           <div
             v-for="user in users"
             :key="user.id"
-            class="bg-white rounded-2xl border border-gray-200 shadow-sm p-4"
+            class="bg-white rounded-xl border border-[var(--a-border)] p-4"
           >
             <div class="flex flex-col sm:flex-row sm:items-center gap-3">
               <div class="flex-1 min-w-0">
-                <p class="font-semibold text-gray-800 truncate">{{ user.email }}</p>
+                <p class="font-semibold text-[var(--a-ink)] truncate">{{ user.email }}</p>
                 <div class="flex flex-wrap gap-1.5 mt-1">
                   <span
                     v-for="role in user.roles"
                     :key="role"
                     class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold border"
-                    :class="roleColors[role] ?? 'bg-gray-50 text-gray-600 border-gray-200'"
+                    :class="roleColors[role] ?? 'bg-[var(--a-bg)] text-[var(--a-muted)] border-[var(--a-border)]'"
                   >
                     {{ ROLE_LABELS[role] ?? role }}
                     <button
@@ -197,8 +197,8 @@ async function doRemoveRole(userId: number, roleName: string) {
                       :title="`Quitar rol ${role}`"
                     >×</button>
                   </span>
-                  <span v-if="user.roles.length === 0" class="text-xs text-gray-400 italic">sin roles</span>
-                  <span v-if="user.customerType" class="text-xs text-gray-500 italic">
+                  <span v-if="user.roles.length === 0" class="text-xs text-[var(--a-muted)] italic">sin roles</span>
+                  <span v-if="user.customerType" class="text-xs text-[var(--a-muted)] italic">
                     · {{ configStore.customerTypeLabel[user.customerType] ?? user.customerType }}
                   </span>
                 </div>
@@ -209,7 +209,7 @@ async function doRemoveRole(userId: number, roleName: string) {
                 <div class="flex items-center gap-2">
                   <select
                     v-model="selectedRole[user.id]"
-                    class="h-8 rounded-lg border border-gray-300 px-2 text-sm focus:outline-none focus:ring-1 focus:ring-[#E91E8C]"
+                    class="h-8 rounded-lg border border-[#C9CDD2] px-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]"
                     :disabled="assigning === user.id"
                     @change="confirmingAdminAssign = null"
                   >
@@ -219,7 +219,7 @@ async function doRemoveRole(userId: number, roleName: string) {
                   <button
                     :disabled="assigning === user.id || !selectedRole[user.id]"
                     @click="handleAssignRoleWithConfirm(user.id)"
-                    class="h-8 px-3 rounded-lg bg-[#E91E8C] text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:pointer-events-none"
+                    class="h-8 px-3 rounded-lg bg-[var(--a-primary)] text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:pointer-events-none"
                   >
                     <span v-if="assigning === user.id" class="inline-flex items-center gap-1">
                       <svg class="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
@@ -236,28 +236,28 @@ async function doRemoveRole(userId: number, roleName: string) {
                   <p class="text-xs text-orange-600">¿Asignar rol administrador a {{ user.email }}? Esto da acceso total al panel.</p>
                   <div class="flex gap-2">
                     <button @click="handleAssignRole(user.id)" class="text-xs text-orange-600 font-semibold hover:underline">Confirmar</button>
-                    <button @click="confirmingAdminAssign = null" class="text-xs text-gray-500 hover:underline">Cancelar</button>
+                    <button @click="confirmingAdminAssign = null" class="text-xs text-[var(--a-muted)] hover:underline">Cancelar</button>
                   </div>
                 </template>
               </div>
             </div>
           </div>
-          <p v-if="users.length === 0" class="text-center text-gray-400 text-sm py-8">No hay usuarios para mostrar.</p>
+          <p v-if="users.length === 0" class="text-center text-[var(--a-muted)] text-sm py-8">No hay usuarios para mostrar.</p>
         </div>
 
         <!-- Paginación -->
-        <div class="flex items-center justify-between text-sm text-gray-500">
+        <div class="flex items-center justify-between text-sm text-[var(--a-muted)]">
           <span>{{ total }} usuarios — Página {{ page }} de {{ pages || 1 }}</span>
           <div class="flex gap-2">
             <button
               :disabled="page <= 1"
               @click="goToPage(page - 1)"
-              class="h-8 px-3 rounded-lg border border-gray-300 hover:border-[#E91E8C] hover:text-[#E91E8C] transition-colors disabled:opacity-40 disabled:pointer-events-none"
+              class="h-8 px-3 rounded-lg border border-[#C9CDD2] hover:border-[var(--a-primary)] hover:text-[var(--a-primary)] transition-colors disabled:opacity-40 disabled:pointer-events-none"
             >← Anterior</button>
             <button
               :disabled="page >= pages"
               @click="goToPage(page + 1)"
-              class="h-8 px-3 rounded-lg border border-gray-300 hover:border-[#E91E8C] hover:text-[#E91E8C] transition-colors disabled:opacity-40 disabled:pointer-events-none"
+              class="h-8 px-3 rounded-lg border border-[#C9CDD2] hover:border-[var(--a-primary)] hover:text-[var(--a-primary)] transition-colors disabled:opacity-40 disabled:pointer-events-none"
             >Siguiente →</button>
           </div>
         </div>
