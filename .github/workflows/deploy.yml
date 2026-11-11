@@ -113,6 +113,17 @@ jobs:
             cd /opt/jedami
             git pull origin main
             echo "Deployando versión: $APP_VERSION"
+            # Guardar versión e imagen en .env.prod: así un "up -d" manual con
+            # --env-file .env.prod levanta esta versión y no una "latest" vieja
+            set_env() {
+              if grep -q "^$1=" .env.prod; then
+                sed -i "s|^$1=.*|$1=$2|" .env.prod
+              else
+                printf '\n%s=%s\n' "$1" "$2" >> .env.prod
+              fi
+            }
+            set_env APP_VERSION "$APP_VERSION"
+            set_env DOCKERHUB_USERNAME "$DOCKERHUB_USERNAME"
             docker compose -f docker-compose.prod.yml --env-file .env.prod pull jedami-bff jedami-web
             docker compose -f docker-compose.prod.yml --env-file .env.prod up -d jedami-bff jedami-web
             echo "Verificando salud del BFF..."
