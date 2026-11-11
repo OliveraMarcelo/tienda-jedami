@@ -101,7 +101,7 @@ const formatPrice = (n: number) => `$${n.toLocaleString('es-AR', { maximumFracti
 </script>
 
 <template>
-  <section class="flex h-full flex-col gap-4 rounded-2xl border border-[#009EE3]/30 bg-white p-5 shadow-sm" aria-labelledby="mp-qr-title">
+  <section class="flex h-full flex-col gap-4 rounded-[var(--t-radius-card)] border-2 border-[#009EE3]/25 bg-white p-5 sm:p-6" aria-labelledby="mp-qr-title">
     <div>
       <h2 id="mp-qr-title" class="text-base font-bold text-gray-900">Pagá con Mercado Pago</h2>
       <p class="mt-0.5 text-sm text-gray-500">Se acredita al instante y el pedido se marca como pagado solo.</p>
@@ -127,7 +127,7 @@ const formatPrice = (n: number) => `$${n.toLocaleString('es-AR', { maximumFracti
       :href="checkoutUrl"
       target="_blank"
       rel="noopener"
-      class="mt-auto inline-flex min-h-11 items-center justify-center rounded-xl bg-[#009EE3] px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+      class="mt-auto inline-flex min-h-12 items-center justify-center rounded-full bg-[#009EE3] px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
     >
       Pagar desde este dispositivo
     </a>

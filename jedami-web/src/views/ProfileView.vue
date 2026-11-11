@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { RouterLink } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { fetchMe, type MeResponse } from '@/api/profile.api'
 import { ROLES, CUSTOMER_TYPES, ROLE_LABELS } from '@/lib/constants'
@@ -24,52 +25,52 @@ onMounted(async () => {
 
 <template>
   <AppLayout>
-    <div class="max-w-xl mx-auto">
-      <h1 class="text-2xl font-bold text-gray-900 mb-6">Mi perfil</h1>
+    <div class="mx-auto max-w-xl">
+      <h1 class="mb-6 text-[28px] font-bold sm:text-[32px]">Mi perfil</h1>
 
-      <div v-if="loading" class="animate-pulse space-y-4">
-        <div class="h-5 bg-gray-200 rounded w-48"></div>
-        <div class="h-5 bg-gray-200 rounded w-32"></div>
-      </div>
+      <div v-if="loading" class="h-48 animate-pulse rounded-[var(--t-radius-card)] bg-[var(--t-surface)]"></div>
 
-      <div v-else-if="error" class="text-red-500 text-sm">{{ error }}</div>
+      <p v-else-if="error" role="alert" class="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">{{ error }}</p>
 
-      <div v-else-if="profile" class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-4">
-        <div>
-          <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Email</p>
-          <p class="text-gray-800 font-medium">{{ profile.email }}</p>
-        </div>
-
-        <div>
-          <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Roles</p>
-          <div class="flex flex-wrap gap-2">
-            <span
-              v-for="role in profile.roles"
-              :key="role"
-              class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold border"
-              :class="role === ROLES.ADMIN ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                      role === ROLES.WHOLESALE ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                      'bg-gray-50 text-gray-700 border-gray-200'"
-            >
-              {{ ROLE_LABELS[role] ?? role }}
-            </span>
+      <div v-else-if="profile" class="flex flex-col gap-4">
+        <section class="flex items-center gap-4 rounded-[var(--t-radius-card)] bg-[var(--t-surface)] p-6">
+          <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[var(--t-ink)] text-lg font-bold uppercase text-white" aria-hidden="true">
+            {{ profile.email.slice(0, 2) }}
+          </span>
+          <div class="min-w-0">
+            <p class="truncate text-lg font-semibold">{{ profile.email }}</p>
+            <div class="mt-1.5 flex flex-wrap gap-2">
+              <span
+                v-for="role in profile.roles"
+                :key="role"
+                :class="[
+                  'rounded-full px-3 py-0.5 text-xs font-semibold',
+                  role === ROLES.ADMIN ? 'bg-[#EDE7F6] text-[#4527A0]' : role === ROLES.WHOLESALE ? 'bg-[#E3EEFB] text-[#0B4A9C]' : 'bg-white text-[var(--t-ink)]',
+                ]"
+              >
+                {{ ROLE_LABELS[role] ?? role }}
+              </span>
+            </div>
           </div>
-        </div>
+        </section>
 
-        <div v-if="profile.customer">
-          <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Tipo de cuenta</p>
-          <div
-            class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-semibold"
-            :class="profile.customer.customerType === CUSTOMER_TYPES.WHOLESALE
-              ? 'bg-blue-600 text-white'
-              : 'bg-[#E91E8C] text-white'"
-          >
-            <span>{{ configStore.customerTypeLabel[profile.customer.customerType] ?? profile.customer.customerType }}</span>
-          </div>
-          <p v-if="profile.customer.customerType === CUSTOMER_TYPES.RETAIL" class="mt-2 text-xs text-gray-500">
-            ¿Querés comprar al por mayor? Contactá a un administrador para activar tu cuenta mayorista.
+        <section v-if="profile.customer" class="rounded-[var(--t-radius-card)] border border-[var(--t-border)] p-6">
+          <h2 class="mb-1 text-sm font-semibold text-[var(--t-muted)]">Tipo de cuenta</h2>
+          <p class="text-xl font-bold">
+            {{ configStore.customerTypeLabel[profile.customer.customerType] ?? profile.customer.customerType }}
           </p>
-        </div>
+          <p v-if="profile.customer.customerType === CUSTOMER_TYPES.RETAIL" class="mt-2 text-sm text-[var(--t-muted)]">
+            ¿Tenés un comercio y querés comprar por mayor? Escribinos y activamos tu cuenta mayorista.
+          </p>
+        </section>
+
+        <RouterLink
+          to="/pedidos"
+          class="flex items-center justify-between rounded-[var(--t-radius-card)] border border-[var(--t-border)] p-6 font-semibold hover:bg-[var(--t-surface)]"
+        >
+          Mis pedidos
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 18l6-6-6-6" /></svg>
+        </RouterLink>
       </div>
     </div>
   </AppLayout>

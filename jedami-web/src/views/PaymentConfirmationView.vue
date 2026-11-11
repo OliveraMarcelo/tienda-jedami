@@ -1,97 +1,89 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, RouterLink } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { useOrdersStore } from '@/stores/orders.store'
-import { usePaymentsStore } from '@/stores/payments.store'
+import { getPaymentStatus } from '@/api/payments.api'
 
 const route = useRoute()
-const router = useRouter()
 const ordersStore = useOrdersStore()
-const paymentsStore = usePaymentsStore()
 
 const orderId = Number(route.params.orderId)
 const mpStatus = computed(() => (route.query.status as string) ?? 'pending')
 
 onMounted(async () => {
+  // Sincronizar con Mercado Pago antes de mostrar: si el webhook todavía no llegó,
+  // el pedido pasa a pagado igual
+  try {
+    await getPaymentStatus(orderId)
+  } catch {
+    // Si falla, se muestra el estado que devolvió Mercado Pago en la URL
+  }
   await ordersStore.loadOrder(orderId)
 })
 
-// Si el webhook ya procesó el pago, usar el estado real del pedido
 const displayStatus = computed(() => {
   if (ordersStore.currentOrder?.status === 'paid') return 'approved'
   if (ordersStore.currentOrder?.status === 'rejected') return 'rejected'
   return mpStatus.value
 })
 
-async function retryPayment() {
-  await paymentsStore.startCheckout(orderId)
-}
+const formatPrice = (n: number) => `$${n.toLocaleString('es-AR', { maximumFractionDigits: 0 })}`
 </script>
 
 <template>
   <AppLayout>
-    <div class="max-w-lg mx-auto text-center py-12">
-
+    <div class="mx-auto max-w-lg py-10 text-center" aria-live="polite">
       <!-- Aprobado -->
       <template v-if="displayStatus === 'approved'">
-        <div class="text-6xl mb-4">✅</div>
-        <h1 class="text-2xl font-bold text-gray-900 mb-2">¡Pago confirmado!</h1>
-        <p class="text-gray-500 mb-2">Tu pedido <strong>#{{ orderId }}</strong> fue pagado exitosamente.</p>
-        <p v-if="ordersStore.currentOrder" class="text-xl font-bold text-green-700 mb-8">
-          ${{ ordersStore.currentOrder.totalAmount.toLocaleString('es-AR', { maximumFractionDigits: 0 }) }}
+        <span class="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[#E6F2EC] text-[var(--t-price)]" aria-hidden="true">
+          <svg class="h-10 w-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+        </span>
+        <h1 class="mb-2 text-[28px] font-bold">¡Pago confirmado!</h1>
+        <p class="text-[var(--t-muted)]">Tu pedido <strong class="text-[var(--t-ink)]">#{{ orderId }}</strong> ya está pagado. Te vamos a escribir para coordinar el envío.</p>
+        <p v-if="ordersStore.currentOrder" class="mt-3 text-2xl font-bold text-[var(--t-price)]">
+          {{ formatPrice(ordersStore.currentOrder.totalAmount) }}
         </p>
-        <button
-          @click="router.push('/catalogo')"
-          class="inline-flex items-center gap-2 rounded-xl bg-[#E91E8C] text-white px-6 py-3 font-semibold hover:opacity-90 transition-opacity shadow"
-        >
-          Seguir comprando
-        </button>
+        <div class="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+          <RouterLink to="/catalogo" class="inline-flex min-h-12 items-center justify-center rounded-full bg-[var(--t-ink)] px-8 font-semibold text-white hover:opacity-90">
+            Seguir comprando
+          </RouterLink>
+          <RouterLink :to="`/pedidos/${orderId}`" class="inline-flex min-h-12 items-center justify-center rounded-full border-[1.5px] border-[var(--t-ink)] px-8 font-semibold hover:bg-[var(--t-ink)] hover:text-white transition-colors">
+            Ver pedido
+          </RouterLink>
+        </div>
       </template>
 
       <!-- Rechazado -->
       <template v-else-if="displayStatus === 'rejected'">
-        <div class="text-6xl mb-4">❌</div>
-        <h1 class="text-2xl font-bold text-gray-900 mb-2">Pago rechazado</h1>
-        <p class="text-gray-500 mb-8">No pudimos procesar tu pago. Podés reintentar o revisar tus pedidos.</p>
-        <div class="flex flex-col sm:flex-row gap-3 justify-center">
-          <button
-            :disabled="paymentsStore.loading"
-            @click="retryPayment"
-            class="inline-flex items-center justify-center gap-2 rounded-xl bg-[#009EE3] text-white px-6 py-3 font-semibold hover:opacity-90 transition-opacity shadow disabled:opacity-50"
-          >
-            <svg v-if="paymentsStore.loading" class="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-            </svg>
-            Reintentar pago
-          </button>
-          <button
-            @click="router.push('/pedidos')"
-            class="inline-flex items-center justify-center rounded-xl border border-gray-300 bg-white text-gray-700 px-6 py-3 font-semibold hover:border-gray-400 transition-colors"
-          >
-            Ver mis pedidos
-          </button>
+        <span class="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[#FDE8E6] text-[#A3271A]" aria-hidden="true">
+          <svg class="h-10 w-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 7l10 10M17 7L7 17" /></svg>
+        </span>
+        <h1 class="mb-2 text-[28px] font-bold">El pago no se pudo hacer</h1>
+        <p class="text-[var(--t-muted)]">Podés intentar de nuevo con otro medio: Mercado Pago o transferencia.</p>
+        <div class="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+          <RouterLink :to="`/pedidos/${orderId}`" class="inline-flex min-h-12 items-center justify-center rounded-full bg-[var(--t-ink)] px-8 font-semibold text-white hover:opacity-90">
+            Intentar de nuevo
+          </RouterLink>
+          <RouterLink to="/pedidos" class="inline-flex min-h-12 items-center justify-center rounded-full border-[1.5px] border-[var(--t-ink)] px-8 font-semibold hover:bg-[var(--t-ink)] hover:text-white transition-colors">
+            Mis pedidos
+          </RouterLink>
         </div>
-        <p v-if="paymentsStore.error" class="mt-4 text-sm text-red-600">{{ paymentsStore.error }}</p>
       </template>
 
       <!-- Pendiente -->
       <template v-else>
-        <div class="text-6xl mb-4">⏳</div>
-        <h1 class="text-2xl font-bold text-gray-900 mb-2">Pago en proceso</h1>
-        <p class="text-gray-500 mb-8">
-          Tu pago está siendo procesado. Te notificaremos cuando se confirme.<br>
-          Podés revisar el estado en tus pedidos.
-        </p>
-        <button
-          @click="router.push('/pedidos/' + orderId)"
-          class="inline-flex items-center gap-2 rounded-xl bg-[#E91E8C] text-white px-6 py-3 font-semibold hover:opacity-90 transition-opacity shadow"
-        >
-          Ver pedido
-        </button>
+        <span class="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[#FDF3D7] text-[#8A5A00]" aria-hidden="true">
+          <svg class="h-10 w-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></svg>
+        </span>
+        <h1 class="mb-2 text-[28px] font-bold">Estamos esperando la confirmación</h1>
+        <p class="text-[var(--t-muted)]">Mercado Pago todavía está procesando el pago. Apenas se acredite, el pedido se marca como pagado.</p>
+        <div class="mt-8">
+          <RouterLink :to="`/pedidos/${orderId}`" class="inline-flex min-h-12 items-center justify-center rounded-full bg-[var(--t-ink)] px-8 font-semibold text-white hover:opacity-90">
+            Ver pedido
+          </RouterLink>
+        </div>
       </template>
-
     </div>
   </AppLayout>
 </template>
