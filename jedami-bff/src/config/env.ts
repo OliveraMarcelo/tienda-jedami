@@ -43,6 +43,9 @@ export const ENV = {
   AI_API_KEY: process.env.AI_API_KEY ?? '',
   AI_TIMEOUT_MS: Number(process.env.AI_TIMEOUT_MS) || 90_000,
   AI_RATE_LIMIT_MAX: Number(process.env.AI_RATE_LIMIT_MAX) || 60,
+  // Por seguridad solo se aceptan modelos locales o en red privada (localhost, LAN, Tailscale).
+  // Un proveedor externo (OpenAI, Gemini…) necesita esto en true y una URL https.
+  AI_ALLOW_EXTERNAL_PROVIDER: process.env.AI_ALLOW_EXTERNAL_PROVIDER === 'true',
 };
 
 if (!ENV.DATABASE_URL) {

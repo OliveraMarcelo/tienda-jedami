@@ -1,4 +1,5 @@
 import type { ChatMessage } from '../../lib/ai.js';
+import { redactSensitive } from '../../lib/ai-guard.js';
 
 // Lógica pura del generador de descripciones (sin DB ni red): prompt, normalización
 // de la respuesta y armado del dataset para fine-tuning. Exportada para tests.
@@ -45,7 +46,8 @@ export function normalizeInput(raw: Record<string, unknown>): ProductDescription
     categoryName: clean(raw.categoryName, 80) || null,
     sizes: [...new Set(cleanList(raw.sizes, 30, 20))],
     colors: [...new Set(cleanList(raw.colors, 30, 40))],
-    notes: clean(raw.notes, 500) || null,
+    // Texto libre: se borran emails, teléfonos, DNI/CUIT, tarjetas y links antes de enviarlo
+    notes: redactSensitive(clean(raw.notes, 500)) || null,
     productId: Number.isInteger(productId) && productId > 0 ? productId : null,
   };
 }

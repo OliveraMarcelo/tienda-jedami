@@ -1,6 +1,7 @@
 import { ENV } from '../config/env.js';
 import { logger } from '../config/logger.js';
 import { AppError } from '../types/app-error.js';
+import { aiProviderBlockReason } from './ai-guard.js';
 
 // Cliente mínimo para cualquier API compatible con OpenAI (/chat/completions):
 // Ollama local (http://localhost:11434/v1), OpenAI, Gemini en modo compatible, etc.
@@ -16,8 +17,16 @@ export interface ChatResult {
   durationMs: number;
 }
 
+const blockReason = ENV.AI_BASE_URL
+  ? aiProviderBlockReason(ENV.AI_BASE_URL, ENV.AI_ALLOW_EXTERNAL_PROVIDER)
+  : null;
+if (blockReason) {
+  logger.warn({ reason: blockReason }, '[AI] Proveedor de IA bloqueado: las funciones de IA quedan apagadas');
+}
+
+/** true si hay un proveedor configurado y permitido por las reglas de seguridad. */
 export function isAiConfigured(): boolean {
-  return Boolean(ENV.AI_BASE_URL);
+  return Boolean(ENV.AI_BASE_URL) && !blockReason;
 }
 
 const AI_ERROR_TYPE = 'https://jedami.com/errors/ai-unavailable';
@@ -68,8 +77,8 @@ export async function chatCompletion(messages: ChatMessage[], opts: { json?: boo
   }
 
   if (!res.ok) {
-    const body = await res.text().catch(() => '');
-    logger.warn({ status: res.status, body: body.slice(0, 300) }, '[AI] Error del proveedor');
+    // No se loguea el cuerpo: algunos proveedores repiten el prompt en el error
+    logger.warn({ status: res.status }, '[AI] Error del proveedor');
     throw new AppError(502, 'IA no disponible', AI_ERROR_TYPE, 'El modelo de IA devolvió un error. Probá de nuevo en un rato.');
   }
 

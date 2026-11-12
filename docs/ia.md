@@ -99,10 +99,48 @@ envía. Por eso la recomendada es Tailscale.
 AI_BASE_URL=https://api.openai.com/v1      # u otro proveedor compatible
 AI_MODEL=<modelo del proveedor>
 AI_API_KEY=<tu clave>
+AI_ALLOW_EXTERNAL_PROVIDER=true            # obligatorio para un proveedor externo
 AI_TIMEOUT_MS=30000
 ```
 El Modelfile no aplica acá (el tono lo da el prompt de la API). Una descripción cuesta una fracción
 de centavo de dólar.
+
+## Seguridad: que no se filtren datos
+
+**Regla de oro: a la IA solo le llegan datos públicos del catálogo.** Nunca datos de clientes,
+pedidos, pagos, usuarios ni configuración.
+
+Lo que ya hace el código:
+
+| Protección | Qué evita |
+|---|---|
+| Solo el admin puede usar la IA (`/admin/ai/*`) | Que un cliente o un bot use tu modelo |
+| El modelo recibe solo nombre, categoría, talles, colores y notas del producto | Que viajen datos de clientes o pedidos |
+| Las notas pasan por un filtro que reemplaza emails, teléfonos, DNI/CUIT, tarjetas, CBU y links por `[dato omitido]` | Que se cuele un dato personal pegado por error |
+| Por defecto solo se aceptan modelos locales o en red privada (localhost, LAN, Tailscale `100.x`, `*.ts.net`) | Mandar datos a un servidor externo sin darte cuenta |
+| Un proveedor externo exige `AI_ALLOW_EXTERNAL_PROVIDER=true` y `https` | Que alguien cambie la URL y los datos salgan sin cifrar |
+| No se loguea el texto enviado ni la respuesta de error del proveedor | Que los datos queden en los logs |
+| La respuesta del modelo se muestra como texto, nunca como HTML | Que el modelo "inyecte" código en el admin |
+| Límite de generaciones por IP (`AI_RATE_LIMIT_MAX`) | Abuso o costos inesperados con una API paga |
+
+Si el proveedor no está permitido, la API lo avisa en el log al arrancar
+(`[AI] Proveedor de IA bloqueado`) y el botón de IA no aparece.
+
+Lo que tenés que cuidar vos:
+
+1. **Ollama en tu compu:** que siga escuchando solo en `127.0.0.1` (es lo que viene por defecto).
+   Nunca pongas `OLLAMA_HOST=0.0.0.0` ni abras el puerto 11434 en el router.
+2. **Tailscale:** compartí el puerto con `tailscale serve` (solo lo ve tu tailnet) y en las ACL de
+   Tailscale permití que **solo el servidor** llegue a tu compu en el puerto 11434.
+3. **API paga:** usá una clave solo para Jedami, con límite de gasto mensual, y revisá que el
+   proveedor no use tus datos para entrenar (OpenAI, Anthropic y Google no lo hacen por API por defecto).
+   Guardala solo en `/opt/jedami/.env.prod`, nunca en el repo ni en el chat.
+4. **Exportar el dataset** (`/admin/ai/generations/export`) solo contiene productos, pero tratalo
+   como dato interno: no lo subas a repos públicos.
+5. **Cuando haya RAG o un chat para clientes:** indexar solo productos visibles y textos públicos
+   (preguntas frecuentes, envíos, cambios). El chat nunca tiene que poder consultar pedidos, pagos ni
+   datos de otros clientes, y lo que escribe el cliente se trata como texto no confiable: el modelo
+   no ejecuta acciones por su cuenta.
 
 ## Cómo mejorar el modelo (de menos a más trabajo)
 
