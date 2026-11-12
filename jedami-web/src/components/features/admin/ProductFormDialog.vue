@@ -226,7 +226,7 @@ async function handleSubmit() {
             v-model="retailPrice"
             type="number"
             min="0"
-            step="1"
+            step="0.01"
             placeholder="0"
             class="flex h-10 w-full rounded-md border border-[#C9CDD2] px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--a-primary)]"
           />
@@ -237,7 +237,7 @@ async function handleSubmit() {
             v-model="wholesalePrice"
             type="number"
             min="0"
-            step="1"
+            step="0.01"
             placeholder="Opcional"
             class="flex h-10 w-full rounded-md border border-[#C9CDD2] px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--a-primary)]"
           />
