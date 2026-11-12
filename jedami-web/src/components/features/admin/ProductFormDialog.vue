@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import Dialog from '@/components/ui/Dialog.vue'
+import AiDescriptionAssistant from './AiDescriptionAssistant.vue'
 import type { Product } from '@/types/api'
 import { useProductsStore } from '@/stores/products.store'
 import { uploadImage as apiUploadImage, deleteImage as apiDeleteImage, fetchProductDetail, reorderProductImages } from '@/api/admin.api'
+import { updateGeneration } from '@/api/admin.ai.api'
 
 const props = defineProps<{
   open: boolean
@@ -32,8 +34,23 @@ const reorderError = ref('')
 const loading = ref(false)
 const serverError = ref('')
 
+// Datos para la IA: talles y colores reales del producto (si ya existe)
+const variantSizes = ref<string[]>([])
+const variantColors = ref<string[]>([])
+const categoryName = computed(() => productsStore.categories.find((c) => c.id === categoryId.value)?.name ?? null)
+// Última descripción generada con IA que se usó: al guardar se registra si quedó igual o se editó
+const aiGeneration = ref<{ id: number; text: string } | null>(null)
+
+function useAiDescription(value: { generationId: number; text: string }) {
+  description.value = value.text
+  aiGeneration.value = { id: value.generationId, text: value.text }
+}
+
 watch(() => props.open, async (val) => {
   if (val) {
+    aiGeneration.value = null
+    variantSizes.value = []
+    variantColors.value = []
     name.value = props.product?.name ?? ''
     description.value = props.product?.description ?? ''
     categoryId.value = props.product?.categoryId ?? null
@@ -49,6 +66,9 @@ watch(() => props.open, async (val) => {
       try {
         const res = await fetchProductDetail(props.product.id)
         localImages.value = res.data.images ?? []
+        const variants = res.data.variants ?? []
+        variantSizes.value = [...new Set(variants.map((v) => v.size).filter((s): s is string => !!s))]
+        variantColors.value = [...new Set(variants.map((v) => v.color).filter((c): c is string => !!c))]
       } catch {
         // silencioso
       }
@@ -136,6 +156,12 @@ async function handleSubmit() {
       retailPrice: Number(retailPrice.value),
       wholesalePrice: wholesalePrice.value !== '' ? Number(wholesalePrice.value) : null,
     })
+    if (aiGeneration.value) {
+      const finalText = description.value.trim()
+      const status = finalText === aiGeneration.value.text.trim() ? 'accepted' : 'edited'
+      updateGeneration(aiGeneration.value.id, { status, finalText, productId: props.product?.id ?? null }).catch(() => {})
+      aiGeneration.value = null
+    }
   } catch (err: unknown) {
     const e = err as { response?: { data?: { detail?: string } } }
     serverError.value = e.response?.data?.detail ?? 'Error al guardar'
@@ -164,9 +190,17 @@ async function handleSubmit() {
         <label class="block text-sm font-semibold text-[#45494E] mb-1">Descripción</label>
         <textarea
           v-model="description"
-          rows="3"
+          :rows="description.includes('\n') ? 6 : 3"
           placeholder="Descripción opcional"
-          class="flex w-full rounded-md border border-[#C9CDD2] px-3 py-2 text-sm resize-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--a-primary)]"
+          class="flex w-full rounded-md border border-[#C9CDD2] px-3 py-2 text-sm resize-y focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--a-primary)]"
+        />
+        <AiDescriptionAssistant
+          :name="name"
+          :category-name="categoryName"
+          :sizes="variantSizes"
+          :colors="variantColors"
+          :product-id="product?.id ?? null"
+          @use="useAiDescription"
         />
       </div>
 
@@ -192,7 +226,7 @@ async function handleSubmit() {
             v-model="retailPrice"
             type="number"
             min="0"
-            step="1"
+            step="0.01"
             placeholder="0"
             class="flex h-10 w-full rounded-md border border-[#C9CDD2] px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--a-primary)]"
           />
@@ -203,7 +237,7 @@ async function handleSubmit() {
             v-model="wholesalePrice"
             type="number"
             min="0"
-            step="1"
+            step="0.01"
             placeholder="Opcional"
             class="flex h-10 w-full rounded-md border border-[#C9CDD2] px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--a-primary)]"
           />

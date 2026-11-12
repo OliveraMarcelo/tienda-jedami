@@ -4,6 +4,7 @@ import { getAllBanners, uploadBanner, reorderBanners, updateBanner, deleteBanner
 import { getAllAnnouncements, createAnnouncement, reorderAnnouncements, updateAnnouncement, deleteAnnouncement } from '../modules/admin/announcements.controller.js';
 import { uploadBannersMiddleware, uploadAnnouncementsMiddleware } from '../config/upload.js';
 import discountsAdminRouter from './discounts.routes.js';
+import aiRouter from './ai.routes.js';
 import { updateMinQuantityHandler } from '../modules/discounts/discounts.controller.js';
 
 const router = Router();
@@ -275,6 +276,9 @@ router.post('/orders/:id/confirm-transfer', confirmBankTransfer);
 
 // Descuentos por volumen — escalones y mínimo de compra por producto
 router.use('/products/:id/discount-rules', discountsAdminRouter);
+
+// IA — generación de descripciones (apagada si no hay AI_BASE_URL)
+router.use('/ai', aiRouter);
 router.patch('/products/:id/min-quantity', updateMinQuantityHandler);
 
 // Ajuste de stock desde app desktop
