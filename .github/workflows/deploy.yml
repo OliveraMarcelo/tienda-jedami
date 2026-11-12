@@ -124,6 +124,9 @@ jobs:
             }
             set_env APP_VERSION "$APP_VERSION"
             set_env DOCKERHUB_USERNAME "$DOCKERHUB_USERNAME"
+            # Migrar valores viejos de la plantilla: sesión de 24h → 15m y límite general 200 → 1000
+            if grep -q '^JWT_EXPIRES_IN=24h$' .env.prod; then set_env JWT_EXPIRES_IN 15m; fi
+            if grep -q '^RATE_LIMIT_MAX=200$' .env.prod; then set_env RATE_LIMIT_MAX 1000; fi
             docker compose -f docker-compose.prod.yml --env-file .env.prod pull jedami-bff jedami-web
             docker compose -f docker-compose.prod.yml --env-file .env.prod up -d jedami-bff jedami-web
             echo "Verificando salud del BFF..."

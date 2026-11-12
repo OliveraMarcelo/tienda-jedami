@@ -3,7 +3,7 @@ import { AppError } from '../../types/app-error.js';
 import * as productsService from './products.service.js';
 import { cacheGet, cacheSet, cacheDel } from '../../config/redis.js';
 import { ENV } from '../../config/env.js';
-import { uploadMiddleware } from '../../config/upload.js';
+import { uploadMiddleware, uploadErrorMessage } from '../../config/upload.js';
 import { ROLES } from '../../lib/constants.js';
 
 const CATALOG_KEY = 'catalog:*';
@@ -200,7 +200,7 @@ export async function updateColorHandler(req: Request, res: Response, next: Next
 export function uploadImageHandler(req: Request, res: Response, next: NextFunction): void {
   uploadMiddleware(req, res, async (err) => {
     if (err) {
-      next(new AppError(400, 'Upload inválido', 'https://jedami.com/errors/validation', err.message));
+      next(new AppError(400, 'Upload inválido', 'https://jedami.com/errors/validation', uploadErrorMessage(err)));
       return;
     }
     try {

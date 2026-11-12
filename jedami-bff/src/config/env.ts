@@ -6,7 +6,8 @@ export const ENV = {
   PORT: Number(process.env.PORT) || 3000,
   DATABASE_URL: process.env.DATABASE_URL as string,
   JWT_SECRET: process.env.JWT_SECRET as string,
-  JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN ?? '24h',
+  // Sesión corta: se renueva sola con el refresh token y los cambios de rol aplican rápido
+  JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN ?? '15m',
   JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN ?? '7d',
   NODE_ENV: process.env.NODE_ENV ?? 'development',
   LOG_LEVEL: process.env.LOG_LEVEL ?? 'info',
@@ -22,14 +23,19 @@ export const ENV = {
   CACHE_TTL: Number(process.env.CACHE_TTL) || 300,
   // Rate limiting
   RATE_LIMIT_WINDOW_MS: Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
-  RATE_LIMIT_MAX: Number(process.env.RATE_LIMIT_MAX) || 200,
+  RATE_LIMIT_MAX: Number(process.env.RATE_LIMIT_MAX) || 1000,
   AUTH_RATE_LIMIT_MAX: Number(process.env.AUTH_RATE_LIMIT_MAX) || 20,
+  LOGIN_RATE_LIMIT_MAX: Number(process.env.LOGIN_RATE_LIMIT_MAX) || 10,
   // Email (opcional): sin SMTP_HOST no se envían emails
   SMTP_HOST: process.env.SMTP_HOST ?? '',
   SMTP_PORT: Number(process.env.SMTP_PORT) || 587,
   SMTP_USER: process.env.SMTP_USER ?? '',
   SMTP_PASS: process.env.SMTP_PASS ?? '',
   MAIL_FROM: process.env.MAIL_FROM ?? '',
+  // Login con Google (opcional): sin GOOGLE_CLIENT_ID el botón no se muestra
+  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID ?? '',
+  // Swagger en /api/docs: siempre fuera de producción; en producción solo si se habilita
+  ENABLE_API_DOCS: process.env.ENABLE_API_DOCS === 'true',
 };
 
 if (!ENV.DATABASE_URL) {

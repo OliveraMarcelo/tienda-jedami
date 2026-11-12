@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { register, login, refresh, logout } from '../modules/auth/auth.controller.js';
 import { authMiddleware } from '../middlewares/auth.middleware.js';
+import { authRateLimit, loginRateLimit } from '../middlewares/rate-limit.middleware.js';
 
 const router = Router();
 
@@ -54,7 +55,7 @@ const router = Router();
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-router.post('/register', register);
+router.post('/register', authRateLimit, register);
 
 /**
  * @swagger
@@ -97,7 +98,7 @@ router.post('/register', register);
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
  */
-router.post('/login', login);
+router.post('/login', loginRateLimit, login);
 
 /**
  * @swagger

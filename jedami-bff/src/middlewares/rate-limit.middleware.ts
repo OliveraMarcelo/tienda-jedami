@@ -8,30 +8,44 @@ function rateLimitHandler(max: number, windowMs: number) {
       type: 'https://jedami.com/errors/rate-limit',
       title: 'Demasiadas solicitudes',
       status: 429,
-      detail: `Has superado el límite de ${max} solicitudes cada ${Math.round(windowMs / 60000)} minutos. Esperá antes de reintentar.`,
+      detail: `Hiciste demasiados intentos (límite: ${max} cada ${Math.round(windowMs / 60000)} minutos). Esperá un rato y volvé a probar.`,
     });
   };
 }
 
-// En desarrollo local, las IPs de loopback no tienen límite
-function skipLocalhost(req: Request): boolean {
-  return ENV.NODE_ENV === 'development' && ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.ip ?? '')
+// En tests nunca se limita; en desarrollo local, las IPs de loopback tampoco
+function skipLimit(req: Request): boolean {
+  if (ENV.NODE_ENV === 'test') return true;
+  return ENV.NODE_ENV === 'development' && ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.ip ?? '');
 }
 
+/** Límite general para toda la API (frena abusos, no al uso normal) */
 export const generalRateLimit = rateLimit({
   windowMs: ENV.RATE_LIMIT_WINDOW_MS,
-  max: ENV.RATE_LIMIT_MAX,
-  standardHeaders: true,
+  limit: ENV.RATE_LIMIT_MAX,
+  standardHeaders: 'draft-7',
   legacyHeaders: false,
-  skip: skipLocalhost,
+  skip: skipLimit,
   handler: rateLimitHandler(ENV.RATE_LIMIT_MAX, ENV.RATE_LIMIT_WINDOW_MS),
 });
 
+/** Registro, recuperación de contraseña, códigos de verificación y login con Google */
 export const authRateLimit = rateLimit({
   windowMs: ENV.RATE_LIMIT_WINDOW_MS,
-  max: ENV.AUTH_RATE_LIMIT_MAX,
-  standardHeaders: true,
+  limit: ENV.AUTH_RATE_LIMIT_MAX,
+  standardHeaders: 'draft-7',
   legacyHeaders: false,
-  skip: skipLocalhost,
+  skip: skipLimit,
   handler: rateLimitHandler(ENV.AUTH_RATE_LIMIT_MAX, ENV.RATE_LIMIT_WINDOW_MS),
+});
+
+/** Login: solo cuentan los intentos fallidos, para frenar la prueba de contraseñas */
+export const loginRateLimit = rateLimit({
+  windowMs: ENV.RATE_LIMIT_WINDOW_MS,
+  limit: ENV.LOGIN_RATE_LIMIT_MAX,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  skip: skipLimit,
+  handler: rateLimitHandler(ENV.LOGIN_RATE_LIMIT_MAX, ENV.RATE_LIMIT_WINDOW_MS),
 });

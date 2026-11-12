@@ -73,7 +73,8 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function tryRefresh(): Promise<boolean> {
-    const rt = refreshToken.value
+    // Leer de localStorage: otra pestaña pudo haber rotado el refresh token
+    const rt = localStorage.getItem('jedami_refresh_token') ?? refreshToken.value
     if (!rt) return false
     try {
       const res = await refreshApi(rt)

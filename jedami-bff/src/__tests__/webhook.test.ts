@@ -18,14 +18,15 @@ describe('POST /payments/webhook', () => {
     expect(res.body).toHaveProperty('received', true);
   });
 
-  it('retorna 200 con body inválido (ignorado)', async () => {
+  it('retorna 400 con body que no es JSON (sin exponer detalles internos)', async () => {
     const res = await request(testApp)
       .post(WEBHOOK_URL)
       .set('Content-Type', 'application/json')
       .set('x-signature', 'ts=1,v1=abc')
       .set('x-request-id', 'req-2')
       .send('not-json');
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(400);
+    expect(res.body.title).toBe('JSON inválido');
   });
 
   it('retorna 200 si action no es payment.updated ni payment.created', async () => {

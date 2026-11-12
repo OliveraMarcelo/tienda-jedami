@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { pool } from '../../config/database.js';
-import { uploadBrandingMiddleware } from '../../config/upload.js';
+import { uploadBrandingMiddleware, uploadErrorMessage } from '../../config/upload.js';
 import { FIND_CONFIG } from './queries/find-config.js';
 import { FIND_BRANDING } from './queries/find-branding.js';
 import { INSERT_PURCHASE_TYPE } from './queries/insert-purchase-type.js';
@@ -151,7 +151,7 @@ export async function createCustomerType(req: Request, res: Response) {
 
 export function uploadBrandingLogoHandler(req: Request, res: Response, next: NextFunction): void {
   uploadBrandingMiddleware(req, res, async (err) => {
-    if (err) { res.status(400).json({ detail: err.message }); return; }
+    if (err) { res.status(400).json({ detail: uploadErrorMessage(err) }); return; }
     if (!req.file) { res.status(400).json({ detail: 'Debe enviar un archivo de imagen (campo "image")' }); return; }
     try {
       const baseUrl = `${req.protocol}://${req.get('host')}`;
