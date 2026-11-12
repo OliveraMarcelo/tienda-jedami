@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.8.0](https://github.com/OliveraMarcelo/tienda-jedami/compare/v1.7.1...v1.8.0) (2026-11-12)
+
+
+### Features
+
+* **auth:** ingresar con Google (apagado hasta cargar GOOGLE_CLIENT_ID) ([9c740ca](https://github.com/OliveraMarcelo/tienda-jedami/commit/9c740ca9f0330a7940c48e90639af3a78e9131f3))
+* **auth:** verificación de email con código y recuperar contraseña ([6b7e17a](https://github.com/OliveraMarcelo/tienda-jedami/commit/6b7e17a75d46ea9e06da56c3978d4decbbf6b8b2))
+
+
+### Bug Fixes
+
+* **security:** límite de intentos, errores sin detalles internos y dependencias actualizadas ([06f36ec](https://github.com/OliveraMarcelo/tienda-jedami/commit/06f36ec3f8b284a68efe95722d1611695497a923))
+
 ## [1.7.1](https://github.com/OliveraMarcelo/tienda-jedami/compare/v1.7.0...v1.7.1) (2026-11-11)
 
 
