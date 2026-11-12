@@ -36,6 +36,13 @@ export const ENV = {
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID ?? '',
   // Swagger en /api/docs: siempre fuera de producción; en producción solo si se habilita
   ENABLE_API_DOCS: process.env.ENABLE_API_DOCS === 'true',
+  // IA (opcional): cualquier API compatible con OpenAI (Ollama local, OpenAI, Gemini…).
+  // Sin AI_BASE_URL las funciones de IA quedan apagadas.
+  AI_BASE_URL: (process.env.AI_BASE_URL ?? '').replace(/\/+$/, ''),
+  AI_MODEL: process.env.AI_MODEL ?? 'jedami-descripciones',
+  AI_API_KEY: process.env.AI_API_KEY ?? '',
+  AI_TIMEOUT_MS: Number(process.env.AI_TIMEOUT_MS) || 90_000,
+  AI_RATE_LIMIT_MAX: Number(process.env.AI_RATE_LIMIT_MAX) || 60,
 };
 
 if (!ENV.DATABASE_URL) {
