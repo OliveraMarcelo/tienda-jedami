@@ -1,7 +1,7 @@
 import { ENV } from '../config/env.js';
 import { logger } from '../config/logger.js';
 import { AppError } from '../types/app-error.js';
-import { aiProviderBlockReason } from './ai-guard.js';
+import { aiProviderBlockReason, isPrivateAiHost } from './ai-guard.js';
 
 // Cliente mínimo para cualquier API compatible con OpenAI (/chat/completions):
 // Ollama local (http://localhost:11434/v1), OpenAI, Gemini en modo compatible, etc.
@@ -23,6 +23,17 @@ const blockReason = ENV.AI_BASE_URL
 if (blockReason) {
   logger.warn({ reason: blockReason }, '[AI] Proveedor de IA bloqueado: las funciones de IA quedan apagadas');
 }
+
+/**
+ * reasoning_effort a enviar: el configurado, o "none" con un modelo local (en CPU, un modelo que
+ * piensa antes de responder puede tardar minutos). Con un proveedor externo no se envía salvo que
+ * se configure, porque los modelos que no razonan rechazan el parámetro.
+ */
+export function resolveReasoningEffort(baseUrl: string, configured: string): string | null {
+  if (configured) return configured;
+  return isPrivateAiHost(baseUrl) ? 'none' : null;
+}
+const reasoningEffort = resolveReasoningEffort(ENV.AI_BASE_URL, ENV.AI_REASONING_EFFORT);
 
 /** true si hay un proveedor configurado y permitido por las reglas de seguridad. */
 export function isAiConfigured(): boolean {
@@ -59,6 +70,7 @@ export async function chatCompletion(messages: ChatMessage[], opts: { json?: boo
         stream: false,
         ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
         ...(opts.json ? { response_format: { type: 'json_object' } } : {}),
+        ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
       }),
     });
   } catch (err) {

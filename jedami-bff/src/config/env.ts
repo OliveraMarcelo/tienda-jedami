@@ -46,6 +46,9 @@ export const ENV = {
   // Por seguridad solo se aceptan modelos locales o en red privada (localhost, LAN, Tailscale).
   // Un proveedor externo (OpenAI, Gemini…) necesita esto en true y una URL https.
   AI_ALLOW_EXTERNAL_PROVIDER: process.env.AI_ALLOW_EXTERNAL_PROVIDER === 'true',
+  // Cuánto "piensa" el modelo antes de responder (reasoning_effort: none, low, medium, high).
+  // Vacío = "none" con un modelo local (qwen3 pensando tarda minutos en CPU) y sin enviar con uno externo.
+  AI_REASONING_EFFORT: (process.env.AI_REASONING_EFFORT ?? '').trim(),
 };
 
 if (!ENV.DATABASE_URL) {

@@ -42,8 +42,15 @@ solo cambian las variables de entorno.
    ```
 4. Reiniciar la API (`npm run dev`) y abrir Admin → Productos → Editar.
 
-Medido en la compu de desarrollo (8 núcleos, Intel Iris Xe, solo CPU) con `qwen2.5-coder:1.5b`:
-**entre 4 y 10 segundos** por descripción.
+Medido en la compu de desarrollo (8 núcleos, Intel Iris Xe, solo CPU) con `qwen3:4b`:
+**entre 15 y 30 segundos** por descripción, usando unos 3 GB de RAM.
+
+**Ojo con los modelos que "piensan"** (qwen3, deepseek-r1, gpt-oss): pensando antes de responder,
+en CPU tardan varios minutos. La API manda `reasoning_effort: "none"` por defecto cuando el modelo es
+local (se cambia con `AI_REASONING_EFFORT`), y el Modelfile termina con `/no_think`.
+
+Las reglas de la API van dentro del mensaje del usuario y no como mensaje "system": en Ollama, un
+system en el pedido reemplaza el SYSTEM del Modelfile y se perderían el tono y los ejemplos.
 
 ## Producción
 
@@ -150,12 +157,11 @@ Lo que tenés que cuidar vos:
 ```bash
 ollama create jedami-descripciones -f ai/Modelfile.jedami-descripciones
 ```
-Lo que más mejora la calidad es **cambiar el modelo base**. `qwen2.5-coder:1.5b` es rápido pero está
-pensado para código y a veces inventa datos (talles o detalles que no le pasaste). Para mejor español:
-```bash
-ollama pull qwen3:4b        # ~2,5 GB, muy buen español
-# en el Modelfile: FROM qwen3:4b  → y volver a correr ollama create
-```
+El modelo base es `qwen3:4b` (muy buen español). `qwen2.5-coder:1.5b` es más rápido pero está pensado
+para código e inventa más datos. Para probar otro base, cambiá el `FROM` y volvé a correr `ollama create`.
+
+Los ejemplos del Modelfile usan **productos inventados**: si un ejemplo tiene el nombre de un
+producto real, el modelo copia esa respuesta (pasó con "Conjunto kiki" y una capucha que no tiene).
 También ayuda **cargar datos extra** (tela, detalles) en el campo de la IA: con más datos reales,
 inventa menos.
 

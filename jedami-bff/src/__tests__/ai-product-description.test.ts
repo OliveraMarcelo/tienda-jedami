@@ -57,11 +57,12 @@ describe('prompt', () => {
     expect(prompt).not.toContain('Categoría');
   });
 
-  it('arma system + user', () => {
+  it('manda las reglas dentro del mensaje del usuario, sin pisar el SYSTEM del Modelfile', () => {
     const msgs = buildMessages({ name: 'Pantalón' });
-    expect(msgs.map((m) => m.role)).toEqual(['system', 'user']);
-    expect(msgs[0].content).toBe(PRODUCT_DESCRIPTION_SYSTEM);
+    expect(msgs.map((m) => m.role)).toEqual(['user']);
+    expect(msgs[0].content.startsWith(PRODUCT_DESCRIPTION_SYSTEM)).toBe(true);
     expect(msgs[0].content).toMatch(/no inventes/i);
+    expect(msgs[0].content).toContain('Producto: Pantalón');
   });
 });
 

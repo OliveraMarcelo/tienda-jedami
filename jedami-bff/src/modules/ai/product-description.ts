@@ -63,10 +63,14 @@ export function buildUserPrompt(input: ProductDescriptionInput): string {
   return lines.join('\n');
 }
 
+/**
+ * Las reglas van dentro del mensaje del usuario y no como mensaje "system": en Ollama un
+ * system en el pedido reemplaza el SYSTEM del Modelfile (tono de marca, ejemplos y /no_think).
+ * Con una API paga funciona igual.
+ */
 export function buildMessages(input: ProductDescriptionInput): ChatMessage[] {
   return [
-    { role: 'system', content: PRODUCT_DESCRIPTION_SYSTEM },
-    { role: 'user', content: buildUserPrompt(input) },
+    { role: 'user', content: `${PRODUCT_DESCRIPTION_SYSTEM}\n\n${buildUserPrompt(input)}` },
   ];
 }
 

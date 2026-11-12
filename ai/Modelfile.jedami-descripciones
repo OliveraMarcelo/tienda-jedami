@@ -3,13 +3,13 @@
 # Crear o actualizar (después de cualquier cambio en este archivo):
 #   ollama create jedami-descripciones -f ai/Modelfile.jedami-descripciones
 #
-# Modelo base: qwen2.5-coder:1.5b es el que ya está instalado (liviano y rápido en CPU),
-# pero está pensado para código. Para mejor español conviene uno general de ~4B:
-#   FROM qwen3:4b        (muy buen español, ~2,5 GB)
-#   FROM gemma3:4b       (de Google, buen español, ~3,3 GB)
+# Modelo base: qwen3:4b (muy buen español, ~2,5 GB, ~3 GB de RAM en uso).
+# Alternativas:
+#   FROM gemma3:4b            (de Google, buen español, ~3,3 GB)
+#   FROM qwen2.5-coder:1.5b   (más liviano y rápido, pero pensado para código: inventa más)
 # Cuando haya un modelo ajustado con fine-tuning (ver docs/ia.md), va acá:
 #   FROM ./jedami-descripciones.gguf
-FROM qwen2.5-coder:1.5b
+FROM qwen3:4b
 
 # Poca creatividad: con modelos chicos, más temperatura = más datos inventados
 PARAMETER temperature 0.4
@@ -32,17 +32,20 @@ Reglas:
 - Respondé únicamente con un objeto JSON válido, sin texto antes ni después:
   {"title": "...", "description": "...", "highlights": ["...", "..."]}
 - "title": hasta 60 caracteres. "description": 2 a 4 oraciones. "highlights": 3 a 5 puntos de pocas palabras.
+
+/no_think
 """
 
-# Ejemplos (few-shot): le muestran al modelo el formato y el tono esperados
-MESSAGE user """Producto: Conjunto kiki
-Categoría: Conjuntos
-Talles: 1, 2, 3, 4
-Colores: Rosa, Celeste
-Datos extra: buzo con capucha y pantalón con puño
+# Ejemplos (few-shot): le muestran al modelo el formato y el tono esperados.
+# Usar productos inventados: si el nombre coincide con uno real, el modelo copia la respuesta del ejemplo.
+MESSAGE user """Producto: Campera rompeviento Nube
+Categoría: Abrigos
+Talles: 2, 4, 6
+Colores: Verde, Mostaza
+Datos extra: capucha desmontable y cierre adelante
 
 Escribí el título, la descripción y los puntos destacados en JSON."""
-MESSAGE assistant """{"title": "Conjunto Kiki con capucha", "description": "Un conjunto pensado para que jueguen cómodos todo el día. El buzo con capucha los abriga y el pantalón con puño no se sube al correr. Viene en rosa y celeste, en talles del 1 al 4.", "highlights": ["Buzo con capucha", "Pantalón con puño", "Talles 1 al 4", "Rosa y celeste"]}"""
+MESSAGE assistant """{"title": "Campera rompeviento Nube", "description": "La campera para los días de viento. Tiene capucha desmontable para usarla como quieras y cierre adelante para ponerla y sacarla rápido. Viene en verde y mostaza, talles 2, 4 y 6.", "highlights": ["Capucha desmontable", "Cierre adelante", "Talles 2 a 6", "Verde y mostaza"]}"""
 
 MESSAGE user """Producto: Enterito
 Categoría: Enteritos

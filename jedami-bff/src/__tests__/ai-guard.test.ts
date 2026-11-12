@@ -95,3 +95,17 @@ describe('datos que llegan al modelo', () => {
     expect(buildUserPrompt(input)).not.toMatch(/cliente@mail\.com|secreto/);
   });
 });
+
+describe('resolveReasoningEffort', () => {
+  it('apaga el razonamiento con un modelo local', async () => {
+    const { resolveReasoningEffort } = await import('../lib/ai.js');
+    expect(resolveReasoningEffort('http://localhost:11434/v1', '')).toBe('none');
+    expect(resolveReasoningEffort('http://100.80.1.2:11434/v1', '')).toBe('none');
+  });
+
+  it('no lo envía a un proveedor externo salvo que se configure', async () => {
+    const { resolveReasoningEffort } = await import('../lib/ai.js');
+    expect(resolveReasoningEffort('https://api.openai.com/v1', '')).toBeNull();
+    expect(resolveReasoningEffort('https://api.openai.com/v1', 'low')).toBe('low');
+  });
+});
