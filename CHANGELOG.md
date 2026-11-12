@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.1](https://github.com/OliveraMarcelo/tienda-jedami/compare/v1.8.0...v1.8.1) (2026-11-12)
+
+
+### Bug Fixes
+
+* **deps:** package-lock del BFF compatible con npm ci de CI ([75f25dc](https://github.com/OliveraMarcelo/tienda-jedami/commit/75f25dce2a2962ba948a18bd372126f3a58d97b1))
+
 ## [1.8.0](https://github.com/OliveraMarcelo/tienda-jedami/compare/v1.7.1...v1.8.0) (2026-11-12)
 
 
