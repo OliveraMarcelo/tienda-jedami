@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../../types/app-error.js';
 import { JwtUserPayload } from './jwt-payload.js';
 import * as authService from './auth.service.js';
+import { loginWithGoogle } from './auth.google.js';
 import { CUSTOMER_TYPES } from '../../lib/constants.js';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -86,6 +87,21 @@ export async function resetPassword(req: Request, res: Response, next: NextFunct
       return;
     }
     const result = await authService.resetPassword(String(token), password);
+    res.status(200).json({ data: result });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function google(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { credential, customerType } = req.body ?? {};
+    if (!credential || typeof credential !== 'string') {
+      next(new AppError(400, 'Datos incompletos', ERR_VALIDATION, 'Falta la credencial de Google'));
+      return;
+    }
+    const type = customerType === CUSTOMER_TYPES.WHOLESALE ? CUSTOMER_TYPES.WHOLESALE : CUSTOMER_TYPES.RETAIL;
+    const result = await loginWithGoogle(credential, type);
     res.status(200).json({ data: result });
   } catch (err) {
     next(err);

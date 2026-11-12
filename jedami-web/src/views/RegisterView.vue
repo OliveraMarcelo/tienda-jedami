@@ -4,6 +4,7 @@ import { ref, computed, watchEffect } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { apiErrorDetail } from '@/lib/auth-errors'
+import GoogleSignInButton from '@/components/features/auth/GoogleSignInButton.vue'
 import { useConfigStore } from '@/stores/config.store'
 import type { CustomerType } from '@/lib/constants'
 
@@ -23,6 +24,7 @@ watchEffect(() => {
     customerType.value = configStore.config.customerTypes[0]!.code
   }
 })
+const googleCustomerType = computed(() => (customerType.value || undefined) as CustomerType | undefined)
 const passwordVisible = ref(false)
 const loading = ref(false)
 const serverError = ref('')
@@ -105,6 +107,13 @@ async function handleSubmit() {
           </button>
         </div>
       </fieldset>
+
+      <!-- El tipo elegido arriba se usa también para la cuenta creada con Google -->
+      <GoogleSignInButton
+        text="signup_with"
+        :customer-type="googleCustomerType"
+        @error="serverError = $event"
+      />
 
       <div>
         <label for="reg-email" class="mb-1.5 block text-sm font-semibold">Email</label>

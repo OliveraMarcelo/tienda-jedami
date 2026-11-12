@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import {
   register, login, refresh, logout,
-  verifyEmail, resendVerification, forgotPassword, resetPassword,
+  verifyEmail, resendVerification, forgotPassword, resetPassword, google,
 } from '../modules/auth/auth.controller.js';
 import { authMiddleware } from '../middlewares/auth.middleware.js';
 import { authRateLimit, loginRateLimit } from '../middlewares/rate-limit.middleware.js';
@@ -217,6 +217,41 @@ router.post('/forgot-password', authRateLimit, forgotPassword);
  *             schema: { $ref: '#/components/schemas/Error' }
  */
 router.post('/reset-password', authRateLimit, resetPassword);
+
+/**
+ * @swagger
+ * /auth/google:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Ingresar o crear cuenta con Google
+ *     description: |
+ *       Recibe el ID token ("credential") que entrega el botón de Google Identity Services.
+ *       Si el email ya tiene cuenta la vincula; si no, crea una cuenta sin contraseña.
+ *       Requiere GOOGLE_CLIENT_ID configurado (si no, responde 404).
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [credential]
+ *             properties:
+ *               credential: { type: string }
+ *               customerType: { type: string, enum: [retail, wholesale], description: 'Solo para cuentas nuevas' }
+ *     responses:
+ *       200:
+ *         description: Devuelve token y refreshToken
+ *       401:
+ *         description: Token de Google inválido o email sin verificar
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       404:
+ *         description: Login con Google deshabilitado
+ *       409:
+ *         description: El email está vinculado a otra cuenta de Google
+ */
+router.post('/google', authRateLimit, google);
 
 /**
  * @swagger

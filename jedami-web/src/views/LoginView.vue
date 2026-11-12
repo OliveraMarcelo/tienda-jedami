@@ -4,6 +4,7 @@ import { ref, computed } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { apiErrorDetail, isEmailNotVerified } from '@/lib/auth-errors'
+import GoogleSignInButton from '@/components/features/auth/GoogleSignInButton.vue'
 
 const authStore = useAuthStore()
 const route = useRoute()
@@ -57,6 +58,7 @@ async function handleSubmit() {
 
 <template>
   <AuthShell title="Ingresar" subtitle="Qué bueno verte de nuevo.">
+    <GoogleSignInButton class="mb-5" text="signin_with" @error="serverError = $event" />
     <form class="flex flex-col gap-4" novalidate @submit.prevent="handleSubmit">
       <div>
         <label for="login-email" class="mb-1.5 block text-sm font-semibold">Email</label>

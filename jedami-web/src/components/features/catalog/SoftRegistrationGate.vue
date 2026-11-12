@@ -3,6 +3,7 @@ import { ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import Sheet from '@/components/ui/Sheet.vue'
 import EmailCodeForm from '@/components/features/auth/EmailCodeForm.vue'
+import GoogleSignInButton from '@/components/features/auth/GoogleSignInButton.vue'
 import { useAuthStore } from '@/stores/auth.store'
 import { CUSTOMER_TYPES } from '@/lib/constants'
 import { apiErrorDetail, isEmailNotVerified } from '@/lib/auth-errors'
@@ -80,6 +81,15 @@ async function submit() {
       <template v-else>
         <h2 class="mb-1 text-xl font-bold">Ingresá para comprar</h2>
         <p class="mb-5 text-sm text-[var(--t-muted)]">Creá tu cuenta en un minuto o ingresá si ya tenés una.</p>
+
+        <GoogleSignInButton
+          v-if="open"
+          class="mb-5"
+          text="continue_with"
+          :navigate="false"
+          @success="finish"
+          @error="errorMsg = $event"
+        />
 
         <div role="tablist" class="mb-5 inline-flex w-full rounded-full bg-[var(--t-surface)] p-1">
           <button
