@@ -1,6 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { loginApi, registerApi, refreshApi, logoutApi } from '@/api/auth.api'
+import {
+  loginApi, registerApi, refreshApi, logoutApi,
+  verifyEmailApi, resetPasswordApi, googleLoginApi,
+  type AuthTokens,
+} from '@/api/auth.api'
 import { ROLES, MODES, CUSTOMER_TYPES, type Mode, type CustomerType } from '@/lib/constants'
 
 interface JwtPayload {
@@ -86,22 +90,38 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function login(email: string, password: string, navigate = true) {
-    const res = await loginApi(email, password)
-    setToken(res.data.token, res.data.refreshToken)
-    if (navigate) {
-      const { default: router } = await import('@/router')
-      const payload = parseJwtPayload(res.data.token)
-      if (payload?.roles.includes(ROLES.ADMIN)) {
-        router.push('/admin')
-      } else {
-        router.push('/catalogo')
-      }
+  /** Guarda la sesión y, si corresponde, lleva al admin o a la ruta pedida (?redirect=) */
+  async function startSession(tokens: AuthTokens, navigate = true) {
+    setToken(tokens.token, tokens.refreshToken)
+    if (!navigate) return
+    const { default: router } = await import('@/router')
+    const redirect = router.currentRoute.value.query.redirect
+    if (user.value?.roles.includes(ROLES.ADMIN)) {
+      router.push('/admin')
+    } else if (typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//')) {
+      router.push(redirect)
+    } else {
+      router.push('/catalogo')
     }
   }
 
-  async function register(email: string, password: string, customerType: CustomerType = CUSTOMER_TYPES.RETAIL, navigate = true) {
-    await registerApi(email, password, customerType)
+  async function login(email: string, password: string, navigate = true) {
+    const res = await loginApi(email, password)
+    await startSession(res.data, navigate)
+  }
+
+  /**
+   * Crea la cuenta. Si el servidor pide verificar el email devuelve
+   * { verificationRequired: true } sin iniciar sesión; si no, entra directo.
+   */
+  async function register(
+    email: string,
+    password: string,
+    customerType: CustomerType = CUSTOMER_TYPES.RETAIL,
+    navigate = true,
+  ): Promise<{ verificationRequired: boolean }> {
+    const res = await registerApi(email, password, customerType)
+    if (res.data.verificationRequired) return { verificationRequired: true }
     // Si el registro fue exitoso pero el login falla, marcamos el error para que
     // el componente pueda distinguirlo de un error de registro (ej: email duplicado)
     try {
@@ -111,6 +131,19 @@ export const useAuthStore = defineStore('auth', () => {
       err.__registerOk = true
       throw err
     }
+    return { verificationRequired: false }
+  }
+
+  async function verifyEmail(email: string, code: string, navigate = true) {
+    await startSession(await verifyEmailApi(email, code), navigate)
+  }
+
+  async function resetPassword(resetToken: string, password: string, navigate = true) {
+    await startSession(await resetPasswordApi(resetToken, password), navigate)
+  }
+
+  async function loginWithGoogle(credential: string, customerType?: CustomerType, navigate = true) {
+    await startSession(await googleLoginApi(credential, customerType), navigate)
   }
 
   async function logout() {
@@ -138,6 +171,9 @@ export const useAuthStore = defineStore('auth', () => {
     toggleMode,
     login,
     register,
+    verifyEmail,
+    resetPassword,
+    loginWithGoogle,
     logout,
     tryRefresh,
   }

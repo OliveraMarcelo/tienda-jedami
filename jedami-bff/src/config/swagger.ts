@@ -121,6 +121,14 @@ const options: swaggerJsdoc.Options = {
         Config: {
           type: 'object',
           properties: {
+            auth: {
+              type: 'object',
+              description: 'Funciones de login disponibles según la configuración del servidor',
+              properties: {
+                emailEnabled: { type: 'boolean', description: 'Hay envío de emails (verificación y recuperar contraseña)' },
+                googleClientId: { type: 'string', nullable: true, description: 'Client ID de Google; null si el login con Google está apagado' },
+              },
+            },
             roles: {
               type: 'array',
               items: {

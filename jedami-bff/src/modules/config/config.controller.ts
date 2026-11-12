@@ -12,13 +12,30 @@ import { FIND_PAYMENT_GATEWAY_RULES } from './queries/find-payment-gateway-rules
 import { UPSERT_PAYMENT_GATEWAY_RULE } from './queries/update-payment-gateway-rule.js';
 import { cacheGet, cacheSet, cacheDel } from '../../config/redis.js';
 import { getActiveDevice } from '../pos/pos.service.js';
+import { ENV } from '../../config/env.js';
+import { isMailerConfigured } from '../../lib/mailer.js';
 
 const CONFIG_CACHE_KEY = 'config:all';
+
+/**
+ * Funciones de login disponibles. Salen de las variables de entorno, por eso se agregan
+ * después del caché: al cambiar .env.prod y recrear el contenedor se ven al instante.
+ */
+function authFeatures() {
+  return {
+    emailEnabled: isMailerConfigured(),
+    googleClientId: ENV.GOOGLE_CLIENT_ID || null,
+  };
+}
+
+function withAuthFeatures(body: { data: Record<string, unknown> }) {
+  return { ...body, data: { ...body.data, auth: authFeatures() } };
+}
 
 export async function getConfig(_req: Request, res: Response, next: NextFunction) {
   try {
     const cached = await cacheGet(CONFIG_CACHE_KEY);
-    if (cached) { res.status(200).json(JSON.parse(cached)); return; }
+    if (cached) { res.status(200).json(withAuthFeatures(JSON.parse(cached))); return; }
 
     const [configResult, rulesResult, activeDevice] = await Promise.all([
       pool.query(FIND_CONFIG),
@@ -46,7 +63,7 @@ export async function getConfig(_req: Request, res: Response, next: NextFunction
       },
     };
     await cacheSet(CONFIG_CACHE_KEY, JSON.stringify(body), 300);
-    res.status(200).json(body);
+    res.status(200).json(withAuthFeatures(body));
   } catch (err) { next(err); }
 }
 

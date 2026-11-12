@@ -7,18 +7,32 @@ const EMAIL = 'auth-test@example.com';
 const PASSWORD = 'Password123!';
 
 describe('POST /auth/register', () => {
-  it('registra un usuario nuevo y retorna token', async () => {
+  it('registra un usuario nuevo (sin emails configurados no pide verificación)', async () => {
     const res = await request(testApp)
       .post(`${BASE}/register`)
       .send({ email: EMAIL, password: PASSWORD });
     expect(res.status).toBe(201);
-    expect(res.body.data).toHaveProperty('token');
+    expect(res.body.data).toMatchObject({ email: EMAIL, verificationRequired: false });
+  });
+
+  it('guarda el email en minúsculas y detecta duplicados sin importar mayúsculas', async () => {
+    await request(testApp).post(`${BASE}/register`).send({ email: 'Ana@Example.com', password: PASSWORD });
+    const res = await request(testApp).post(`${BASE}/register`).send({ email: 'ana@example.COM', password: PASSWORD });
+    expect(res.status).toBe(409);
+    const login = await request(testApp).post(`${BASE}/login`).send({ email: 'ANA@example.com', password: PASSWORD });
+    expect(login.status).toBe(200);
+  });
+
+  it('rechaza contraseñas de menos de 8 caracteres', async () => {
+    const res = await request(testApp).post(`${BASE}/register`).send({ email: EMAIL, password: '1234567' });
+    expect(res.status).toBe(400);
   });
 
   it('rechaza email duplicado con 409', async () => {
     await request(testApp).post(`${BASE}/register`).send({ email: EMAIL, password: PASSWORD });
     const res = await request(testApp).post(`${BASE}/register`).send({ email: EMAIL, password: PASSWORD });
     expect(res.status).toBe(409);
+    expect(res.body.detail).toBe('Ese email ya tiene una cuenta. Iniciá sesión o recuperá tu contraseña.');
   });
 
   it('rechaza request sin email con 400', async () => {

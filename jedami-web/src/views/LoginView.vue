@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import AuthShell from '@/components/features/auth/AuthShell.vue'
 import { ref, computed } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
+import { apiErrorDetail, isEmailNotVerified } from '@/lib/auth-errors'
 
 const authStore = useAuthStore()
+const route = useRoute()
+const router = useRouter()
 
 const email = ref('')
 const password = ref('')
@@ -40,8 +43,12 @@ async function handleSubmit() {
   try {
     await authStore.login(email.value, password.value)
   } catch (err: unknown) {
-    const e = err as { response?: { data?: { detail?: string } } }
-    serverError.value = e.response?.data?.detail ?? 'Error inesperado. Intente nuevamente.'
+    if (isEmailNotVerified(err)) {
+      // La contraseña es correcta pero falta confirmar el email: el servidor ya mandó un código
+      router.push({ name: 'verificarEmail', query: { ...route.query, email: email.value.trim() } })
+      return
+    }
+    serverError.value = apiErrorDetail(err)
   } finally {
     loading.value = false
   }
@@ -68,7 +75,13 @@ async function handleSubmit() {
       </div>
 
       <div>
-        <label for="login-password" class="mb-1.5 block text-sm font-semibold">Contraseña</label>
+        <div class="mb-1.5 flex items-baseline justify-between gap-3">
+          <label for="login-password" class="block text-sm font-semibold">Contraseña</label>
+          <RouterLink
+            :to="{ name: 'olvideContrasena', query: email ? { email } : {} }"
+            class="text-sm font-semibold text-[var(--t-muted)] underline underline-offset-4 hover:text-[var(--t-ink)]"
+          >¿Olvidaste tu contraseña?</RouterLink>
+        </div>
         <div class="relative">
           <input
               id="login-password"
@@ -110,7 +123,7 @@ async function handleSubmit() {
 
     <p class="mt-6 text-center text-sm text-[var(--t-muted)]">
       ¿No tenés cuenta?
-      <RouterLink to="/registro" class="font-semibold text-[var(--t-ink)] underline underline-offset-4">Creá una</RouterLink>
+      <RouterLink :to="{ name: 'registro', query: route.query }" class="font-semibold text-[var(--t-ink)] underline underline-offset-4">Creá una</RouterLink>
     </p>
   </AuthShell>
 </template>

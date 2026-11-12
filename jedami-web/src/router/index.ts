@@ -8,6 +8,10 @@ const router = createRouter({
     { path: '/', redirect: '/catalogo' },
     { path: '/login', name: 'login', component: () => import('@/views/LoginView.vue') },
     { path: '/registro', name: 'registro', component: () => import('@/views/RegisterView.vue') },
+    { path: '/verificar-email', name: 'verificarEmail', component: () => import('@/views/VerifyEmailView.vue') },
+    { path: '/olvide-contrasena', name: 'olvideContrasena', component: () => import('@/views/ForgotPasswordView.vue') },
+    // Sin restricción de invitado: el link del email tiene que funcionar aunque haya una sesión abierta
+    { path: '/restablecer-contrasena', name: 'restablecerContrasena', component: () => import('@/views/ResetPasswordView.vue') },
     { path: '/catalogo', name: 'catalogo', component: () => import('@/views/CatalogView.vue') },
     { path: '/catalogo/:id', name: 'producto', component: () => import('@/views/ProductView.vue') },
     {
@@ -99,7 +103,7 @@ const router = createRouter({
   ],
 })
 
-const GUEST_ONLY_ROUTES = ['login', 'registro']
+const GUEST_ONLY_ROUTES = ['login', 'registro', 'verificarEmail', 'olvideContrasena']
 
 router.beforeEach((to) => {
   const authStore = useAuthStore()
@@ -110,7 +114,8 @@ router.beforeEach((to) => {
   }
 
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    return { name: 'login' }
+    // Después de ingresar vuelve a la página que quería ver (ej. el link de un pedido)
+    return { name: 'login', query: { redirect: to.fullPath } }
   }
   if (to.meta.requiresRole === ROLES.ADMIN && !authStore.isAdmin) {
     return { name: 'catalogo' }

@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import AuthShell from '@/components/features/auth/AuthShell.vue'
 import { ref, computed, watchEffect } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
+import { apiErrorDetail } from '@/lib/auth-errors'
 import { useConfigStore } from '@/stores/config.store'
 import type { CustomerType } from '@/lib/constants'
 
 const authStore = useAuthStore()
 const configStore = useConfigStore()
+const route = useRoute()
+const router = useRouter()
 
 const email = ref('')
 const password = ref('')
@@ -63,14 +66,16 @@ async function handleSubmit() {
   loading.value = true
   serverError.value = ''
   try {
-    await authStore.register(email.value, password.value, customerType.value as CustomerType)
+    const { verificationRequired } = await authStore.register(email.value, password.value, customerType.value as CustomerType)
+    if (verificationRequired) {
+      router.push({ name: 'verificarEmail', query: { ...route.query, email: email.value.trim() } })
+    }
   } catch (err: unknown) {
-    const e = err as { response?: { data?: { detail?: string } }; __registerOk?: boolean }
-    if (e.__registerOk) {
+    if ((err as { __registerOk?: boolean }).__registerOk) {
       // Cuenta creada pero el login falló — redirigir al login con mensaje
       serverError.value = 'Cuenta creada. Por favor iniciá sesión.'
     } else {
-      serverError.value = (e.response?.data?.detail) ?? 'Error inesperado. Intente nuevamente.'
+      serverError.value = apiErrorDetail(err)
     }
   } finally {
     loading.value = false
@@ -176,7 +181,7 @@ async function handleSubmit() {
 
     <p class="mt-6 text-center text-sm text-[var(--t-muted)]">
       ¿Ya tenés cuenta?
-      <RouterLink to="/login" class="font-semibold text-[var(--t-ink)] underline underline-offset-4">Ingresá</RouterLink>
+      <RouterLink :to="{ name: 'login', query: route.query }" class="font-semibold text-[var(--t-ink)] underline underline-offset-4">Ingresá</RouterLink>
     </p>
   </AuthShell>
 </template>

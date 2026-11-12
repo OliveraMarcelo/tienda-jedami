@@ -41,6 +41,15 @@ export interface AppConfig {
     wholesale: PaymentGatewayRuleItem[]
   }
   pointDevice?: { id: number; name: string } | null
+  /** Funciones de login disponibles según la configuración del servidor */
+  auth?: AuthFeatures
+}
+
+export interface AuthFeatures {
+  /** Hay envío de emails: verificación de cuenta y "Olvidé mi contraseña" */
+  emailEnabled: boolean
+  /** Client ID de Google; null si el login con Google está apagado */
+  googleClientId: string | null
 }
 
 export async function fetchConfig(): Promise<AppConfig> {

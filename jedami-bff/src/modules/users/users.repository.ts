@@ -1,3 +1,4 @@
+import type { PoolClient } from 'pg';
 import { pool } from '../../config/database.js';
 import { User } from './users.entity.js';
 import { FIND_BY_EMAIL } from './queries/find-by-email.js';
@@ -20,12 +21,19 @@ export const findByEmailWithRoles = async (email: string): Promise<User | null> 
     email: first.email,
     password_hash: first.password_hash,
     created_at: first.created_at,
+    email_verified_at: first.email_verified_at,
+    google_sub: first.google_sub,
     roles: result.rows.map((r: { role_name: string | null }) => r.role_name).filter((n): n is string => n !== null),
   };
 };
 
-export const create = async (email: string, passwordHash: string): Promise<User> => {
-  const result = await pool.query(CREATE_USER, [email, passwordHash]);
+export const create = async (
+  email: string,
+  passwordHash: string | null,
+  opts: { verified?: boolean; googleSub?: string | null } = {},
+  client: Pick<PoolClient, 'query'> = pool,
+): Promise<User> => {
+  const result = await client.query(CREATE_USER, [email, passwordHash, opts.verified ?? false, opts.googleSub ?? null]);
   return result.rows[0];
 };
 
@@ -36,7 +44,7 @@ export const findById = async (id: number): Promise<Pick<User, 'id' | 'email'> |
 
 export const findByIdWithRoles = async (id: number): Promise<User | null> => {
   const result = await pool.query(
-    `SELECT u.id, u.email, u.password_hash, u.created_at, r.name AS role_name
+    `SELECT u.id, u.email, u.password_hash, u.created_at, u.email_verified_at, u.google_sub, r.name AS role_name
      FROM users u
      LEFT JOIN user_roles ur ON ur.user_id = u.id
      LEFT JOIN roles r ON r.id = ur.role_id
@@ -50,6 +58,8 @@ export const findByIdWithRoles = async (id: number): Promise<User | null> => {
     email: first.email,
     password_hash: first.password_hash,
     created_at: first.created_at,
+    email_verified_at: first.email_verified_at,
+    google_sub: first.google_sub,
     roles: result.rows.map((r: { role_name: string | null }) => r.role_name).filter((n): n is string => n != null),
   };
 };

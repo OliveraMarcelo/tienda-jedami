@@ -9,8 +9,11 @@ let regularToken: string;
 
 beforeAll(async () => {
   // Registrar usuario normal
-  const res = await request(testApp)
+  await request(testApp)
     .post(`${AUTH_BASE}/register`)
+    .send({ email: 'regular@test.com', password: 'Password123!' });
+  const res = await request(testApp)
+    .post(`${AUTH_BASE}/login`)
     .send({ email: 'regular@test.com', password: 'Password123!' });
   regularToken = res.body.data?.token;
 });

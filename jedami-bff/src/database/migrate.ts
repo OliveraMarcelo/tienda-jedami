@@ -43,8 +43,8 @@ export async function runMigrations(): Promise<void> {
 
   // Garantizar que siempre exista un admin — idempotente
   await pool.query(`
-    INSERT INTO users(email, password_hash)
-    VALUES ('admin@jedami.com', '$2b$10$Zjjg2LIvda6dlOFp9ZO4YeOHg8ampzT3y7.526gm2pzBZxzZ.wFIm')
+    INSERT INTO users(email, password_hash, email_verified_at)
+    VALUES ('admin@jedami.com', '$2b$10$Zjjg2LIvda6dlOFp9ZO4YeOHg8ampzT3y7.526gm2pzBZxzZ.wFIm', NOW())
     ON CONFLICT (email) DO NOTHING
   `);
   await pool.query(`

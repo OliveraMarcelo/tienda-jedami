@@ -35,7 +35,7 @@ const router = Router();
  *   get:
  *     tags: [Config]
  *     summary: Obtener configuración global del sistema
- *     description: Devuelve roles, modos de precio, tipos de compra/cliente y gateway de pago activo. Respuesta cacheada 5 minutos.
+ *     description: Devuelve roles, modos de precio, tipos de compra/cliente, gateway de pago activo y `auth` (emailEnabled, googleClientId). Respuesta cacheada 5 minutos (salvo `auth`).
  *     responses:
  *       200:
  *         description: Configuración del sistema

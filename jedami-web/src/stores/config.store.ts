@@ -50,6 +50,9 @@ export const useConfigStore = defineStore('config', () => {
 
   const pointDevice = computed(() => config.value.pointDevice ?? null)
 
+  const emailEnabled = computed(() => config.value.auth?.emailEnabled ?? false)
+  const googleClientId = computed(() => config.value.auth?.googleClientId ?? null)
+
   function getGatewaysForCustomerType(type: 'retail' | 'wholesale'): PaymentGatewayRuleItem[] {
     return paymentGatewayRules.value[type] ?? []
   }
@@ -93,6 +96,8 @@ export const useConfigStore = defineStore('config', () => {
     priceModeLabel,
     paymentGatewayRules,
     pointDevice,
+    emailEnabled,
+    googleClientId,
     getGatewaysForCustomerType,
     loadConfig,
     refreshConfig,
