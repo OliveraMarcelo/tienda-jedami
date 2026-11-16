@@ -12,6 +12,8 @@ import { WholesalePurchaseType } from './orders.entity.js';
 
 interface VariantWithStock {
   id: number;
+  size_id: number;
+  size_order: number;
   size: string;
   color: string;
   retail_price: string;
@@ -47,6 +49,8 @@ async function getVariantsWithStockInTx(
 ): Promise<VariantWithStock[]> {
   const result = await client.query(
     `SELECT v.id,
+            v.size_id,
+            sz.sort_order           AS size_order,
             sz.label                AS size,
             cl.name                 AS color,
             pp_r.price              AS retail_price,
@@ -138,8 +142,8 @@ export async function createRetailOrder(
       }
 
       const itemRes = await client.query(
-        `INSERT INTO order_items (order_id, variant_id, quantity, unit_price)
-         VALUES ($1, $2, $3, $4) RETURNING id, variant_id, quantity, unit_price`,
+        `INSERT INTO order_items (order_id, variant_id, quantity, unit_price, stock_deducted)
+         VALUES ($1, $2, $3, $4, TRUE) RETURNING id, variant_id, quantity, unit_price`,
         [order.id, item.variantId, item.quantity, retailPrice],
       );
       const inserted = itemRes.rows[0];
@@ -315,58 +319,60 @@ export async function addCantidadItems(orderId: number, productId: number, quant
   try {
     await client.query('BEGIN');
 
-    // Leer variantes dentro de la TX para consistencia
+    // Por cantidad = curvas contadas en unidades: el total se reparte en partes iguales entre los talles
+    // (102 unidades con talles 1 a 5 → 20 de cada uno + 2 a elección). El color, y el talle de las que
+    // sobran, los elige el admin al despachar.
     const variants = await getVariantsWithStockInTx(client, productId);
-    const totalStock = variants.reduce((sum, v) => sum + v.stock_quantity, 0);
+    const sizes = [...new Map(variants.map(v => [v.size_id, { id: v.size_id, label: v.size, order: v.size_order }])).values()]
+      .sort((a, b) => a.order - b.order);
+    if (sizes.length === 0) {
+      throw new AppError(422, 'Sin talles', 'https://jedami.com/errors/no-variants', 'El producto no tiene talles disponibles');
+    }
+    const perSize = Math.floor(quantity / sizes.length);
+    const extra = quantity % sizes.length;
 
+    const totalStock = variants.reduce((sum, v) => sum + v.stock_quantity, 0);
     if (totalStock < quantity) {
-      const detail = variants.map(v => `${v.size} ${v.color}: ${v.stock_quantity}`).join(', ');
-      throw new AppError(422, 'Stock insuficiente', 'https://jedami.com/errors/insufficient-stock', `Stock total disponible: ${totalStock}. Detalle por variante: ${detail}`);
+      throw new AppError(422, 'Stock insuficiente', 'https://jedami.com/errors/insufficient-stock',
+        `Quedan ${totalStock} unidades de este producto y pediste ${quantity}`);
     }
 
-    // Greedy: deducir del variant con más stock primero
-    const sortedVariants = [...variants].sort((a, b) => b.stock_quantity - a.stock_quantity);
-    let remaining = quantity;
-    const deductions: { variantId: number; amount: number; unitPrice: number }[] = [];
-    for (const variant of sortedVariants) {
-      if (remaining <= 0) break;
-      const deduct = Math.min(variant.stock_quantity, remaining);
-      if (deduct > 0) {
-        // Usar precio mayorista si está disponible; caer en minorista como fallback
-        const unitPrice = variant.wholesale_price != null ? Number(variant.wholesale_price) : Number(variant.retail_price);
-        deductions.push({ variantId: variant.id, amount: deduct, unitPrice });
-        remaining -= deduct;
+    // Cada talle tiene que tener stock para su parte (sumando todos los colores)
+    for (const size of sizes) {
+      const stock = variants.filter(v => v.size_id === size.id).reduce((sum, v) => sum + v.stock_quantity, 0);
+      if (stock < perSize) {
+        throw new AppError(422, 'Stock insuficiente', 'https://jedami.com/errors/insufficient-stock',
+          `Del talle ${size.label} quedan ${stock} unidades y necesitás ${perSize}`);
       }
     }
 
-    // Precio real basado en las deducciones concretas (no promedio ponderado)
-    const totalAddition = deductions.reduce((sum, d) => sum + d.amount * d.unitPrice, 0);
-    const baseUnitPrice = quantity > 0 ? totalAddition / quantity : 0;
+    // El precio es del producto (igual para todas las variantes): mayorista, o minorista si no tiene
+    const v0 = variants[0]!;
+    const baseUnitPrice = v0.wholesale_price != null ? Number(v0.wholesale_price) : Number(v0.retail_price);
 
-    // Aplicar descuento por cantidad si corresponde
+    // El descuento por cantidad se calcula sobre el total
     const quantityDiscount = await discountsService.applyQuantityDiscount(productId, quantity, baseUnitPrice);
     const unitPrice = quantityDiscount ? quantityDiscount.finalPrice : baseUnitPrice;
     const discountPct = quantityDiscount ? quantityDiscount.discountPct : 0;
     const originalUnitPrice = quantityDiscount ? baseUnitPrice : null;
     const totalWithDiscount = quantity * unitPrice;
 
-    const res = await client.query(
-      'INSERT INTO order_items (order_id, product_id, quantity, unit_price, discount_pct, original_unit_price) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, product_id, quantity, unit_price, discount_pct, original_unit_price',
-      [orderId, productId, quantity, unitPrice, discountPct, originalUnitPrice],
-    );
-    const item = res.rows[0];
-
-    for (const d of deductions) {
-      // Deducción atómica dentro de la TX (previene race condition)
-      const stockRes = await client.query(
-        'UPDATE stock SET quantity = quantity - $1 WHERE variant_id = $2 AND quantity >= $1 RETURNING quantity',
-        [d.amount, d.variantId],
+    // Una línea por talle y otra sin talle para las que sobran; el stock se descuenta al despachar
+    const items: { id: number; productId: number; sizeId: number | null; size: string | null; quantity: number; unitPrice: number; discountPct: number; originalUnitPrice: number | null }[] = [];
+    for (const size of perSize > 0 ? sizes : []) {
+      const r = await client.query(
+        'INSERT INTO order_items (order_id, product_id, size_id, quantity, unit_price, discount_pct, original_unit_price) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
+        [orderId, productId, size.id, perSize, unitPrice, discountPct, originalUnitPrice],
       );
-      if (stockRes.rowCount === 0) {
-        throw new AppError(422, 'Stock insuficiente', 'https://jedami.com/errors/insufficient-stock', `Stock insuficiente para variante ${d.variantId} durante el procesamiento`);
-      }
+      items.push({ id: r.rows[0].id, productId, sizeId: size.id, size: size.label, quantity: perSize, unitPrice, discountPct, originalUnitPrice });
     }
-
+    if (extra > 0) {
+      const r = await client.query(
+        'INSERT INTO order_items (order_id, product_id, quantity, unit_price, discount_pct, original_unit_price) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+        [orderId, productId, extra, unitPrice, discountPct, originalUnitPrice],
+      );
+      items.push({ id: r.rows[0].id, productId, sizeId: null, size: null, quantity: extra, unitPrice, discountPct, originalUnitPrice });
+    }
 
     const updatedOrderRes = await client.query(
       'UPDATE orders SET total_amount = total_amount + $1 WHERE id = $2 RETURNING total_amount',
@@ -374,18 +380,10 @@ export async function addCantidadItems(orderId: number, productId: number, quant
     );
 
     await client.query('COMMIT');
-    await cacheDel('catalog:*', 'product:*');
 
     return {
       orderId,
-      items: [{
-        id: item.id,
-        productId: item.product_id,
-        quantity: item.quantity,
-        unitPrice: Number(item.unit_price),
-        discountPct: Number(item.discount_pct),
-        originalUnitPrice: item.original_unit_price ? Number(item.original_unit_price) : null,
-      }],
+      items,
       totalAmount: Number(updatedOrderRes.rows[0].total_amount),
     };
   } catch (err) {
@@ -442,17 +440,24 @@ export async function cancelOrder(orderId: number, userId: number, isAdmin: bool
       throw new AppError(422, 'Estado inválido', 'https://jedami.com/errors/invalid-status', 'Solo se pueden cancelar pedidos en estado pending');
     }
 
-    // Restaurar stock de ítems que tienen variant_id
+    // Devolver solo el stock que realmente salió: según el reparto del despacho o la variante comprada.
+    // Las líneas sin descontar (curva/cantidad sin despachar) no devuelven nada.
     const itemsRes = await client.query(
-      'SELECT variant_id, quantity FROM order_items WHERE order_id = $1 AND variant_id IS NOT NULL',
+      `SELECT COALESCE(a.variant_id, oi.variant_id) AS variant_id,
+              COALESCE(a.quantity, oi.quantity)     AS quantity
+       FROM order_items oi
+       LEFT JOIN order_item_allocations a ON a.order_item_id = oi.id
+       WHERE oi.order_id = $1 AND oi.stock_deducted = TRUE`,
       [orderId],
     );
     for (const item of itemsRes.rows) {
+      if (!item.variant_id) continue;
       await client.query(
         'UPDATE stock SET quantity = quantity + $1 WHERE variant_id = $2',
         [item.quantity, item.variant_id],
       );
     }
+
 
     await client.query(
       "UPDATE orders SET status = 'cancelled' WHERE id = $1",
@@ -460,6 +465,7 @@ export async function cancelOrder(orderId: number, userId: number, isAdmin: bool
     );
 
     await client.query('COMMIT');
+    if (itemsRes.rows.length > 0) await cacheDel('catalog:*', 'product:*');
     return { id: orderId, status: 'cancelled' };
   } catch (err) {
     await client.query('ROLLBACK');

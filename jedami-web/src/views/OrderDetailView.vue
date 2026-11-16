@@ -7,6 +7,7 @@ import { useOrdersStore } from '@/stores/orders.store'
 import { usePaymentsStore } from '@/stores/payments.store'
 import { useConfigStore } from '@/stores/config.store'
 import { processPayment } from '@/api/payments.api'
+import { apiErrorDetail } from '@/lib/auth-errors'
 import PaymentMethodSelector from '@/components/features/checkout/PaymentMethodSelector.vue'
 import MercadoPagoQrPanel from '@/components/features/checkout/MercadoPagoQrPanel.vue'
 import WhatsAppShippingModal from '@/components/features/checkout/WhatsAppShippingModal.vue'
@@ -95,9 +96,13 @@ const statusDetailEs: Record<string, string> = {
   cc_rejected_high_risk:                'Pago rechazado por riesgo',
 }
 
+// SDK de Mercado Pago (se carga por <script>): solo lo que usa esta vista
+type MpBricks = { create: (brick: string, containerId: string, settings: Record<string, unknown>) => Promise<unknown> }
+type MpWindow = Window & { MercadoPago?: new (publicKey: string, opts: { locale: string }) => { bricks: () => MpBricks } }
+
 function loadMpSdk(): Promise<void> {
   return new Promise((resolve, reject) => {
-    if ((window as any).MercadoPago) { resolve(); return }
+    if ((window as MpWindow).MercadoPago) { resolve(); return }
     const script = document.createElement('script')
     script.src = 'https://sdk.mercadopago.com/js/v2'
     script.onload = () => resolve()
@@ -113,7 +118,9 @@ async function mountBrick(publicKey: string) {
     brickVisible.value = true
     await nextTick()
     await loadMpSdk()
-    const mp = new (window as any).MercadoPago(publicKey, { locale: 'es-AR' })
+    const MercadoPago = (window as MpWindow).MercadoPago
+    if (!MercadoPago) throw new Error('SDK de Mercado Pago no disponible')
+    const mp = new MercadoPago(publicKey, { locale: 'es-AR' })
     const bricksBuilder = mp.bricks()
     await bricksBuilder.create('cardPayment', 'mp-brick-detail', {
       initialization: { amount: order.value!.totalAmount },
@@ -122,7 +129,7 @@ async function mountBrick(publicKey: string) {
       },
       callbacks: {
         onReady: () => {},
-        onSubmit: async (formData: any) => {
+        onSubmit: async (formData: Record<string, unknown>) => {
           brickProcessing.value = true
           brickError.value = ''
           try {
@@ -136,13 +143,13 @@ async function mountBrick(publicKey: string) {
             } else {
               brickError.value = 'Pago en revisión, te avisaremos por email'
             }
-          } catch (e: any) {
-            brickError.value = e?.response?.data?.detail ?? 'Error al procesar el pago'
+          } catch (e: unknown) {
+            brickError.value = apiErrorDetail(e, 'Error al procesar el pago')
           } finally {
             brickProcessing.value = false
           }
         },
-        onError: (error: any) => { brickError.value = error.message },
+        onError: (error: { message: string }) => { brickError.value = error.message },
       },
     })
   } catch {
@@ -210,7 +217,10 @@ watch(() => paymentsStore.checkoutPublicKey, async (newKey) => {
               <div class="min-w-0">
                 <p class="font-medium">
                   <template v-if="order.purchaseType === PURCHASE_TYPES.CURVA">{{ item.size ? `Talle ${item.size}` : '—' }}</template>
-                  <template v-else>{{ item.size && item.color ? `${item.size} · ${item.color}` : 'Distribución proporcional' }}</template>
+                  <template v-else-if="item.size && item.color">{{ item.size }} · {{ item.color }}</template>
+                  <template v-else-if="item.size">Talle {{ item.size }} · colores surtidos</template>
+                  <template v-else-if="order.purchaseType === PURCHASE_TYPES.CANTIDAD">Talle y color a elección de la tienda</template>
+                  <template v-else>Distribución proporcional</template>
                 </p>
                 <p class="text-sm text-[var(--t-muted)]">
                   {{ item.quantity }} × ${{ Number(item.unitPrice).toLocaleString('es-AR', { maximumFractionDigits: 0 }) }}
