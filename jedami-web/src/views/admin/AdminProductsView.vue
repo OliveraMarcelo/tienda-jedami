@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
+import ProductRowActions from '@/components/features/admin/ProductRowActions.vue'
 import ProductFormDialog from '@/components/features/admin/ProductFormDialog.vue'
 import VariantFormDialog from '@/components/features/admin/VariantFormDialog.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
@@ -332,24 +333,24 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
         </label>
       </div>
       <div class="overflow-x-auto">
-      <table class="w-full min-w-[820px] text-sm">
+      <table class="w-full text-sm">
         <thead class="border-y border-[var(--a-border)] bg-[#F9FAFB]">
           <tr>
-            <th class="text-left px-4 py-3 font-semibold text-[#45494E] w-12">Foto</th>
+            <th class="text-left px-4 py-3 font-semibold text-[#45494E] w-12"><span class="sr-only">Foto</span></th>
             <th class="text-left px-4 py-3 font-semibold text-[#45494E]">Nombre</th>
             <th class="text-left px-4 py-3 font-semibold text-[#45494E] hidden md:table-cell">Categoría</th>
-            <th class="text-right px-4 py-3 font-semibold text-[#45494E] hidden lg:table-cell">Min.</th>
-            <th class="text-right px-4 py-3 font-semibold text-[#45494E] hidden lg:table-cell">May.</th>
-            <th class="text-center px-4 py-3 font-semibold text-[#45494E]">Stock</th>
+            <th class="text-right px-4 py-3 font-semibold text-[#45494E] hidden lg:table-cell">Minorista</th>
+            <th class="text-right px-4 py-3 font-semibold text-[#45494E] hidden lg:table-cell">Mayorista</th>
+            <th class="text-center px-4 py-3 font-semibold text-[#45494E] hidden md:table-cell">Stock</th>
             <th class="text-center px-4 py-3 font-semibold text-[#45494E]">Visible</th>
-            <th class="px-4 py-3"><span class="sr-only">Acciones</span></th>
+            <th class="px-4 py-3 hidden md:table-cell"><span class="sr-only">Acciones</span></th>
           </tr>
         </thead>
         <tbody>
           <template v-for="product in filteredProducts" :key="product.id">
             <!-- Fila principal del producto -->
             <tr class="border-b border-[var(--a-border)] hover:bg-[var(--a-bg)] transition-colors" :class="{ 'opacity-60': product.active === false }">
-              <td class="px-4 py-3">
+              <td class="px-4 py-3 align-top md:align-middle">
                 <img
                   v-if="product.imageUrl"
                   :src="product.imageUrl"
@@ -366,6 +367,24 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
                   v-if="product.active === false"
                   class="ml-2 px-2 py-0.5 rounded-full bg-gray-200 text-[var(--a-muted)] text-[10px] font-semibold uppercase align-middle"
                 >Oculto</span>
+                <!-- Celular: datos y acciones debajo del nombre -->
+                <p class="md:hidden mt-0.5 text-xs font-normal text-[var(--a-muted)]">
+                  {{ product.categoryName ?? 'Sin categoría' }} · {{ totalStock(product) }} en stock
+                  <template v-if="product.retailPrice != null"> · ${{ product.retailPrice.toLocaleString('es-AR', { maximumFractionDigits: 0 }) }}</template>
+                  <template v-if="product.wholesalePrice != null"> / may. ${{ product.wholesalePrice.toLocaleString('es-AR', { maximumFractionDigits: 0 }) }}</template>
+                </p>
+                <div class="md:hidden mt-2.5">
+                  <ProductRowActions
+                    :variants-count="product.variants.length"
+                    :variants-open="expandedProducts.has(product.id)"
+                    :discounts-open="expandedDiscounts.has(product.id)"
+                    :can-delete="!hasActiveStock(product)"
+                    @edit="openEditProduct(product)"
+                    @variants="toggleVariants(product)"
+                    @discounts="toggleDiscounts(product.id)"
+                    @delete="handleDeleteProduct(product)"
+                  />
+                </div>
               </td>
               <td class="px-4 py-3 text-[var(--a-muted)] hidden md:table-cell">{{ product.categoryName ?? '—' }}</td>
               <td class="px-4 py-3 text-right text-[#45494E] hidden lg:table-cell">
@@ -374,8 +393,8 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
               <td class="px-4 py-3 text-right text-[var(--a-muted)] hidden lg:table-cell">
                 {{ product.wholesalePrice != null ? `$${product.wholesalePrice.toLocaleString('es-AR', { maximumFractionDigits: 0 })}` : '—' }}
               </td>
-              <td class="px-4 py-3 text-center text-[var(--a-muted)]">{{ totalStock(product) }}</td>
-              <td class="px-4 py-3 text-center">
+              <td class="px-4 py-3 text-center text-[var(--a-muted)] hidden md:table-cell">{{ totalStock(product) }}</td>
+              <td class="px-4 py-3 text-center align-top md:align-middle">
                 <button
                   type="button"
                   role="switch"
@@ -395,54 +414,25 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
                   />
                 </button>
               </td>
-              <td class="px-4 py-3">
-                <div class="flex gap-1.5 justify-end">
-                  <button
-                    type="button"
-                    @click="openEditProduct(product)"
-                    class="whitespace-nowrap min-h-10 px-3 rounded-lg border border-[#C9CDD2] text-xs font-semibold text-[var(--a-ink)] hover:bg-[var(--a-bg)] transition-colors"
-                  >
-                    Editar
-                  </button>
-                  <button
-                    type="button"
-                    @click="toggleVariants(product)"
-                    :aria-expanded="expandedProducts.has(product.id)"
-                    class="whitespace-nowrap min-h-10 px-3 rounded-lg border border-[#C9CDD2] text-xs font-semibold text-[var(--a-ink)] hover:bg-[var(--a-bg)] transition-colors"
-                  >
-                    {{ expandedProducts.has(product.id) ? '▲' : '▶' }} Variantes ({{ product.variants.length }})
-                  </button>
-                  <button
-                    type="button"
-                    @click="toggleDiscounts(product.id)"
-                    :aria-expanded="expandedDiscounts.has(product.id)"
-                    class="whitespace-nowrap min-h-10 px-3 rounded-lg border border-[#C9CDD2] text-xs font-semibold text-[var(--a-ink)] hover:bg-[var(--a-bg)] transition-colors"
-                  >
-                    {{ expandedDiscounts.has(product.id) ? '▲' : '▶' }} Descuentos
-                  </button>
-                  <span
-                    v-if="hasActiveStock(product)"
-                    class="whitespace-nowrap inline-flex items-center min-h-10 px-3 rounded-lg text-xs font-semibold text-[var(--a-muted)] cursor-not-allowed"
-                    title="No se puede eliminar: tiene stock activo"
-                  >
-                    Eliminar
-                  </span>
-                  <button
-                    v-else
-                    type="button"
-                    @click="handleDeleteProduct(product)"
-                    class="whitespace-nowrap min-h-10 px-3 rounded-lg text-xs font-semibold text-red-700 hover:bg-red-50 transition-colors"
-                  >
-                    Eliminar
-                  </button>
-                </div>
+              <td class="px-4 py-3 hidden md:table-cell">
+                <ProductRowActions
+                  :variants-count="product.variants.length"
+                  :variants-open="expandedProducts.has(product.id)"
+                  :discounts-open="expandedDiscounts.has(product.id)"
+                  :can-delete="!hasActiveStock(product)"
+                  @edit="openEditProduct(product)"
+                  @variants="toggleVariants(product)"
+                  @discounts="toggleDiscounts(product.id)"
+                  @delete="handleDeleteProduct(product)"
+                />
               </td>
             </tr>
 
             <!-- Subtabla de variantes (expandida) — matriz Talle × Color -->
             <tr v-if="expandedProducts.has(product.id)" class="bg-blue-50/40">
-              <td colspan="8" class="px-6 py-3">
-                <div class="rounded-xl border border-blue-100 overflow-hidden">
+              <td colspan="8" class="px-3 md:px-6 py-3">
+                <!-- En el celular el ancho se limita a la pantalla y la matriz scrollea adentro -->
+                <div class="rounded-xl border border-blue-100 overflow-hidden max-w-[calc(100vw-4rem)] md:max-w-none">
                   <div v-if="product.variants.length === 0" class="px-4 py-4 text-center text-[var(--a-muted)] italic text-xs bg-white">
                     Sin variantes
                   </div>
@@ -534,8 +524,8 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
             </tr>
             <!-- Panel de descuentos (expandido) -->
             <tr v-if="expandedDiscounts.has(product.id)" class="bg-green-50/40">
-              <td colspan="8" class="px-6 py-3">
-                <div class="rounded-xl border border-green-100 bg-white overflow-hidden">
+              <td colspan="8" class="px-3 md:px-6 py-3">
+                <div class="rounded-xl border border-green-100 bg-white overflow-hidden max-w-[calc(100vw-4rem)] md:max-w-none">
                   <div class="px-4 py-2 bg-green-50 border-b border-green-100">
                     <p class="text-xs font-semibold text-green-800">Descuentos por volumen — {{ product.name }}</p>
                   </div>

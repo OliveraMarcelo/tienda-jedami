@@ -18,6 +18,12 @@ function userRowContainer(page: Parameters<Parameters<typeof test>[1]>[0], email
   return page.locator('p').filter({ hasText: email }).locator('xpath=../..')
 }
 
+// El selector de roles está plegado en "Otros roles"
+async function openOtherRoles(row: ReturnType<typeof userRowContainer>) {
+  const summary = row.getByText('Otros roles')
+  if (await row.locator('details[open]').count() === 0) await summary.click()
+}
+
 // ─── Setup ────────────────────────────────────────────────────────────────────
 
 test.beforeAll(async () => {
@@ -30,19 +36,18 @@ test.beforeAll(async () => {
 
 // ─── Suite ────────────────────────────────────────────────────────────────────
 
-test.describe('Admin – Usuarios (/admin/usuarios)', () => {
+test.describe('Admin – Clientes (/admin/usuarios)', () => {
 
   test.beforeEach(async ({ page }) => {
     // La sesión admin llega ya autenticada vía storageState (playwright/.auth/admin.json)
     await page.goto('/admin/usuarios')
-    await expect(page.getByRole('heading', { name: 'Usuarios' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Clientes' })).toBeVisible()
   })
 
   // ── AUST-001 ─────────────────────────────────────────────────────────────────
   test('AUST-001 | Lista de usuarios carga con email, roles y paginación', async ({ page }) => {
     await expect(page.getByRole('paragraph').filter({ hasText: ADMIN.email })).toBeVisible()
-    await expect(page.getByText(/usuarios — Página/)).toBeVisible()
-    await expect(page.getByRole('combobox').first()).toBeVisible()
+    await expect(page.getByText(/cuentas · Página/)).toBeVisible()
     await expect(page.getByRole('button', { name: 'Buscar' })).toBeVisible()
   })
 
@@ -51,18 +56,20 @@ test.describe('Admin – Usuarios (/admin/usuarios)', () => {
     const row = userRowContainer(page, TEST_USER.email)
     await expect(row).toBeVisible()
 
-    await row.getByRole('combobox').selectOption('wholesale')
+    await openOtherRoles(row)
+    await row.getByRole('combobox').selectOption({ label: 'Mayorista' })
     await row.getByRole('button', { name: 'Asignar' }).click()
 
     // Usar locator('span') para no coincidir con el <option> del combobox
-    await expect(row.locator('span').filter({ hasText: 'wholesale' })).toBeVisible({ timeout: 8_000 })
+    await expect(row.locator('span').filter({ hasText: /^Mayorista/ })).toBeVisible({ timeout: 8_000 })
   })
 
   // ── AUST-003 ─────────────────────────────────────────────────────────────────
   test('AUST-003 | Asignar rol admin muestra confirmación antes de aplicar', async ({ page }) => {
     const row = userRowContainer(page, TEST_USER.email)
 
-    await row.getByRole('combobox').selectOption('admin')
+    await openOtherRoles(row)
+    await row.getByRole('combobox').selectOption({ label: 'Administrador' })
     await row.getByRole('button', { name: 'Asignar' }).click()
 
     await expect(page.getByText(/Esto da acceso total al panel/)).toBeVisible({ timeout: 5_000 })
@@ -78,9 +85,10 @@ test.describe('Admin – Usuarios (/admin/usuarios)', () => {
     const row = userRowContainer(page, TEST_USER.email)
 
     // Asegurar que el usuario tiene wholesale para poder removerlo
-    const wholesaleBadge = row.locator('span').filter({ hasText: 'wholesale' })
+    const wholesaleBadge = row.locator('span').filter({ hasText: /^Mayorista/ })
     if (await wholesaleBadge.count() === 0) {
-      await row.getByRole('combobox').selectOption('wholesale')
+      await openOtherRoles(row)
+      await row.getByRole('combobox').selectOption({ label: 'Mayorista' })
       await row.getByRole('button', { name: 'Asignar' }).click()
       await expect(wholesaleBadge).toBeVisible({ timeout: 8_000 })
     }
@@ -99,7 +107,26 @@ test.describe('Admin – Usuarios (/admin/usuarios)', () => {
 
     await expect(page.getByText(/propio rol admin/i)).toBeVisible({ timeout: 5_000 })
     // Usar locator('span') para apuntar solo al badge, evitando email/opciones/error msg
-    await expect(adminRow.locator('span').filter({ hasText: /^admin/ })).toBeVisible()
+    await expect(adminRow.locator('span').filter({ hasText: /^Administrador/ })).toBeVisible()
+  })
+
+  // ── AUST-007 ─────────────────────────────────────────────────────────────────
+  test('AUST-007 | "Pasar a mayorista" y volver a minorista', async ({ page }) => {
+    const row = userRowContainer(page, TEST_USER.email)
+    const toWholesale = row.getByRole('button', { name: 'Pasar a mayorista' })
+    if (await toWholesale.count() === 0) {
+      await row.getByRole('button', { name: 'Pasar a minorista' }).click()
+      await expect(toWholesale).toBeVisible({ timeout: 8_000 })
+    }
+
+    await toWholesale.click()
+    await expect(row.getByText('✓ Ahora es mayorista')).toBeVisible({ timeout: 8_000 })
+    await expect(row.locator('span').filter({ hasText: /^Mayorista/ })).toBeVisible()
+    await expect(row.locator('span').filter({ hasText: /^Minorista/ })).not.toBeVisible()
+
+    // Dejarlo como estaba
+    await row.getByRole('button', { name: 'Pasar a minorista' }).click()
+    await expect(row.getByRole('button', { name: 'Pasar a mayorista' })).toBeVisible({ timeout: 8_000 })
   })
 
   // ── AUST-006 ─────────────────────────────────────────────────────────────────

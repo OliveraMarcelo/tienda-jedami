@@ -10,22 +10,23 @@ test.describe('Admin – Configuración (/admin/configuracion)', () => {
   // ── CFG-001 ─────────────────────────────────────────────────────────────────
   test('CFG-001 | Vista carga con todas las pestañas de configuración', async ({ page }) => {
     const expectedTabs = [
-      'Tipos de Compra',
-      'Tipos de Cliente',
+      'Marca y contacto',
+      'Medios de pago',
       'Talles',
       'Colores',
-      'Branding',
-      'Pagos',
-      'Point POS',
+      'Formas de compra',
+      'Tipos de cuenta',
     ]
     for (const tab of expectedTabs) {
       await expect(page.getByRole('button', { name: tab })).toBeVisible()
     }
+    // Point (Mercado Pago) queda oculto hasta tener el dispositivo
+    await expect(page.getByRole('button', { name: 'Cobros Point' })).not.toBeVisible()
   })
 
   // ── CFG-002 ─────────────────────────────────────────────────────────────────
   test('CFG-002 | Tab Branding — cambiar nombre de la tienda y guardar', async ({ page }) => {
-    await page.getByRole('button', { name: 'Branding' }).click()
+    await page.getByRole('button', { name: 'Marca y contacto' }).click()
     await expect(page.getByText('Branding de la tienda')).toBeVisible({ timeout: 5_000 })
 
     // Buscar el input del nombre de la tienda específicamente
@@ -43,19 +44,11 @@ test.describe('Admin – Configuración (/admin/configuracion)', () => {
   })
 
   // ── CFG-010 ─────────────────────────────────────────────────────────────────
-  test('CFG-010 | Tab Tipos de Compra — agregar y eliminar tipo', async ({ page }) => {
-    await page.getByRole('button', { name: 'Tipos de Compra' }).click()
-
-    await expect(page.getByText('Agregar tipo de compra')).toBeVisible({ timeout: 5_000 })
-
-    // Agregar un tipo de prueba
-    const codeInput = page.getByPlaceholder('ej: mayoreo')
-    const labelInput = page.getByPlaceholder('ej: Por mayoreo')
-    await codeInput.fill('e2e-tipo')
-    await labelInput.fill('E2E Tipo Prueba')
-    await page.getByRole('button', { name: 'Agregar' }).first().click()
-
-    await expect(page.getByText('E2E Tipo Prueba')).toBeVisible({ timeout: 8_000 })
+  test('CFG-010 | Formas de compra — se activan/desactivan, sin alta de tipos nuevos', async ({ page }) => {
+    await page.getByRole('button', { name: 'Formas de compra' }).click()
+    await expect(page.getByText('Por curva')).toBeVisible({ timeout: 5_000 })
+    // El sistema solo entiende curva, cantidad y minorista: no se pueden crear otras
+    await expect(page.getByText('Agregar tipo de compra')).not.toBeVisible()
   })
 
   // ── CFG-012 ─────────────────────────────────────────────────────────────────
@@ -85,16 +78,16 @@ test.describe('Admin – Configuración (/admin/configuracion)', () => {
   })
 
   // ── CFG-011 ─────────────────────────────────────────────────────────────────
-  test('CFG-011 | Tab Tipos de Cliente — lista carga sin errores', async ({ page }) => {
-    await page.getByRole('button', { name: 'Tipos de Cliente' }).click()
+  test('CFG-011 | Tipos de cuenta — lista carga sin errores', async ({ page }) => {
+    await page.getByRole('button', { name: 'Tipos de cuenta' }).click()
 
-    await expect(page.getByText('Agregar tipo de cliente')).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByText('Tipos de cuenta que se pueden elegir al registrarse.')).toBeVisible({ timeout: 5_000 })
     await expect(page.locator('.animate-pulse').first()).not.toBeVisible({ timeout: 8_000 })
   })
 
   // ── CFG-005 ─────────────────────────────────────────────────────────────────
   test('CFG-005 | Tab Pagos — tabla de medios de pago por tipo de cliente visible', async ({ page }) => {
-    await page.getByRole('button', { name: 'Pagos' }).click()
+    await page.getByRole('button', { name: 'Medios de pago' }).click()
 
     await expect(page.getByText('Medios de pago por tipo de cliente')).toBeVisible({ timeout: 5_000 })
 
@@ -102,17 +95,9 @@ test.describe('Admin – Configuración (/admin/configuracion)', () => {
     await expect(page.locator('table').last()).toBeVisible({ timeout: 8_000 })
   })
 
-  // ── CFG-009 ─────────────────────────────────────────────────────────────────
-  test('CFG-009 | Tab Point POS — vista carga sin errores', async ({ page }) => {
-    await page.getByRole('button', { name: 'Point POS' }).click()
-
-    // La tab Point carga sin error (puede tener o no dispositivo activo)
-    await expect(page.getByText('Error')).not.toBeVisible({ timeout: 5_000 })
-  })
-
   // ── CFG-004 ─────────────────────────────────────────────────────────────────
   test('CFG-004 | Tab Pagos — configurar WhatsApp de contacto', async ({ page }) => {
-    await page.getByRole('button', { name: 'Pagos' }).click()
+    await page.getByRole('button', { name: 'Medios de pago' }).click()
     await expect(page.getByPlaceholder('ej: 5491112345678')).toBeVisible({ timeout: 5_000 })
 
     await page.getByPlaceholder('ej: 5491112345678').fill('5491100000000')
@@ -123,7 +108,7 @@ test.describe('Admin – Configuración (/admin/configuracion)', () => {
 
   // ── CFG-006 ─────────────────────────────────────────────────────────────────
   test('CFG-006 | Tab Medios de pago — activar/desactivar gateway', async ({ page }) => {
-    await page.getByRole('button', { name: 'Pagos' }).click()
+    await page.getByRole('button', { name: 'Medios de pago' }).click()
     await expect(page.getByText('Medios de pago por tipo de cliente')).toBeVisible({ timeout: 5_000 })
 
     const toggleBtn = page.locator('button').filter({ hasText: /^(Activo|Inactivo)$/ }).first()
@@ -140,7 +125,7 @@ test.describe('Admin – Configuración (/admin/configuracion)', () => {
 
   // ── CFG-008 ─────────────────────────────────────────────────────────────────
   test('CFG-008 | Tab Medios de pago — desactivar gateway', async ({ page }) => {
-    await page.getByRole('button', { name: 'Pagos' }).click()
+    await page.getByRole('button', { name: 'Medios de pago' }).click()
     await expect(page.getByText('Medios de pago por tipo de cliente')).toBeVisible({ timeout: 5_000 })
 
     // Revertir el toggle del primer gateway (restaurar estado)
