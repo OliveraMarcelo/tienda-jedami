@@ -33,7 +33,7 @@ const active = 'border-[var(--a-primary)] bg-blue-50 text-[var(--a-primary)]'
 </script>
 
 <template>
-  <div ref="root" class="relative flex flex-wrap gap-1.5 md:justify-end">
+  <div ref="root" class="relative flex flex-wrap gap-1.5 md:flex-nowrap md:justify-end">
     <button type="button" :class="[btn, idle]" @click="emit('edit')">Editar</button>
     <button type="button" :class="[btn, variantsOpen ? active : idle]" :aria-expanded="variantsOpen" @click="emit('variants')">
       Stock y variantes ({{ variantsCount }})

@@ -35,18 +35,26 @@
   :root,
   .admin-ui {
     --a-font: 'Inter', sans-serif;
-    --a-bg: #F4F5F7;
+    --a-bg: #F5F6F8;
     --a-surface: #FFFFFF;
-    --a-border: #E3E5E8;
-    --a-ink: #1E2022;
-    --a-muted: #5C6066;
-    --a-primary: #0050C3;
-    --a-primary-hover: #003A8F;
-    --a-primary-soft: #E8F0FC;
+    --a-border: #E6E8EC;
+    --a-border-strong: #D3D7DE;
+    --a-ink: #15171A;
+    --a-muted: #5A606B;
+    --a-primary: #2457E6;
+    --a-primary-hover: #1B45BD;
+    --a-primary-soft: #EDF2FF;
+    --a-ring: rgba(36, 87, 230, 0.18);
+    --a-radius: 14px;
+    --a-radius-sm: 10px;
+    --a-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
+    --a-shadow-lg: 0 12px 32px -8px rgba(16, 24, 40, 0.18), 0 4px 8px -4px rgba(16, 24, 40, 0.08);
   }
 
   .admin-ui {
     font-family: var(--a-font);
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: 'cv11', 'ss01';
   }
 
   :root {
@@ -71,3 +79,84 @@
     background-color: var(--mode-bg);
   }
 }
+
+/*
+ * Panel de administración — capa visual moderna.
+ * Va fuera de @layer para ganarle a las utilidades de Tailwind que usan las vistas
+ * (tarjetas, campos, botones y tablas), así se moderniza todo sin tocar la lógica de cada vista.
+ */
+.admin-ui h1.text-\[26px\] {
+  font-size: 28px;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+
+/* Tarjetas */
+.admin-ui .rounded-xl { border-radius: var(--a-radius); }
+.admin-ui .bg-white.border,
+.admin-ui .bg-white.rounded-xl {
+  border-color: var(--a-border);
+  box-shadow: var(--a-shadow);
+}
+
+/* Botones y controles */
+.admin-ui .rounded-lg { border-radius: var(--a-radius-sm); }
+.admin-ui .border-\[\#C9CDD2\] { border-color: var(--a-border-strong); }
+.admin-ui button.border-\[\#C9CDD2\],
+.admin-ui a.border-\[\#C9CDD2\] {
+  background-color: var(--a-surface);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+  transition: background-color .15s, border-color .15s, box-shadow .15s;
+}
+.admin-ui button.border-\[\#C9CDD2\]:hover,
+.admin-ui a.border-\[\#C9CDD2\]:hover { border-color: #B9BFC9; background-color: #FAFBFC; }
+
+.admin-ui .bg-\[var\(--a-primary\)\] {
+  box-shadow: 0 1px 2px rgba(36, 87, 230, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  transition: background-color .15s, box-shadow .15s, opacity .15s;
+}
+.admin-ui button.bg-\[var\(--a-primary\)\]:hover:not(:disabled) {
+  background-color: var(--a-primary-hover);
+  opacity: 1;
+}
+
+/* Campos */
+.admin-ui :is(input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=file]):not([type=range]), select, textarea) {
+  border-color: var(--a-border-strong);
+  background-color: var(--a-surface);
+  transition: border-color .15s, box-shadow .15s;
+}
+.admin-ui :is(input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=file]):not([type=range]), select, textarea):hover:not(:disabled) {
+  border-color: #B9BFC9;
+}
+.admin-ui :is(input, select, textarea):focus-visible,
+.admin-ui :is(input, select, textarea):focus {
+  outline: none;
+  border-color: var(--a-primary);
+  box-shadow: 0 0 0 3px var(--a-ring);
+}
+.admin-ui :is(input, select, textarea)::placeholder { color: #9AA0AA; }
+.admin-ui input[type=checkbox], .admin-ui input[type=radio] { accent-color: var(--a-primary); }
+
+/* Foco visible en botones y links (teclado) */
+.admin-ui :is(button, a):focus-visible {
+  outline: 2px solid var(--a-primary);
+  outline-offset: 2px;
+}
+
+/* Tablas */
+.admin-ui table thead th {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--a-muted);
+}
+.admin-ui table thead tr { background-color: #FAFBFC; }
+.admin-ui table tbody tr { transition: background-color .12s; }
+
+/* Chips de estado: un poco más de aire */
+.admin-ui .rounded-full.border.text-xs { padding-left: 0.6rem; padding-right: 0.6rem; letter-spacing: 0.01em; }
+
+/* Esqueletos de carga más suaves */
+.admin-ui .animate-pulse.bg-white { background: linear-gradient(90deg, #FFFFFF, #F3F4F6, #FFFFFF); background-size: 200% 100%; }

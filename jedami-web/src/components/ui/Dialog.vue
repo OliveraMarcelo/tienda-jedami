@@ -25,7 +25,7 @@ function close() {
       leave-to-class="opacity-0"
     >
       <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center">
-        <div class="absolute inset-0 bg-black/50" @click="close" />
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-[2px]" @click="close" />
         <div
           :class="cn(
             'relative z-10 w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl',
