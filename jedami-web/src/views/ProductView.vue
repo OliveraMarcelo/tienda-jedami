@@ -34,6 +34,16 @@ const wholesaleTabs = computed(() =>
   configStore.config.purchaseTypes.filter(pt => pt.code !== MODES.RETAIL)
 )
 const wholesaleTab = ref<string>('')
+
+// Solo una cuenta mayorista puede armar pedidos por mayor. Al resto se le explica cómo seguir
+// (antes tocaba "Agregar al pedido" y le aparecía "Se requiere uno de los roles: wholesale").
+const canOrderWholesale = computed(() => authStore.isWholesale)
+const wholesaleRequestLink = computed(() => {
+  const n = configStore.branding.whatsappNumber?.replace(/\D/g, '')
+  if (!n) return null
+  const email = authStore.user?.email ? ` Mi cuenta es ${authStore.user.email}.` : ''
+  return `https://wa.me/${n}?text=${encodeURIComponent(`Hola! Quiero comprar por mayor.${email}`)}`
+})
 watchEffect(() => {
   if (!wholesaleTab.value && wholesaleTabs.value.length > 0) {
     wholesaleTab.value = wholesaleTabs.value[0]!.code
@@ -134,6 +144,25 @@ watch(() => route.params.id, (id, prev) => {
 })
 
 const product = computed(() => productsStore.currentProduct)
+
+// Por cantidad = curvas contadas en unidades: el total se reparte igual entre los talles y las que sobran
+// las elige la tienda (102 unidades con 5 talles → 20 de cada uno + 2 a elección).
+const productSizes = computed(() => {
+  const seen = new Set<number>()
+  const result: string[] = []
+  for (const v of product.value?.variants ?? []) {
+    if (!seen.has(v.sizeId)) { seen.add(v.sizeId); result.push(v.size) }
+  }
+  return result
+})
+const sizesCount = computed(() => Math.max(1, productSizes.value.length))
+const cantidadMin = computed(() => Math.max(1, minQuantityPurchase.value ?? 1))
+const perSize = computed(() => Math.floor(cantidadInput.value / sizesCount.value))
+const extraUnits = computed(() => cantidadInput.value % sizesCount.value)
+watch(cantidadMin, (min) => {
+  cantidadInput.value = Math.max(min, cantidadInput.value)
+}, { immediate: true })
+
 
 // ─── Galería ────────────────────────────────────────────────────────────────
 const gallery = computed<string[]>(() => {
@@ -407,6 +436,44 @@ async function handleCantidadConfirm() {
               </div>
             </div>
 
+            <div v-if="!canOrderWholesale" class="flex flex-col gap-3 rounded-[var(--t-radius-card)] bg-[var(--t-surface)] p-5">
+              <p class="text-base font-bold">Los precios por mayor son para comercios</p>
+              <p v-if="authStore.isRetail" class="text-sm text-[var(--t-muted)]">
+                Tu cuenta es minorista. Escribinos y la pasamos a mayorista; mientras tanto podés comprar este producto por unidad.
+              </p>
+              <p v-else-if="!authStore.isAuthenticated" class="text-sm text-[var(--t-muted)]">
+                Para comprar por curva o por cantidad necesitás una cuenta mayorista.
+              </p>
+              <template v-if="authStore.isRetail">
+                <a
+                  v-if="wholesaleRequestLink"
+                  :href="wholesaleRequestLink"
+                  target="_blank"
+                  rel="noopener"
+                  class="inline-flex min-h-12 items-center justify-center rounded-full bg-[var(--t-ink)] px-6 text-base font-semibold text-white hover:opacity-90"
+                >
+                  Pedir cuenta mayorista por WhatsApp
+                </a>
+              </template>
+              <template v-else-if="!authStore.isAuthenticated">
+                <RouterLink
+                  :to="{ path: '/registro', query: { tipo: 'wholesale' } }"
+                  class="inline-flex min-h-12 items-center justify-center rounded-full bg-[var(--t-ink)] px-6 text-base font-semibold text-white hover:opacity-90"
+                >
+                  Crear cuenta mayorista
+                </RouterLink>
+                <RouterLink to="/login" class="text-center text-sm font-semibold underline">Ya tengo cuenta, ingresar</RouterLink>
+              </template>
+              <button
+                type="button"
+                class="inline-flex min-h-12 items-center justify-center rounded-full border-[1.5px] border-[var(--t-ink)] px-6 text-base font-semibold hover:bg-white"
+                @click="authStore.toggleMode()"
+              >
+                Comprar por unidad
+              </button>
+            </div>
+
+            <template v-else>
             <!-- Modalidad de compra -->
             <div v-if="wholesaleTabs.length > 1" role="tablist" aria-label="Modalidad de compra" class="inline-flex self-start rounded-full bg-[var(--t-surface)] p-1">
               <button
@@ -431,7 +498,10 @@ async function handleCantidadConfirm() {
             </template>
 
             <div v-else-if="wholesaleTab === 'cantidad'" class="flex flex-col gap-4">
-              <p class="text-sm text-[var(--t-muted)]">Las unidades se reparten automáticamente entre los talles y colores disponibles.</p>
+              <p class="text-sm text-[var(--t-muted)]">
+                Se reparten en partes iguales entre los talles<span v-if="productSizes.length > 1"> ({{ productSizes[0] }} a {{ productSizes[productSizes.length - 1] }})</span>;
+                si sobran, la tienda elige el talle. Los colores van surtidos según disponibilidad.
+              </p>
 
               <DiscountRulesTable
                 :quantity-rules="quantityRules"
@@ -442,11 +512,16 @@ async function handleCantidadConfirm() {
               <div class="flex items-center gap-4">
                 <span class="text-sm font-semibold" id="cantidad-label">Cantidad total</span>
                 <div class="inline-flex items-center rounded-full border border-[var(--t-border)]" role="group" aria-labelledby="cantidad-label">
-                  <button type="button" aria-label="Restar" class="flex h-11 w-11 items-center justify-center rounded-full text-lg hover:bg-[var(--t-surface)]" @click="cantidadInput = Math.max(1, cantidadInput - 1)">−</button>
+                  <button type="button" aria-label="Restar" class="flex h-11 w-11 items-center justify-center rounded-full text-lg hover:bg-[var(--t-surface)]" @click="cantidadInput = Math.max(cantidadMin, cantidadInput - 1)">−</button>
                   <span class="min-w-[2.5rem] text-center font-semibold" aria-live="polite">{{ cantidadInput }}</span>
                   <button type="button" aria-label="Sumar" class="flex h-11 w-11 items-center justify-center rounded-full text-lg hover:bg-[var(--t-surface)]" @click="cantidadInput++">+</button>
                 </div>
               </div>
+              <p v-if="sizesCount > 1" class="-mt-2 text-sm font-semibold">
+                <template v-if="perSize > 0">{{ perSize }} por talle</template>
+                <template v-if="perSize > 0 && extraUnits > 0"> + </template>
+                <template v-if="extraUnits > 0">{{ extraUnits }} a elección de la tienda</template>
+              </p>
 
               <p v-if="activeQuantityHint" class="rounded-2xl bg-[#E6F2EC] px-4 py-2.5 text-sm font-semibold text-[var(--t-price)]">
                 ✓ Con {{ cantidadInput }} unidades tenés {{ activeQuantityHint.discount_pct }}% de descuento
@@ -472,6 +547,7 @@ async function handleCantidadConfirm() {
             <p v-if="orderError" role="alert" class="rounded-2xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">
               {{ orderError }}
             </p>
+            </template>
           </template>
 
           <!-- Modo Minorista / visitante -->

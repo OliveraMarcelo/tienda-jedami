@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { getDashboard, getAdminPayments, getAdminUsers, getPendingFulfillment, fulfillOrderItem, dispatchOrder, decrementItemStock, confirmBankTransfer, updateVariantStock, getAdminReports } from '../modules/admin/admin.controller.js';
+import { getDashboard, getAdminPayments, getAdminUsers, confirmBankTransfer, updateVariantStock, getAdminReports } from '../modules/admin/admin.controller.js';
+import { getPendingFulfillment, dispatchOrder } from '../modules/admin/fulfillment.controller.js';
 import { getAllBanners, uploadBanner, reorderBanners, updateBanner, deleteBanner } from '../modules/admin/banners.controller.js';
 import { getAllAnnouncements, createAnnouncement, reorderAnnouncements, updateAnnouncement, deleteAnnouncement } from '../modules/admin/announcements.controller.js';
 import { uploadBannersMiddleware, uploadAnnouncementsMiddleware } from '../config/upload.js';
@@ -109,72 +110,22 @@ router.get('/dashboard', getDashboard);
  * /admin/orders/pending-fulfillment:
  *   get:
  *     tags: [Admin]
- *     summary: Listar pedidos curva pendientes de despacho
+ *     summary: Pedidos pagados para despachar, con la grilla talle × color y el stock de cada producto
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Pedidos con ítems sin cumplir
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 data:
- *                   type: array
- *                   items: { $ref: '#/components/schemas/Order' }
+ *         description: Pedidos pagados (más viejos primero). Cada producto trae sizes, colors, variants (con stock) y lines
  */
 router.get('/orders/pending-fulfillment', getPendingFulfillment);
-
-/**
- * @swagger
- * /admin/orders/{orderId}/items/{itemId}/fulfill:
- *   patch:
- *     tags: [Admin]
- *     summary: Asignar color y confirmar despacho de un ítem de pedido curva
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: orderId
- *         required: true
- *         schema: { type: integer }
- *       - in: path
- *         name: itemId
- *         required: true
- *         schema: { type: integer }
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [colorId]
- *             properties:
- *               colorId: { type: integer }
- *     responses:
- *       200:
- *         description: Ítem despachado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 data: { $ref: '#/components/schemas/OrderItem' }
- *       404:
- *         description: Pedido o ítem no encontrado
- *         content:
- *           application/json:
- *             schema: { $ref: '#/components/schemas/Error' }
- */
-router.patch('/orders/:orderId/items/:itemId/fulfill', fulfillOrderItem);
 
 /**
  * @swagger
  * /admin/orders/{id}/dispatch:
  *   post:
  *     tags: [Admin]
- *     summary: Marcar pedido como despachado (sin modificar stock)
+ *     summary: Despachar un pedido pagado — guarda el reparto por color, descuenta el stock y lo marca despachado
+ *     description: Las líneas de curva y cantidad (sin color) necesitan un reparto que sume exactamente sus unidades. Las minoristas ya tienen color.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -182,60 +133,31 @@ router.patch('/orders/:orderId/items/:itemId/fulfill', fulfillOrderItem);
  *         name: id
  *         required: true
  *         schema: { type: integer }
- *     responses:
- *       200:
- *         description: Pedido marcado como despachado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 data:
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               allocations:
+ *                 type: array
+ *                 items:
  *                   type: object
- *                   properties:
- *                     orderId: { type: integer }
- *                     status: { type: string, example: shipped }
- *                     shippedAt: { type: string, format: date-time }
- *       422:
- *         description: El pedido no está en estado pagado
- */
-router.post('/orders/:id/dispatch', dispatchOrder);
-
-/**
- * @swagger
- * /admin/orders/{orderId}/items/{itemId}/decrement-stock:
- *   patch:
- *     tags: [Admin]
- *     summary: Descontar stock de la variante asignada a un ítem
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: orderId
- *         required: true
- *         schema: { type: integer }
- *       - in: path
- *         name: itemId
- *         required: true
- *         schema: { type: integer }
- *     responses:
- *       200:
- *         description: Stock decrementado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 data:
- *                   type: object
+ *                   required: [itemId, variantId, quantity]
  *                   properties:
  *                     itemId: { type: integer }
  *                     variantId: { type: integer }
- *                     stockRemaining: { type: integer }
+ *                     quantity: { type: integer, minimum: 1 }
+ *     responses:
+ *       200:
+ *         description: Pedido despachado
  *       422:
- *         description: Sin variante asignada o stock insuficiente
+ *         description: Reparto incompleto, stock insuficiente o pedido no pagado
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
  */
-router.patch('/orders/:orderId/items/:itemId/decrement-stock', decrementItemStock);
+router.post('/orders/:id/dispatch', dispatchOrder);
 
 /**
  * @swagger

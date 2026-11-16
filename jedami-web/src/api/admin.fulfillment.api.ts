@@ -1,25 +1,25 @@
 import api from './client'
 
-export interface AvailableVariant {
+export interface GridSize { id: number; label: string }
+export interface GridColor { id: number; name: string; hexCode: string | null }
+export interface GridVariant { id: number; sizeId: number; colorId: number; stock: number }
+
+/** Línea del pedido: curva (con talle), cantidad (sin talle) o minorista (con variante ya elegida) */
+export interface PendingLine {
   id: number
-  color: string
-  hexCode: string | null
-  stock: number
+  sizeId: number | null
+  size: string | null
+  quantity: number
+  variantId: number | null
 }
 
-export interface PendingItem {
-  id: number
-  sizeId: number
-  size: string
-  quantity: number
-  unitPrice: number
+export interface PendingProduct {
   productId: number
   productName: string
-  variantAssigned: boolean
-  assignedVariantId: number | null
-  assignedColor: string | null
-  assignedHex: string | null
-  availableVariants: AvailableVariant[]
+  sizes: GridSize[]
+  colors: GridColor[]
+  variants: GridVariant[]
+  lines: PendingLine[]
 }
 
 export interface PendingOrder {
@@ -29,33 +29,17 @@ export interface PendingOrder {
   customerEmail: string
   notes: string | null
   purchaseType: string
-  items: PendingItem[]
+  products: PendingProduct[]
 }
+
+export interface Allocation { itemId: number; variantId: number; quantity: number }
 
 export async function fetchPendingFulfillment(): Promise<PendingOrder[]> {
-  const res = await api.get('/admin/orders/pending-fulfillment')
+  const res = await api.get<{ data: PendingOrder[] }>('/admin/orders/pending-fulfillment')
   return res.data.data
 }
 
-export async function fulfillItem(
-  orderId: number,
-  itemId: number,
-  variantId: number,
-  decrementStock = false,
-): Promise<void> {
-  await api.patch(`/admin/orders/${orderId}/items/${itemId}/fulfill`, { variantId, decrementStock })
-}
-
-export async function dispatchOrder(orderId: number): Promise<void> {
-  await api.post(`/admin/orders/${orderId}/dispatch`)
-}
-
-export async function decrementItemStock(
-  orderId: number,
-  itemId: number,
-): Promise<{ stockRemaining: number }> {
-  const res = await api.patch<{ data: { stockRemaining: number } }>(
-    `/admin/orders/${orderId}/items/${itemId}/decrement-stock`,
-  )
-  return res.data.data
+/** Guarda el reparto, descuenta el stock y marca el pedido como despachado */
+export async function dispatchOrder(orderId: number, allocations: Allocation[]): Promise<void> {
+  await api.post(`/admin/orders/${orderId}/dispatch`, { allocations })
 }
