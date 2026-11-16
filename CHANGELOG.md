@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.9.0](https://github.com/OliveraMarcelo/tienda-jedami/compare/v1.8.1...v1.9.0) (2026-11-16)
+
+
+### Features
+
+* **admin:** menú ordenado, tablero con estadísticas y vistas más simples ([31baf72](https://github.com/OliveraMarcelo/tienda-jedami/commit/31baf7231e16e9c4c78f76e35d3f47d4aac1b264))
+* **despacho:** reparto por talle y color en una grilla, y cantidad repartida por talle ([41c1716](https://github.com/OliveraMarcelo/tienda-jedami/commit/41c1716679d65e116de392b86da555829ef0b31a))
+
+
+### Bug Fixes
+
+* el minorista que intenta comprar por mayor ve cómo seguir ([2b49efe](https://github.com/OliveraMarcelo/tienda-jedami/commit/2b49efe41d7b03daa435d2a6e58cae6007924273))
+* **web:** cada página nueva arranca arriba y limpieza de tipos y lint ([e79b4c5](https://github.com/OliveraMarcelo/tienda-jedami/commit/e79b4c505778e74869912a8271b990d98be86920))
+
 ## [1.8.1](https://github.com/OliveraMarcelo/tienda-jedami/compare/v1.8.0...v1.8.1) (2026-11-12)
 
 
