@@ -20,8 +20,11 @@ const customerType = ref<string>('')
 
 // Seleccionar el primer tipo de cliente activo por defecto cuando cargue el config
 watchEffect(() => {
-  if (!customerType.value && configStore.config.customerTypes.length > 0) {
-    customerType.value = configStore.config.customerTypes[0]!.code
+  const types = configStore.config.customerTypes
+  if (!customerType.value && types.length > 0) {
+    // /registro?tipo=wholesale llega desde "Crear cuenta mayorista" en la ficha del producto
+    const pedido = types.find(t => t.code === route.query.tipo)
+    customerType.value = (pedido ?? types[0]!).code
   }
 })
 const googleCustomerType = computed(() => (customerType.value || undefined) as CustomerType | undefined)

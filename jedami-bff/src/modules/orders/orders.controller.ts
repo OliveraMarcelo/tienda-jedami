@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { JwtUserPayload } from '../auth/jwt-payload.js';
 import { AppError } from '../../types/app-error.js';
 import * as ordersService from './orders.service.js';
+import { ROLES } from '../../lib/constants.js';
 
 function parseOrderId(raw: string): number {
   const id = parseInt(raw, 10);
@@ -22,6 +23,10 @@ export async function createOrder(req: Request, res: Response, next: NextFunctio
     }
 
     // Wholesale: body tiene { purchaseType: 'curva' | 'cantidad' }
+    // Se valida antes de crear el pedido: si no, quedaba un pedido mayorista vacío y el error saltaba al agregar ítems
+    if (!user.roles?.includes(ROLES.WHOLESALE)) {
+      throw new AppError(403, 'Se necesita cuenta mayorista', 'https://jedami.com/errors/wholesale-only', 'Las compras por mayor son solo para cuentas mayoristas. Escribinos para activar la tuya o comprá por unidad.');
+    }
     const { purchaseType } = req.body;
     const order = await ordersService.createOrder(user.id, purchaseType, notes);
     res.status(201).json({ data: order });
