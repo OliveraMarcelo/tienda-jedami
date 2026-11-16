@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
+import { apiErrorDetail } from '@/lib/auth-errors'
 import { fetchAdminPayments, confirmBankTransfer, type AdminPayment } from '@/api/admin.payments.api'
 import { cancelOrder } from '@/api/orders.api'
 import { retryPayment } from '@/api/payments.api'
@@ -105,8 +106,8 @@ async function doCancel(orderId: number) {
     const payment = payments.value.find(p => p.orderId === orderId)
     if (payment) payment.orderStatus = 'cancelled'
     confirmingCancel.value = null
-  } catch (e: any) {
-    cancelError.value[orderId] = e?.response?.data?.detail ?? 'Error al cancelar'
+  } catch (e: unknown) {
+    cancelError.value[orderId] = apiErrorDetail(e, 'Error al cancelar')
   }
 }
 
@@ -119,8 +120,8 @@ async function handleRetry(orderId: number) {
   try {
     const { checkoutUrl } = await retryPayment(orderId)
     window.location.href = checkoutUrl
-  } catch (e: any) {
-    retryError.value[orderId] = e?.response?.data?.detail ?? 'Error al generar el link'
+  } catch (e: unknown) {
+    retryError.value[orderId] = apiErrorDetail(e, 'Error al generar el link')
   } finally {
     retrying.value = null
   }
@@ -139,8 +140,8 @@ async function handleConfirmTransfer(orderId: number) {
       payment.paymentStatus = 'approved'
       payment.orderStatus = 'paid'
     }
-  } catch (e: any) {
-    confirmError.value[orderId] = e?.response?.data?.detail ?? 'Error al confirmar'
+  } catch (e: unknown) {
+    confirmError.value[orderId] = apiErrorDetail(e, 'Error al confirmar')
   } finally {
     confirming.value = null
   }

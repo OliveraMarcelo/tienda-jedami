@@ -54,7 +54,6 @@ test.describe('Catálogo — /catalogo', () => {
     await waitForProducts(page)
 
     // Esperar a que los filtros de categoría estén disponibles
-    const categoryButtons = page.locator('button').filter({ hasText: /\w+/ }).first()
 
     // El botón "Todas" debe ser visible
     const todasBtn = page.getByRole('button', { name: 'Todas' })
@@ -65,7 +64,7 @@ test.describe('Catálogo — /catalogo', () => {
     const categoryCount = await page.locator('.flex.gap-2 button').count()
 
     if (categoryCount > 1) {
-      const catName = await firstCategory.textContent()
+      await firstCategory.textContent()
       await firstCategory.click()
 
       // Esperar que se aplique el filtro — las cards deben recargar

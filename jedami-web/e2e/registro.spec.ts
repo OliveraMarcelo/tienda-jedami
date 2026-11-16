@@ -1,7 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-const BFF_URL = process.env.E2E_BFF_URL ?? 'http://localhost:3000/api/v1'
 
 // Email único por ejecución para evitar conflictos
 const TS = Date.now()

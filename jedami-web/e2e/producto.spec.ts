@@ -1,6 +1,5 @@
-import { test, expect, type Page, type Browser } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 
-const ADMIN = { email: 'admin@jedami.com', password: 'admin123' }
 
 // ─── ID de producto obtenido una sola vez ─────────────────────────────────────
 let productId = -1
@@ -19,14 +18,6 @@ test.beforeAll(async ({ browser }) => {
 async function goToProduct(page: Page) {
   await page.goto(`/catalogo/${productId}`)
   await page.waitForLoadState('networkidle', { timeout: 15_000 })
-}
-
-async function loginAs(page: Page, email: string, password: string) {
-  await page.goto('/login')
-  await page.getByPlaceholder('tu@email.com').fill(email)
-  await page.getByPlaceholder('••••••••').fill(password)
-  await page.getByRole('button', { name: 'Ingresar' }).click()
-  await page.waitForURL(/\/(catalogo|admin)/, { timeout: 10_000 })
 }
 
 // ─── Suite ────────────────────────────────────────────────────────────────────

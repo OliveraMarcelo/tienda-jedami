@@ -28,7 +28,6 @@ test.describe('Admin – Configuración (/admin/configuracion)', () => {
     await page.getByRole('button', { name: 'Branding' }).click()
     await expect(page.getByText('Branding de la tienda')).toBeVisible({ timeout: 5_000 })
 
-    const nameInput = page.locator('input[type="text"]').filter({ hasText: '' }).first()
     // Buscar el input del nombre de la tienda específicamente
     const storeNameInput = page.locator('input').nth(0)
     await storeNameInput.fill('Jedami Test')
@@ -134,7 +133,7 @@ test.describe('Admin – Configuración (/admin/configuracion)', () => {
   })
 
   // ── CFG-007 ─────────────────────────────────────────────────────────────────
-  test('CFG-007 | Tab Medios de pago — activar múltiples gateways', async ({ page }) => {
+  test('CFG-007 | Tab Medios de pago — activar múltiples gateways', async () => {
     // Omitido: requiere conocer estado inicial de múltiples gateways para verificar correctamente
     test.skip()
   })
@@ -152,13 +151,13 @@ test.describe('Admin – Configuración (/admin/configuracion)', () => {
   })
 
   // ── CFG-013 ─────────────────────────────────────────────────────────────────
-  test('CFG-013 | Tab Talles — soft-delete y reactivación', async ({ page }) => {
+  test('CFG-013 | Tab Talles — soft-delete y reactivación', async () => {
     // Omitido: la UI solo expone "Eliminar" (hard delete), sin opción de reactivación
     test.skip()
   })
 
   // ── CFG-015 ─────────────────────────────────────────────────────────────────
-  test('CFG-015 | Cambios sin guardar — alerta antes de salir', async ({ page }) => {
+  test('CFG-015 | Cambios sin guardar — alerta antes de salir', async () => {
     // Omitido: depende de si el router guard de unsaved changes está implementado
     test.skip()
   })

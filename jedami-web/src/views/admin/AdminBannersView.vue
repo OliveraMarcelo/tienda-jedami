@@ -70,7 +70,7 @@ async function move(index: number, dir: -1 | 1) {
   if (target < 0 || target >= banners.value.length) return
   reordering.value = true
   const list = [...banners.value]
-  ;[list[index], list[target]] = [list[target], list[index]]
+  ;[list[index], list[target]] = [list[target]!, list[index]!]
   banners.value = list.map((b, i) => ({ ...b, sortOrder: i + 1 }))
   try {
     await reorderBanners(banners.value.map(b => ({ id: b.id, sortOrder: b.sortOrder })))

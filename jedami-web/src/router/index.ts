@@ -4,6 +4,13 @@ import { ROLES } from '@/lib/constants'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
+  // Al cambiar de página se arranca arriba; con Atrás/Adelante se vuelve a donde estaba
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) return savedPosition
+    if (to.hash) return { el: to.hash, behavior: 'smooth' }
+    if (to.path === from.path) return false
+    return { top: 0 }
+  },
   routes: [
     { path: '/', redirect: '/catalogo' },
     { path: '/login', name: 'login', component: () => import('@/views/LoginView.vue') },
