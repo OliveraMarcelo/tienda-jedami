@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
+import { apiErrorDetail } from '@/lib/auth-errors'
 import { fetchAdminUsers, assignRole, removeRoleFromUser, type AdminUser } from '@/api/admin.users.api'
 import { useConfigStore } from '@/stores/config.store'
 import { ROLE_LABELS } from '@/lib/constants'
@@ -121,10 +122,10 @@ async function doRemoveRole(userId: number, roleName: string) {
     const updated = await removeRoleFromUser(userId, roleId)
     const idx = users.value.findIndex(u => u.id === userId)
     if (idx !== -1) {
-      users.value[idx] = { ...users.value[idx], roles: updated.roles ?? [] }
+      users.value[idx] = { ...users.value[idx]!, roles: updated.roles ?? [] }
     }
-  } catch (e: any) {
-    removeError.value[userId] = e?.response?.data?.detail ?? 'Error al remover rol'
+  } catch (e: unknown) {
+    removeError.value[userId] = apiErrorDetail(e, 'Error al remover rol')
   }
 }
 </script>

@@ -92,7 +92,7 @@ function moveImage(index: number, direction: 'up' | 'down') {
   const arr = [...localImages.value]
   const swapWith = direction === 'up' ? index - 1 : index + 1
   if (swapWith < 0 || swapWith >= arr.length) return
-  ;[arr[index], arr[swapWith]] = [arr[swapWith], arr[index]]
+  ;[arr[index], arr[swapWith]] = [arr[swapWith]!, arr[index]!]
   localImages.value = arr
 }
 

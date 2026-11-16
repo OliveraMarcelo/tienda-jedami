@@ -200,7 +200,7 @@ test.describe('Admin – Productos (/admin/productos)', () => {
   })
 
   // ── APROD-013 ─────────────────────────────────────────────────────────────────
-  test('APROD-013 | Panel de descuentos — editar regla existente', async ({ page }) => {
+  test('APROD-013 | Panel de descuentos — editar regla existente', async () => {
     // Omitido: el panel no tiene edición inline — solo crear/eliminar reglas
     test.skip()
   })

@@ -79,37 +79,37 @@ test.describe('Detalle de Pedido (/pedidos/:orderId)', () => {
   })
 
   // ── DET-004 ───────────────────────────────────────────────────────────────────
-  test('DET-004 | Checkout directo cuando hay 1 gateway activo', async ({ page }) => {
+  test('DET-004 | Checkout directo cuando hay 1 gateway activo', async () => {
     // Omitido: comportamiento depende de la configuración de gateways activos en la DB
     test.skip()
   })
 
   // ── DET-005 ───────────────────────────────────────────────────────────────────
-  test('DET-005 | Selector de gateway cuando hay múltiples activos', async ({ page }) => {
+  test('DET-005 | Selector de gateway cuando hay múltiples activos', async () => {
     // Omitido: requiere múltiples gateways activos en la DB
     test.skip()
   })
 
   // ── DET-006 ───────────────────────────────────────────────────────────────────
-  test('DET-006 | Elegir Checkout Pro → redirect a Mercado Pago', async ({ page }) => {
+  test('DET-006 | Elegir Checkout Pro → redirect a Mercado Pago', async () => {
     // Omitido: el redirect externo a Mercado Pago no puede verificarse en e2e local
     test.skip()
   })
 
   // ── DET-007 ───────────────────────────────────────────────────────────────────
-  test('DET-007 | Elegir Checkout API → brick embebido en la página', async ({ page }) => {
+  test('DET-007 | Elegir Checkout API → brick embebido en la página', async () => {
     // Omitido: requiere MP SDK externo y gateway checkout_api activo
     test.skip()
   })
 
   // ── DET-008 ───────────────────────────────────────────────────────────────────
-  test('DET-008 | Elegir Transferencia Bancaria → instrucciones', async ({ page }) => {
+  test('DET-008 | Elegir Transferencia Bancaria → instrucciones', async () => {
     // Omitido: requiere gateway bank_transfer activo y datos de CVU/alias configurados
     test.skip()
   })
 
   // ── DET-009 ───────────────────────────────────────────────────────────────────
-  test('DET-009 | Link WhatsApp visible en instrucciones de transferencia', async ({ page }) => {
+  test('DET-009 | Link WhatsApp visible en instrucciones de transferencia', async () => {
     // Omitido: depende de bank_transfer activo y whatsappNumber configurado
     test.skip()
   })
@@ -166,7 +166,7 @@ test.describe('Detalle de Pedido (/pedidos/:orderId)', () => {
   })
 
   // ── DET-011 ───────────────────────────────────────────────────────────────────
-  test('DET-011 | No se puede cancelar un pedido ya pagado', async ({ page }) => {
+  test('DET-011 | No se puede cancelar un pedido ya pagado', async () => {
     // Omitido: requiere un pedido en estado "paid" en la DB
     test.skip()
   })
@@ -185,13 +185,13 @@ test.describe('Detalle de Pedido (/pedidos/:orderId)', () => {
   })
 
   // ── DET-013 ───────────────────────────────────────────────────────────────────
-  test('DET-013 | Estado "Pagado" se muestra con badge visual', async ({ page }) => {
+  test('DET-013 | Estado "Pagado" se muestra con badge visual', async () => {
     // Omitido: requiere un pedido en estado "paid" en la DB
     test.skip()
   })
 
   // ── DET-014 ───────────────────────────────────────────────────────────────────
-  test('DET-014 | Reintento de pago para pedido con pago fallido', async ({ page }) => {
+  test('DET-014 | Reintento de pago para pedido con pago fallido', async () => {
     // Omitido: requiere un pedido en estado "rejected" en la DB
     test.skip()
   })
