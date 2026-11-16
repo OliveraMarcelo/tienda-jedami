@@ -3,11 +3,8 @@ import { ref, computed, onMounted } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import { apiErrorDetail } from '@/lib/auth-errors'
 import { fetchAdminUsers, assignRole, removeRoleFromUser, type AdminUser } from '@/api/admin.users.api'
-import { useConfigStore } from '@/stores/config.store'
 import { ROLE_LABELS } from '@/lib/constants'
 import apiClient from '@/api/client'
-
-const configStore = useConfigStore()
 
 interface Role { id: number; name: string }
 
@@ -114,6 +111,33 @@ async function handleAssignRoleWithConfirm(userId: number) {
   await handleAssignRole(userId)
 }
 
+// Pasar un cliente de minorista a mayorista (o al revés): asigna el rol nuevo y quita el otro.
+// El cliente ve el cambio cuando su sesión se renueva (al volver a entrar o en menos de un día).
+const changingType = ref<number | null>(null)
+async function changeCustomerType(user: AdminUser, to: 'wholesale' | 'retail') {
+  const from = to === 'wholesale' ? 'retail' : 'wholesale'
+  const toId = getRoleIdByName(to)
+  const fromId = getRoleIdByName(from)
+  if (!toId) return
+  changingType.value = user.id
+  removeError.value[user.id] = ''
+  try {
+    await assignRole(user.id, toId)
+    if (fromId && user.roles.includes(from)) await removeRoleFromUser(user.id, fromId)
+    await loadUsers()
+    successMsg.value = { ...successMsg.value, [user.id]: to === 'wholesale' ? 'Ahora es mayorista' : 'Ahora es minorista' }
+    setTimeout(() => {
+      const m = { ...successMsg.value }
+      delete m[user.id]
+      successMsg.value = m
+    }, 3500)
+  } catch (e: unknown) {
+    removeError.value[user.id] = apiErrorDetail(e, 'No se pudo cambiar el tipo de cuenta')
+  } finally {
+    changingType.value = null
+  }
+}
+
 async function doRemoveRole(userId: number, roleName: string) {
   const roleId = getRoleIdByName(roleName)
   if (!roleId) return
@@ -134,7 +158,7 @@ async function doRemoveRole(userId: number, roleName: string) {
   <AdminLayout>
     <div class="max-w-3xl">
       <div class="flex items-center gap-3 mb-6">
-        <h1 class="text-[26px] font-bold">Usuarios</h1>
+        <h1 class="text-[26px] font-bold">Clientes</h1>
       </div>
 
       <!-- Filtros -->
@@ -150,7 +174,7 @@ async function doRemoveRole(userId: number, roleName: string) {
           />
         </div>
         <div>
-          <label class="block text-xs text-[var(--a-muted)] mb-1">Rol</label>
+          <label class="block text-xs text-[var(--a-muted)] mb-1">Tipo</label>
           <select
             v-model="filterRole"
             class="h-10 rounded-lg border border-[#C9CDD2] px-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]"
@@ -199,15 +223,31 @@ async function doRemoveRole(userId: number, roleName: string) {
                     >×</button>
                   </span>
                   <span v-if="user.roles.length === 0" class="text-xs text-[var(--a-muted)] italic">sin roles</span>
-                  <span v-if="user.customerType" class="text-xs text-[var(--a-muted)] italic">
-                    · {{ configStore.customerTypeLabel[user.customerType] ?? user.customerType }}
-                  </span>
                 </div>
                 <p v-if="removeError[user.id]" class="text-xs text-red-500 mt-1">{{ removeError[user.id] }}</p>
               </div>
 
-              <div class="flex flex-col gap-1 shrink-0">
+              <div class="flex flex-col gap-1.5 shrink-0 sm:items-end">
                 <div class="flex items-center gap-2">
+                  <span v-if="successMsg[user.id]" class="text-xs text-green-600 font-semibold">✓ {{ successMsg[user.id] }}</span>
+                  <button
+                    v-if="user.roles.includes('retail') && !user.roles.includes('wholesale')"
+                    type="button"
+                    :disabled="changingType === user.id"
+                    class="h-8 px-3 rounded-lg bg-[var(--a-primary)] text-white text-sm font-semibold hover:opacity-90 disabled:opacity-40"
+                    @click="changeCustomerType(user, 'wholesale')"
+                  >{{ changingType === user.id ? 'Cambiando…' : 'Pasar a mayorista' }}</button>
+                  <button
+                    v-else-if="user.roles.includes('wholesale')"
+                    type="button"
+                    :disabled="changingType === user.id"
+                    class="h-8 px-3 rounded-lg border border-[#C9CDD2] text-sm text-[var(--a-muted)] hover:text-[var(--a-ink)] disabled:opacity-40"
+                    @click="changeCustomerType(user, 'retail')"
+                  >{{ changingType === user.id ? 'Cambiando…' : 'Pasar a minorista' }}</button>
+                </div>
+                <details class="text-xs text-[var(--a-muted)]">
+                  <summary class="cursor-pointer select-none sm:text-right">Otros roles</summary>
+                <div class="flex items-center gap-2 mt-1.5">
                   <select
                     v-model="selectedRole[user.id]"
                     class="h-8 rounded-lg border border-[#C9CDD2] px-2 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]"
@@ -230,7 +270,6 @@ async function doRemoveRole(userId: number, roleName: string) {
                     </span>
                     <span v-else>Asignar</span>
                   </button>
-                  <span v-if="successMsg[user.id]" class="text-xs text-green-600 font-semibold">✓ {{ successMsg[user.id] }}</span>
                 </div>
                 <!-- Confirmación inline para asignar rol admin -->
                 <template v-if="confirmingAdminAssign === user.id">
@@ -240,6 +279,7 @@ async function doRemoveRole(userId: number, roleName: string) {
                     <button @click="confirmingAdminAssign = null" class="text-xs text-[var(--a-muted)] hover:underline">Cancelar</button>
                   </div>
                 </template>
+                </details>
               </div>
             </div>
           </div>
@@ -247,19 +287,19 @@ async function doRemoveRole(userId: number, roleName: string) {
         </div>
 
         <!-- Paginación -->
-        <div class="flex items-center justify-between text-sm text-[var(--a-muted)]">
-          <span>{{ total }} usuarios — Página {{ page }} de {{ pages || 1 }}</span>
-          <div class="flex gap-2">
+        <div class="flex items-center justify-between gap-3 text-sm text-[var(--a-muted)]">
+          <span>{{ total }} cuentas · Página {{ page }} de {{ pages || 1 }}</span>
+          <div class="flex gap-2 shrink-0">
             <button
               :disabled="page <= 1"
               @click="goToPage(page - 1)"
               class="h-8 px-3 rounded-lg border border-[#C9CDD2] hover:border-[var(--a-primary)] hover:text-[var(--a-primary)] transition-colors disabled:opacity-40 disabled:pointer-events-none"
-            >← Anterior</button>
+            >←<span class="hidden sm:inline"> Anterior</span></button>
             <button
               :disabled="page >= pages"
               @click="goToPage(page + 1)"
               class="h-8 px-3 rounded-lg border border-[#C9CDD2] hover:border-[var(--a-primary)] hover:text-[var(--a-primary)] transition-colors disabled:opacity-40 disabled:pointer-events-none"
-            >Siguiente →</button>
+            ><span class="hidden sm:inline">Siguiente </span>→</button>
           </div>
         </div>
       </template>

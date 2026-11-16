@@ -4,8 +4,8 @@ import type { AxiosError } from 'axios'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import { useConfigStore } from '@/stores/config.store'
 import {
-  fetchPurchaseTypes, createPurchaseType, updatePurchaseType,
-  fetchCustomerTypes, createCustomerType, updateCustomerType,
+  fetchPurchaseTypes, updatePurchaseType,
+  fetchCustomerTypes, updateCustomerType,
   fetchSizes, createSize, deleteSize,
   fetchColors, createColor, deleteColor,
   updateBranding, uploadBrandingLogo, updatePaymentGateway,
@@ -22,34 +22,17 @@ type ConfigApiError = AxiosError<{ detail?: string }>
 const configStore = useConfigStore()
 
 type Tab = 'purchase-types' | 'customer-types' | 'sizes' | 'colors' | 'branding' | 'payments' | 'point'
-const activeTab = ref<Tab>('purchase-types')
+const activeTab = ref<Tab>('branding')
 
 // ─── Purchase Types ───────────────────────────────────────────────────────────
 const purchaseTypes = ref<ConfigTypeItem[]>([])
 const ptLoading = ref(false)
-const ptNew = ref({ code: '', label: '' })
-const ptSaving = ref(false)
 const ptError = ref('')
 
 async function loadPurchaseTypes() {
   ptLoading.value = true
   try { purchaseTypes.value = await fetchPurchaseTypes() }
   finally { ptLoading.value = false }
-}
-
-async function addPurchaseType() {
-  if (!ptNew.value.code || !ptNew.value.label) return
-  ptSaving.value = true
-  ptError.value = ''
-  try {
-    const item = await createPurchaseType(ptNew.value)
-    purchaseTypes.value.push(item)
-    ptNew.value = { code: '', label: '' }
-    await configStore.refreshConfig()
-  } catch (err) {
-    const e = err as ConfigApiError
-    ptError.value = e?.response?.data?.detail ?? 'Error al guardar. Verificá que el código no esté duplicado.'
-  } finally { ptSaving.value = false }
 }
 
 async function togglePurchaseType(item: ConfigTypeItem) {
@@ -68,29 +51,12 @@ async function togglePurchaseType(item: ConfigTypeItem) {
 // ─── Customer Types ───────────────────────────────────────────────────────────
 const customerTypes = ref<ConfigTypeItem[]>([])
 const ctLoading = ref(false)
-const ctNew = ref({ code: '', label: '' })
-const ctSaving = ref(false)
 const ctError = ref('')
 
 async function loadCustomerTypes() {
   ctLoading.value = true
   try { customerTypes.value = await fetchCustomerTypes() }
   finally { ctLoading.value = false }
-}
-
-async function addCustomerType() {
-  if (!ctNew.value.code || !ctNew.value.label) return
-  ctSaving.value = true
-  ctError.value = ''
-  try {
-    const item = await createCustomerType(ctNew.value)
-    customerTypes.value.push(item)
-    ctNew.value = { code: '', label: '' }
-    await configStore.refreshConfig()
-  } catch (err) {
-    const e = err as ConfigApiError
-    ctError.value = e?.response?.data?.detail ?? 'Error al guardar. Verificá que el código no esté duplicado.'
-  } finally { ctSaving.value = false }
 }
 
 async function toggleCustomerType(item: ConfigTypeItem) {
@@ -392,14 +358,14 @@ onMounted(async () => {
   brandingForm.value = { ...configStore.branding }
 })
 
+// "Cobros Point" (Mercado Pago Point) oculto hasta tener el dispositivo
 const TABS: { key: Tab; label: string }[] = [
-  { key: 'purchase-types', label: 'Tipos de Compra' },
-  { key: 'customer-types', label: 'Tipos de Cliente' },
+  { key: 'branding',       label: 'Marca y contacto' },
+  { key: 'payments',       label: 'Medios de pago' },
   { key: 'sizes',          label: 'Talles' },
   { key: 'colors',         label: 'Colores' },
-  { key: 'branding',       label: 'Branding' },
-  { key: 'payments',       label: 'Pagos' },
-  { key: 'point',          label: 'Cobros Point' },
+  { key: 'purchase-types', label: 'Formas de compra' },
+  { key: 'customer-types', label: 'Tipos de cuenta' },
 ]
 </script>
 
@@ -432,6 +398,7 @@ const TABS: { key: Tab; label: string }[] = [
           <div v-for="i in 3" :key="i" class="animate-pulse bg-white rounded-xl border h-12"></div>
         </div>
         <template v-else>
+          <p class="text-sm text-[var(--a-muted)] mb-3">Cómo pueden comprar los mayoristas y los minoristas. Desactivá la que no quieras ofrecer.</p>
           <div class="space-y-2 mb-4">
             <div
               v-for="item in purchaseTypes" :key="item.id"
@@ -439,7 +406,6 @@ const TABS: { key: Tab; label: string }[] = [
             >
               <div>
                 <span class="font-semibold text-[var(--a-ink)] text-sm">{{ item.label }}</span>
-                <span class="ml-2 text-xs text-[var(--a-muted)] font-mono">{{ item.code }}</span>
               </div>
               <button
                 @click="togglePurchaseType(item)"
@@ -451,25 +417,7 @@ const TABS: { key: Tab; label: string }[] = [
             </div>
           </div>
           <!-- Formulario alta -->
-          <div class="bg-white rounded-xl border border-[var(--a-border)] p-4">
-            <p class="text-sm font-semibold text-[#45494E] mb-3">Agregar tipo de compra</p>
-            <div class="flex flex-wrap gap-2 items-end">
-              <div>
-                <label class="block text-xs text-[var(--a-muted)] mb-1">Código</label>
-                <input v-model="ptNew.code" type="text" placeholder="ej: mayoreo" class="h-10 rounded-lg border border-[#C9CDD2] px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]" />
-              </div>
-              <div>
-                <label class="block text-xs text-[var(--a-muted)] mb-1">Etiqueta</label>
-                <input v-model="ptNew.label" type="text" placeholder="ej: Por mayoreo" class="h-10 rounded-lg border border-[#C9CDD2] px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]" />
-              </div>
-              <button
-                @click="addPurchaseType"
-                :disabled="ptSaving || !ptNew.code || !ptNew.label"
-                class="h-10 px-4 rounded-lg bg-[var(--a-primary)] text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:pointer-events-none"
-              >Agregar</button>
-            </div>
-            <p v-if="ptError" class="text-xs text-red-500 mt-2">{{ ptError }}</p>
-          </div>
+          <p v-if="ptError" class="text-xs text-red-500 mt-1">{{ ptError }}</p>
         </template>
       </div>
 
@@ -479,6 +427,7 @@ const TABS: { key: Tab; label: string }[] = [
           <div v-for="i in 3" :key="i" class="animate-pulse bg-white rounded-xl border h-12"></div>
         </div>
         <template v-else>
+          <p class="text-sm text-[var(--a-muted)] mb-3">Tipos de cuenta que se pueden elegir al registrarse.</p>
           <div class="space-y-2 mb-4">
             <div
               v-for="item in customerTypes" :key="item.id"
@@ -486,7 +435,6 @@ const TABS: { key: Tab; label: string }[] = [
             >
               <div>
                 <span class="font-semibold text-[var(--a-ink)] text-sm">{{ item.label }}</span>
-                <span class="ml-2 text-xs text-[var(--a-muted)] font-mono">{{ item.code }}</span>
               </div>
               <button
                 @click="toggleCustomerType(item)"
@@ -497,25 +445,7 @@ const TABS: { key: Tab; label: string }[] = [
               >{{ item.active ? 'Activo' : 'Inactivo' }}</button>
             </div>
           </div>
-          <div class="bg-white rounded-xl border border-[var(--a-border)] p-4">
-            <p class="text-sm font-semibold text-[#45494E] mb-3">Agregar tipo de cliente</p>
-            <div class="flex flex-wrap gap-2 items-end">
-              <div>
-                <label class="block text-xs text-[var(--a-muted)] mb-1">Código</label>
-                <input v-model="ctNew.code" type="text" placeholder="ej: vip" class="h-10 rounded-lg border border-[#C9CDD2] px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]" />
-              </div>
-              <div>
-                <label class="block text-xs text-[var(--a-muted)] mb-1">Etiqueta</label>
-                <input v-model="ctNew.label" type="text" placeholder="ej: VIP" class="h-10 rounded-lg border border-[#C9CDD2] px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]" />
-              </div>
-              <button
-                @click="addCustomerType"
-                :disabled="ctSaving || !ctNew.code || !ctNew.label"
-                class="h-10 px-4 rounded-lg bg-[var(--a-primary)] text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:pointer-events-none"
-              >Agregar</button>
-            </div>
-            <p v-if="ctError" class="text-xs text-red-500 mt-2">{{ ctError }}</p>
-          </div>
+          <p v-if="ctError" class="text-xs text-red-500 mt-1">{{ ctError }}</p>
         </template>
       </div>
 

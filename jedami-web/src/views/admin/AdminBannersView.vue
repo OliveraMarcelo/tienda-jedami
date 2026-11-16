@@ -62,6 +62,30 @@ async function toggleActive(banner: Banner) {
   }
 }
 
+// ─── Imagen que no carga y edición del enlace ────────────────────────────────
+const brokenImages = ref<Set<number>>(new Set())
+const editingLink = ref<number | null>(null)
+const linkDraft = ref('')
+const linkError = ref('')
+
+function startEditLink(banner: Banner) {
+  editingLink.value = banner.id
+  linkDraft.value = banner.linkUrl ?? ''
+  linkError.value = ''
+}
+
+async function saveLink(banner: Banner) {
+  linkError.value = ''
+  try {
+    const updated = await updateBanner(banner.id, { linkUrl: linkDraft.value.trim() || null })
+    const idx = banners.value.findIndex(b => b.id === banner.id)
+    if (idx !== -1) banners.value[idx] = { ...banners.value[idx]!, ...updated }
+    editingLink.value = null
+  } catch {
+    linkError.value = 'No se pudo guardar el enlace'
+  }
+}
+
 // ─── Reordenar ────────────────────────────────────────────────────────────────
 const reordering = ref(false)
 
@@ -143,18 +167,37 @@ onMounted(load)
         >
           <!-- Thumbnail -->
           <img
+            v-if="!brokenImages.has(banner.id)"
             :src="banner.imageUrl"
             :alt="`Banner ${banner.id}`"
             class="w-20 h-14 object-cover rounded-lg flex-shrink-0 border border-[var(--a-border)]"
+            @error="brokenImages.add(banner.id)"
           />
+          <div
+            v-else
+            class="w-20 h-14 rounded-lg flex-shrink-0 border border-red-200 bg-red-50 flex items-center justify-center text-center text-[10px] font-semibold leading-tight text-red-600"
+            title="La imagen no se encuentra en el servidor: subila de nuevo"
+          >Imagen<br>no encontrada</div>
 
           <!-- Info -->
           <div class="flex-1 min-w-0">
             <p class="text-sm font-semibold text-[var(--a-ink)]">Banner #{{ banner.id }}</p>
-            <p v-if="banner.linkUrl" class="text-xs text-[var(--a-muted)] truncate mt-0.5">
-              Enlace: {{ banner.linkUrl }}
+            <form v-if="editingLink === banner.id" class="flex flex-wrap items-center gap-1.5 mt-1" @submit.prevent="saveLink(banner)">
+              <input
+                v-model="linkDraft"
+                type="text"
+                placeholder="/catalogo?categoria=3 (vacío = sin enlace)"
+                aria-label="Enlace del banner"
+                class="h-8 flex-1 min-w-[160px] rounded-lg border border-[#C9CDD2] px-2 text-xs focus:outline-none focus:ring-1 focus:ring-[var(--a-primary)]"
+              />
+              <button type="submit" class="h-8 px-3 rounded-lg bg-[var(--a-primary)] text-white text-xs font-semibold">Guardar</button>
+              <button type="button" class="h-8 px-2 text-xs text-[var(--a-muted)]" @click="editingLink = null">Cancelar</button>
+              <p v-if="linkError" class="basis-full text-xs text-red-500">{{ linkError }}</p>
+            </form>
+            <p v-else class="text-xs text-[var(--a-muted)] truncate mt-0.5">
+              {{ banner.linkUrl ? `Enlace: ${banner.linkUrl}` : 'Sin enlace' }}
+              <button type="button" class="ml-1 font-semibold text-[var(--a-primary)] hover:underline" @click="startEditLink(banner)">Cambiar</button>
             </p>
-            <p v-else class="text-xs text-[var(--a-muted)] mt-0.5">Sin enlace</p>
           </div>
 
           <!-- Acciones -->

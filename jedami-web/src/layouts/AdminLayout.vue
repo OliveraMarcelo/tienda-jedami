@@ -35,15 +35,14 @@ const groups: NavGroup[] = [
     items: [
       { to: '/admin/pagos', label: 'Pagos', icon: 'sales' },
       { to: '/admin/despacho', label: 'Despacho', icon: 'truck' },
-      { to: '/admin/point', label: 'Punto de venta', icon: 'pos' },
-      { to: '/admin/reportes', label: 'Estadísticas', icon: 'chart' },
+      { to: '/admin/usuarios', label: 'Clientes', icon: 'users' },
+      // Punto de venta (Mercado Pago Point) oculto hasta tener el dispositivo: la ruta /admin/point sigue andando
     ],
   },
   {
     title: 'Catálogo',
     items: [
       { to: '/admin/productos', label: 'Productos', icon: 'box' },
-      { to: '/admin/usuarios', label: 'Clientes y usuarios', icon: 'users' },
     ],
   },
   {

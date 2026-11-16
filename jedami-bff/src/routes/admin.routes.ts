@@ -207,30 +207,21 @@ router.patch('/products/:productId/variants/:variantId/stock', updateVariantStoc
  * /admin/payments:
  *   get:
  *     tags: [Admin]
- *     summary: Listar todos los pagos con detalle de pedidos
+ *     summary: Pagos agrupados por pedido (el pago aprobado o el último, y los medios ofrecidos)
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - { in: query, name: page, schema: { type: integer } }
+ *       - { in: query, name: limit, schema: { type: integer, maximum: 100 } }
+ *       - in: query
+ *         name: status
+ *         description: Estado del pedido
+ *         schema: { type: string, enum: [pending, paid, shipped, rejected, cancelled] }
+ *       - { in: query, name: date_from, schema: { type: string, format: date } }
+ *       - { in: query, name: date_to, schema: { type: string, format: date } }
  *     responses:
  *       200:
- *         description: Lista de pagos
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id: { type: integer }
- *                       orderId: { type: integer }
- *                       status: { type: string }
- *                       amount: { type: number, nullable: true }
- *                       mpPaymentId: { type: string, nullable: true }
- *                       customerEmail: { type: string }
- *                       notes: { type: string, nullable: true }
- *                       createdAt: { type: string, format: date-time }
+ *         description: "{ data: { payments: [...], pagination } } — cada pago trae orderStatus, paymentMethod, methods[], mpPaymentId, paidAt, createdAt"
  */
 router.get('/payments',  getAdminPayments);
 
