@@ -35,6 +35,7 @@ export async function getDashboard(_req: Request, res: Response) {
     ordersByStatus: {
       pending:  Number(row.pending_orders),
       paid:     Number(row.paid_orders),
+      shipped:  Number(row.shipped_orders),
       rejected: Number(row.rejected_orders),
     },
     ordersByType: {
@@ -76,12 +77,13 @@ export async function getAdminPayments(req: Request, res: Response) {
   return res.status(200).json({
     data: {
       payments: dataResult.rows.map(r => ({
-        id:            r.id,
+        id:            r.id ?? null,
         orderId:       r.order_id,
         paymentStatus:  r.payment_status,
-        paymentMethod:  r.payment_method ?? 'mercadopago',
+        // null = el pedido todavía no inició un pago
+        paymentMethod:  r.id ? (r.payment_method ?? 'mercadopago') : null,
+        methods:        (r.methods ?? []) as string[],
         mpPaymentId:    r.mp_payment_id ?? null,
-        amount:         Number(r.amount),
         paidAt:        r.paid_at,
         createdAt:     r.created_at,
         purchaseType:  r.purchase_type,

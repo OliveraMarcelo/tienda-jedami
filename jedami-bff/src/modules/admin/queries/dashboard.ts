@@ -1,25 +1,22 @@
+// Pedidos vendidos = pagados (para despachar) + despachados
 export const DASHBOARD_QUERY = `
   SELECT
-    -- Totales de pedidos por estado
-    COUNT(*)                                             AS total_orders,
-    COUNT(*) FILTER (WHERE status = 'pending')           AS pending_orders,
-    COUNT(*) FILTER (WHERE status = 'paid')              AS paid_orders,
-    COUNT(*) FILTER (WHERE status = 'rejected')          AS rejected_orders,
+    COUNT(*) FILTER (WHERE status IN ('paid', 'shipped'))  AS total_orders,
+    COUNT(*) FILTER (WHERE status = 'pending')             AS pending_orders,
+    COUNT(*) FILTER (WHERE status = 'paid')                AS paid_orders,
+    COUNT(*) FILTER (WHERE status = 'shipped')             AS shipped_orders,
+    COUNT(*) FILTER (WHERE status = 'rejected')            AS rejected_orders,
 
-    -- Revenue total (solo pedidos pagados)
-    COALESCE(SUM(total_amount) FILTER (WHERE status = 'paid'), 0) AS total_revenue,
-
-    -- Revenue últimos 30 días
+    COALESCE(SUM(total_amount) FILTER (WHERE status IN ('paid', 'shipped')), 0) AS total_revenue,
     COALESCE(SUM(total_amount) FILTER (
-      WHERE status = 'paid'
+      WHERE status IN ('paid', 'shipped')
         AND created_at >= NOW() - INTERVAL '30 days'
     ), 0) AS revenue_last_30d,
 
-    -- Pedidos por tipo de compra
-    COUNT(*) FILTER (WHERE purchase_type = 'retail')     AS retail_orders,
-    COUNT(*) FILTER (WHERE purchase_type = 'curva')      AS curva_orders,
-    COUNT(*) FILTER (WHERE purchase_type = 'cantidad')   AS cantidad_orders
-
+    -- Ventas por tipo de compra
+    COUNT(*) FILTER (WHERE purchase_type = 'retail'   AND status IN ('paid', 'shipped')) AS retail_orders,
+    COUNT(*) FILTER (WHERE purchase_type = 'curva'    AND status IN ('paid', 'shipped')) AS curva_orders,
+    COUNT(*) FILTER (WHERE purchase_type = 'cantidad' AND status IN ('paid', 'shipped')) AS cantidad_orders
   FROM orders
 `;
 

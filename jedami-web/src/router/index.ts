@@ -101,12 +101,8 @@ const router = createRouter({
       component: () => import('@/views/admin/AdminPointView.vue'),
       meta: { requiresRole: ROLES.ADMIN },
     },
-    {
-      path: '/admin/reportes',
-      name: 'adminReports',
-      component: () => import('@/views/admin/AdminReportsView.vue'),
-      meta: { requiresRole: ROLES.ADMIN },
-    },
+    // Las estadísticas ahora están en el Tablero
+    { path: '/admin/reportes', redirect: '/admin/dashboard' },
   ],
 })
 

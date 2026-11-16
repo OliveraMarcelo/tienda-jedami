@@ -10,10 +10,12 @@ export interface RecentOrder {
 }
 
 export interface DashboardData {
+  /** Pedidos vendidos (pagados + despachados) */
   totalOrders: number
   totalRevenue: number
   revenueLast30d: number
-  ordersByStatus: { pending: number; paid: number; rejected: number }
+  /** paid = pagados sin despachar */
+  ordersByStatus: { pending: number; paid: number; shipped: number; rejected: number }
   ordersByType: Record<string, number>
   recentOrders: RecentOrder[]
 }

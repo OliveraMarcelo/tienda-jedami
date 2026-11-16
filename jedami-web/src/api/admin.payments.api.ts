@@ -1,10 +1,10 @@
 import apiClient from './client'
 
 export interface AdminPayment {
-  id: number
+  /** null = el pedido todavía no inició un pago */
+  id: number | null
   orderId: number
   paymentStatus: string
-  amount: number
   paidAt: string | null
   createdAt: string
   purchaseType: string
@@ -12,7 +12,10 @@ export interface AdminPayment {
   totalAmount: number
   notes: string | null
   customerEmail: string
-  paymentMethod: string
+  /** Medio del pago que se muestra (el aprobado o el último intento) */
+  paymentMethod: string | null
+  /** Todos los medios que se le ofrecieron al pedido (mercadopago, bank_transfer, mp_point) */
+  methods: string[]
   /** Número de operación de Mercado Pago (null en transferencias o intentos sin pagar) */
   mpPaymentId: string | null
 }
