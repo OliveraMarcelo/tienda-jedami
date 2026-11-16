@@ -355,9 +355,9 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
                   v-if="product.imageUrl"
                   :src="product.imageUrl"
                   :alt="product.name"
-                  class="w-12 h-12 object-cover object-top rounded-lg border border-[var(--a-border)]"
+                  class="w-12 h-12 min-w-12 max-w-none object-cover object-top rounded-lg border border-[var(--a-border)]"
                 />
-                <div v-else class="w-12 h-12 bg-gray-100 rounded-lg border border-[var(--a-border)] flex items-center justify-center text-[var(--a-muted)] text-xs">
+                <div v-else class="w-12 h-12 min-w-12 bg-gray-100 rounded-lg border border-[var(--a-border)] flex items-center justify-center text-[var(--a-muted)] text-xs">
                   Sin foto
                 </div>
               </td>

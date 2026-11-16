@@ -65,27 +65,41 @@ const initials = computed(() => (authStore.user?.email ?? 'A').slice(0, 2).toUpp
 
 <template>
   <div class="admin-ui min-h-screen bg-[var(--a-bg)] text-[var(--a-ink)] lg:flex">
-    <!-- Sidebar -->
+    <!-- Fondo del menú en el celular -->
+    <Transition enter-active-class="transition-opacity duration-200" enter-from-class="opacity-0" leave-active-class="transition-opacity duration-150" leave-to-class="opacity-0">
+      <div v-if="menuOpen" class="fixed inset-0 z-40 bg-[#0B1220]/40 backdrop-blur-[2px] lg:hidden" aria-hidden="true" @click="menuOpen = false" />
+    </Transition>
+
+    <!-- Menú lateral: fijo en la compu, panel deslizable en el celular -->
     <aside
       id="admin-sidebar"
       :class="[
-        'bg-[var(--a-surface)] border-[var(--a-border)] lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:shrink-0 lg:overflow-y-auto lg:border-r lg:block',
-        menuOpen ? 'block border-b' : 'hidden',
+        'fixed inset-y-0 left-0 z-50 flex w-[264px] flex-col border-r border-[var(--a-border)] bg-[var(--a-surface)] transition-transform duration-200 ease-out',
+        'lg:sticky lg:top-0 lg:z-auto lg:h-screen lg:w-[248px] lg:shrink-0 lg:translate-x-0',
+        menuOpen ? 'translate-x-0 shadow-[var(--a-shadow-lg)]' : '-translate-x-full',
       ]"
     >
-      <div class="flex items-center gap-3 px-5 py-5">
-        <span class="flex h-9 w-9 items-center justify-center rounded-[10px] bg-[var(--color-primary,#E91E8C)] font-bold text-white">
+      <div class="flex items-center gap-3 px-5 pb-4 pt-5">
+        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-primary,#E91E8C)] text-[15px] font-bold text-white shadow-sm">
           {{ storeName.charAt(0).toUpperCase() }}
         </span>
-        <div class="flex min-w-0 flex-col">
-          <span class="truncate text-[15px] font-bold">{{ storeName }}</span>
-          <RouterLink to="/catalogo" class="text-[13px] font-medium text-[var(--a-primary)] hover:text-[var(--a-primary-hover)]">Ver mi tienda</RouterLink>
+        <div class="flex min-w-0 flex-col leading-tight">
+          <span class="truncate text-[15px] font-semibold tracking-[-0.01em]">{{ storeName }}</span>
+          <span class="text-xs text-[var(--a-muted)]">Panel de la tienda</span>
         </div>
+        <button
+          type="button"
+          class="ml-auto flex h-9 w-9 items-center justify-center rounded-lg text-[var(--a-muted)] hover:bg-[var(--a-bg)] lg:hidden"
+          aria-label="Cerrar menú"
+          @click="menuOpen = false"
+        >
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+        </button>
       </div>
 
-      <nav aria-label="Administración" class="flex flex-col gap-0.5 px-3 pb-6 text-sm">
+      <nav aria-label="Administración" class="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 pb-4 text-[14px]">
         <template v-for="(group, gi) in groups" :key="gi">
-          <p v-if="group.title" class="mx-3 mb-1.5 mt-4 text-xs font-semibold uppercase tracking-wide text-[var(--a-muted)]">
+          <p v-if="group.title" class="mx-3 mb-1 mt-5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#8A909B]">
             {{ group.title }}
           </p>
           <RouterLink
@@ -94,54 +108,64 @@ const initials = computed(() => (authStore.user?.email ?? 'A').slice(0, 2).toUpp
             :to="item.to"
             :aria-current="isActive(item.to) ? 'page' : undefined"
             :class="[
-              'flex min-h-10 items-center gap-3 rounded-lg px-3 transition-colors',
+              'group flex min-h-10 items-center gap-3 rounded-[10px] px-3 font-medium transition-colors',
               isActive(item.to)
-                ? 'bg-[var(--a-primary-soft)] font-semibold text-[var(--a-primary)]'
-                : 'text-[var(--a-ink)] hover:bg-[var(--a-bg)]',
+                ? 'bg-[var(--a-primary-soft)] text-[var(--a-primary)]'
+                : 'text-[#3A3F47] hover:bg-[var(--a-bg)] hover:text-[var(--a-ink)]',
             ]"
           >
-            <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <svg
+              :class="['h-[18px] w-[18px] shrink-0', isActive(item.to) ? 'text-[var(--a-primary)]' : 'text-[#8A909B] group-hover:text-[var(--a-ink)]']"
+              viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
+            >
               <path :d="ICONS[item.icon]" />
             </svg>
             {{ item.label }}
           </RouterLink>
         </template>
       </nav>
+
+      <RouterLink
+        to="/catalogo"
+        class="mx-3 mb-4 flex items-center gap-3 rounded-[10px] border border-[var(--a-border)] px-3 py-2.5 text-sm font-medium text-[#3A3F47] hover:bg-[var(--a-bg)]"
+      >
+        <svg class="h-[18px] w-[18px] text-[#8A909B]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" /></svg>
+        Ver mi tienda
+      </RouterLink>
     </aside>
 
     <!-- Contenido -->
     <div class="flex min-w-0 flex-1 flex-col">
-      <header class="sticky top-0 z-30 flex min-h-16 items-center gap-3 border-b border-[var(--a-border)] bg-[var(--a-surface)] px-4 sm:px-8">
+      <header class="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-[var(--a-border)] bg-white/80 px-4 backdrop-blur-md sm:px-8">
         <button
           type="button"
-          class="flex h-11 w-11 items-center justify-center rounded-lg hover:bg-[var(--a-bg)] lg:hidden"
+          class="-ml-1.5 flex h-11 w-11 items-center justify-center rounded-[10px] hover:bg-[var(--a-bg)] lg:hidden"
           :aria-expanded="menuOpen"
           aria-controls="admin-sidebar"
-          :aria-label="menuOpen ? 'Cerrar menú' : 'Abrir menú'"
-          @click="menuOpen = !menuOpen"
+          aria-label="Abrir menú"
+          @click="menuOpen = true"
         >
-          <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+          <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
         </button>
-        <span class="font-semibold lg:hidden">{{ storeName }}</span>
+        <span class="truncate font-semibold lg:hidden">{{ storeName }}</span>
 
-        <div class="ml-auto flex items-center gap-2">
-          <RouterLink
-            to="/catalogo"
-            class="hidden sm:inline-flex min-h-10 items-center rounded-lg border border-[#C9CDD2] px-3.5 text-sm font-semibold hover:bg-[var(--a-bg)]"
-          >
-            Ver mi tienda
-          </RouterLink>
-          <div class="flex items-center gap-2.5 px-2">
-            <span class="flex h-8 w-8 items-center justify-center rounded-full bg-[#FDE2EF] text-xs font-bold text-[#B0135F]">{{ initials }}</span>
-            <span class="hidden md:inline max-w-[180px] truncate text-sm">{{ authStore.user?.email }}</span>
+        <div class="ml-auto flex items-center gap-1.5">
+          <div class="flex items-center gap-2.5 rounded-full py-1 pl-1 pr-1 sm:pr-3">
+            <span class="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-[#2457E6] to-[#7C3AED] text-xs font-semibold text-white">{{ initials }}</span>
+            <span class="hidden max-w-[200px] truncate text-sm font-medium text-[#3A3F47] md:inline">{{ authStore.user?.email }}</span>
           </div>
-          <button type="button" class="min-h-10 rounded-lg px-3 text-sm font-medium text-[var(--a-muted)] hover:bg-[var(--a-bg)] hover:text-[var(--a-ink)]" @click="authStore.logout()">
-            Salir
+          <button
+            type="button"
+            class="flex min-h-10 items-center gap-2 rounded-[10px] px-3 text-sm font-medium text-[var(--a-muted)] hover:bg-[var(--a-bg)] hover:text-[var(--a-ink)]"
+            @click="authStore.logout()"
+          >
+            <svg class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 16l4-4-4-4M14 12H4" /></svg>
+            <span>Salir</span>
           </button>
         </div>
       </header>
 
-      <main class="w-full max-w-[1240px] px-4 py-6 sm:px-8 sm:py-8">
+      <main class="mx-auto w-full max-w-[1200px] px-4 py-6 sm:px-8 sm:py-10">
         <slot />
       </main>
     </div>

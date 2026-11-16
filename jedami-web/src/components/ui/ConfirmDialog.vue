@@ -24,15 +24,15 @@ const emit = defineEmits<{
       leave-to-class="opacity-0"
     >
       <div v-if="open" class="fixed inset-0 z-50 flex items-center justify-center">
-        <div class="absolute inset-0 bg-black/50" @click="emit('update:open', false)" />
-        <div class="relative z-10 w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
-          <h3 class="text-base font-bold text-gray-900 mb-2">{{ title ?? 'Confirmar acción' }}</h3>
-          <p class="text-sm text-gray-600 mb-6">{{ message }}</p>
+        <div class="absolute inset-0 bg-[#0B1220]/45 backdrop-blur-[2px]" @click="emit('update:open', false)" />
+        <div class="admin-ui relative z-10 w-full max-w-sm rounded-2xl bg-white p-6 shadow-[var(--a-shadow-lg)]">
+          <h3 class="text-base font-semibold tracking-[-0.01em] text-[var(--a-ink)] mb-1.5">{{ title ?? 'Confirmar acción' }}</h3>
+          <p class="text-sm leading-relaxed text-[var(--a-muted)] mb-6">{{ message }}</p>
           <div class="flex gap-2 justify-end">
             <button
               type="button"
               @click="emit('update:open', false)"
-              class="px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              class="h-10 px-4 rounded-[10px] border border-[var(--a-border-strong)] bg-white text-sm font-medium text-[var(--a-ink)] hover:bg-[var(--a-bg)] transition-colors"
             >
               Cancelar
             </button>
@@ -40,7 +40,7 @@ const emit = defineEmits<{
               type="button"
               @click="emit('confirm'); emit('update:open', false)"
               :class="[
-                'px-4 py-2 rounded-lg text-sm font-semibold text-white transition-colors',
+                'h-10 px-4 rounded-[10px] text-sm font-semibold text-white shadow-sm transition-colors',
                 confirmClass ?? 'bg-red-600 hover:bg-red-700'
               ]"
             >

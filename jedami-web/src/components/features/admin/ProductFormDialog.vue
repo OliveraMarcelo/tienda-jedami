@@ -146,7 +146,7 @@ async function handleSubmit() {
 </script>
 
 <template>
-  <Dialog :open="open" @update:open="$emit('update:open', $event)">
+  <Dialog :open="open" class="admin-ui" @update:open="$emit('update:open', $event)">
     <h2 class="text-lg font-bold text-[var(--a-ink)] mb-4">{{ title() }}</h2>
 
     <form @submit.prevent="handleSubmit" class="space-y-4">

@@ -189,7 +189,7 @@ async function copyOp(op: string) {
               <tr v-for="p in payments" :key="p.orderId" class="border-b border-[var(--a-border)] last:border-0 align-top hover:bg-[var(--a-bg)] transition-colors">
                 <td class="px-4 py-3">
                   <p class="font-semibold text-[var(--a-ink)]">#{{ p.orderId }}</p>
-                  <p class="text-xs text-[var(--a-muted)]">{{ configStore.purchaseTypeLabel[p.purchaseType] ?? p.purchaseType }}</p>
+                  <p class="whitespace-nowrap text-xs text-[var(--a-muted)]">{{ configStore.purchaseTypeLabel[p.purchaseType] ?? p.purchaseType }}</p>
                 </td>
                 <td class="px-4 py-3 max-w-[220px]">
                   <p class="text-[var(--a-ink)] truncate" :title="p.customerEmail">{{ p.customerEmail }}</p>
