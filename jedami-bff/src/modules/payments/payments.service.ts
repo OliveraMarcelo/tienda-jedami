@@ -9,7 +9,8 @@ import * as ordersRepository from '../orders/orders.repository.js';
 import * as customersRepository from '../customers/customers.repository.js';
 import { FIND_ACTIVE_GATEWAYS_BY_CUSTOMER_TYPE } from '../config/queries/find-active-gateways-by-customer-type.js';
 import { processPointWebhook } from '../pos/pos.service.js';
-import { notifyOrderPaid } from '../notifications/order-paid.js';
+import { assertOrderAvailable } from '../products/availability.js';
+import { onOrderPaid } from '../notifications/order-paid.js';
 
 type SupportedGateway = 'checkout_pro' | 'checkout_api' | 'bank_transfer' | 'mp_point';
 
@@ -151,6 +152,8 @@ async function validateOrderForCheckout(orderId: number, customerId: number) {
   if (Number(order.total_amount) <= 0) {
     throw new AppError(422, 'Sin monto', 'https://jedami.com/errors/no-amount', 'El pedido no tiene monto para pagar');
   }
+  // Curva/cantidad: las unidades tienen que seguir disponibles (otro pedido pagado pudo llevárselas)
+  await assertOrderAvailable(pool, orderId);
   return order;
 }
 
@@ -259,6 +262,8 @@ export async function processPayment(orderId: number, userId: number, dto: Proce
   if (Number(order.total_amount) <= 0) {
     throw new AppError(422, 'Sin monto', 'https://jedami.com/errors/no-amount', 'El pedido no tiene monto para pagar');
   }
+  // Curva/cantidad: las unidades tienen que seguir disponibles (otro pedido pagado pudo llevárselas)
+  await assertOrderAvailable(pool, orderId);
 
   // Crear pago en MP con el token de la tarjeta
   const paymentApi = new MpPayment(mpClient);
@@ -308,7 +313,7 @@ export async function processPayment(orderId: number, userId: number, dto: Proce
   // Actualizar estado del pedido
   if (status === 'approved') {
     const upd = await pool.query("UPDATE orders SET status = 'paid' WHERE id = $1 AND status != 'paid'", [orderId]);
-    if (upd.rowCount) notifyOrderPaid(orderId);
+    if (upd.rowCount) onOrderPaid(orderId);
     logger.info({ orderId, mpPaymentId }, '[PAYMENTS] Pago aprobado (Checkout API)');
   } else if (status === 'rejected') {
     await pool.query("UPDATE orders SET status = 'rejected' WHERE id = $1 AND status != 'paid'", [orderId]);
@@ -344,6 +349,8 @@ export async function retryPayment(orderId: number, userId: number, isAdmin: boo
   if (Number(order.total_amount) <= 0) {
     throw new AppError(422, 'Sin monto', 'https://jedami.com/errors/no-amount', 'El pedido no tiene monto para pagar');
   }
+  // Curva/cantidad: las unidades tienen que seguir disponibles (otro pedido pagado pudo llevárselas)
+  await assertOrderAvailable(pool, orderId);
 
   const preferenceApi = new Preference(mpClient);
   let prefResponse;
@@ -545,7 +552,7 @@ async function applyMpPayment(mp: MpPaymentInfo, orderId: number): Promise<void>
     }
     await paymentsRepository.updateStatus(mp.id, 'approved', mp.transaction_amount);
     const upd = await pool.query("UPDATE orders SET status = 'paid' WHERE id = $1 AND status IN ('pending', 'rejected')", [orderId]);
-    if (upd.rowCount) notifyOrderPaid(orderId);
+    if (upd.rowCount) onOrderPaid(orderId);
     logger.info({ orderId, mpPaymentId: mp.id }, '[PAYMENTS] Pedido marcado como pagado');
   } else if (mp.status === 'rejected') {
     await paymentsRepository.updateStatus(mp.id, 'rejected');

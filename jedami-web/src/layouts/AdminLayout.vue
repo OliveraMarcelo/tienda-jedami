@@ -165,7 +165,8 @@ const initials = computed(() => (authStore.user?.email ?? 'A').slice(0, 2).toUpp
         </div>
       </header>
 
-      <main class="mx-auto w-full max-w-[1200px] px-4 py-6 sm:px-8 sm:py-10">
+      <!-- Ocupa todo el ancho disponible: sin franjas vacías a los costados -->
+      <main class="jd-page w-full px-4 py-6 sm:px-6 sm:py-8 xl:px-10">
         <slot />
       </main>
     </div>

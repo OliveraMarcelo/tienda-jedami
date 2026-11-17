@@ -1,6 +1,10 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
+import DateRangeFilter from '@/components/features/admin/DateRangeFilter.vue'
+import SearchField from '@/components/features/admin/SearchField.vue'
+import TablePagination from '@/components/features/admin/TablePagination.vue'
+import { PAGE_SIZE, EMPTY_RANGE, inRange, type DateRange } from '@/lib/date-range'
 import { apiErrorDetail } from '@/lib/auth-errors'
 import {
   fetchPendingFulfillment,
@@ -112,11 +116,38 @@ function formatDate(iso: string) {
 }
 
 onMounted(load)
+
+// Filtros (en el navegador: ya están todos los pedidos para despachar)
+const filterSearch = ref('')
+const filterType = ref('')
+const filterRange = ref<DateRange>({ ...EMPTY_RANGE })
+const page = ref(1)
+
+const filteredOrders = computed(() => {
+  const term = filterSearch.value.trim().toLowerCase().replace(/^#/, '')
+  return orders.value.filter(o =>
+    (!filterType.value || o.purchaseType === filterType.value)
+    && inRange(o.createdAt, filterRange.value)
+    && (!term || o.customerEmail.toLowerCase().includes(term) || String(o.id) === term),
+  )
+})
+const pagedOrders = computed(() => filteredOrders.value.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE))
+watch([filterSearch, filterType, filterRange], () => { page.value = 1 })
+watch(() => filteredOrders.value.length, (n) => {
+  const last = Math.max(1, Math.ceil(n / PAGE_SIZE))
+  if (page.value > last) page.value = last
+})
+const hasFilters = computed(() => !!(filterSearch.value || filterType.value || filterRange.value.from || filterRange.value.to))
+function clearFilters() {
+  filterSearch.value = ''
+  filterType.value = ''
+  filterRange.value = { ...EMPTY_RANGE }
+}
 </script>
 
 <template>
   <AdminLayout>
-    <div class="max-w-4xl">
+    <div>
       <h1 class="text-[26px] font-bold mb-2">Despacho</h1>
       <p class="text-sm text-[var(--a-muted)] mb-6">
         Pedidos pagados, del más viejo al más nuevo. En curva y cantidad elegí cuántas unidades de cada color mandás:
@@ -141,9 +172,35 @@ onMounted(load)
         No hay pedidos pagados para despachar.
       </p>
 
-      <div v-else class="space-y-6">
+      <template v-else>
+      <!-- Filtros: se aplican al cambiar -->
+      <div class="mb-4 grid grid-cols-1 gap-3 rounded-xl border border-[var(--a-border)] bg-white p-4 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1.3fr)_minmax(160px,1fr)_minmax(230px,1fr)_auto] lg:items-end">
+        <SearchField v-model="filterSearch" label="Buscar" placeholder="Email o número de pedido" />
+        <div>
+          <label for="f-type" class="mb-1 block text-xs text-[var(--a-muted)]">Forma de compra</label>
+          <select id="f-type" v-model="filterType" class="h-10 w-full rounded-lg border border-[#C9CDD2] px-2 text-sm focus:outline-none">
+            <option value="">Todas</option>
+            <option value="curva">Curva</option>
+            <option value="cantidad">Cantidad</option>
+            <option value="retail">Minorista</option>
+          </select>
+        </div>
+        <DateRangeFilter v-model="filterRange" label="Fecha del pedido" />
+        <button
+          v-if="hasFilters"
+          type="button"
+          class="h-10 rounded-lg px-3 text-sm font-medium text-[var(--a-muted)] hover:bg-[var(--a-bg)] hover:text-[var(--a-ink)]"
+          @click="clearFilters"
+        >Limpiar filtros</button>
+      </div>
+
+      <p v-if="filteredOrders.length === 0" class="rounded-xl border border-[var(--a-border)] bg-white py-10 text-center text-sm text-[var(--a-muted)]">
+        No hay pedidos con estos filtros.
+      </p>
+
+      <div v-else :key="page" class="jd-stagger space-y-6">
         <article
-          v-for="order in orders"
+          v-for="order in pagedOrders"
           :key="order.id"
           class="bg-white rounded-xl border border-[var(--a-border)] overflow-hidden"
         >
@@ -277,6 +334,11 @@ onMounted(load)
           </footer>
         </article>
       </div>
+
+      <div v-if="filteredOrders.length" class="mt-4 rounded-xl border border-[var(--a-border)] bg-white [&>div]:border-t-0">
+        <TablePagination v-model:page="page" :total="filteredOrders.length" noun="pedidos" />
+      </div>
+      </template>
     </div>
   </AdminLayout>
 </template>

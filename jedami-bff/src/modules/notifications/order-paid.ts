@@ -2,6 +2,7 @@ import { pool } from '../../config/database.js';
 import { ENV } from '../../config/env.js';
 import { logger } from '../../config/logger.js';
 import { isMailerConfigured, sendMail } from '../../lib/mailer.js';
+import { cacheDel } from '../../config/redis.js';
 
 const ORDER_PAID_QUERY = `
   SELECT o.id, o.total_amount, u.email,
@@ -114,4 +115,13 @@ export function notifyOrderPaid(orderId: number): void {
       logger.error({ err, orderId }, '[MAIL] Error preparando el aviso de pago');
     }
   })();
+}
+
+/**
+ * Un pedido pasó a pagado. Sus unidades por curva o por cantidad quedan reservadas hasta el despacho,
+ * así que cambia el stock que muestra la tienda (se limpia el caché del catálogo). Y se avisa al cliente.
+ */
+export function onOrderPaid(orderId: number): void {
+  void cacheDel('catalog:*', 'product:*');
+  notifyOrderPaid(orderId);
 }

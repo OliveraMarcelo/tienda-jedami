@@ -7,6 +7,7 @@ import * as productsRepository from '../products/products.repository.js';
 import * as discountsService from '../discounts/discounts.service.js';
 import { PRICE_MODES, PURCHASE_TYPES } from '../../lib/constants.js';
 import { WholesalePurchaseType } from './orders.entity.js';
+import { insufficientStockError, loadStock, lockProducts, productAvailable, shortage, sizeAvailable } from '../products/availability.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -19,6 +20,21 @@ interface VariantWithStock {
   retail_price: string;
   wholesale_price: string | null;
   stock_quantity: number;
+}
+
+/** Líneas de este pedido (todavía sin stock descontado) de un producto: también cuentan al validar lo que se agrega */
+async function pendingLinesOf(client: import('pg').PoolClient, orderId: number, productId: number) {
+  const rows = (await client.query(
+    'SELECT size_id, quantity FROM order_items WHERE order_id = $1 AND product_id = $2 AND variant_id IS NULL AND stock_deducted = FALSE',
+    [orderId, productId],
+  )).rows as { size_id: number | null; quantity: number }[];
+  const bySize = new Map<number, number>();
+  let withoutSize = 0;
+  for (const r of rows) {
+    if (r.size_id == null) withoutSize += r.quantity;
+    else bySize.set(r.size_id, (bySize.get(r.size_id) ?? 0) + r.quantity);
+  }
+  return { bySize, withoutSize };
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -98,7 +114,7 @@ export async function createRetailOrder(
 
   // Fetch prices outside TX (read-only, prices don't change concurrently)
   const priceRes = await pool.query(
-    `SELECT v.id, pp.price AS retail_price
+    `SELECT v.id, v.product_id, v.size_id, pp.price AS retail_price
      FROM variants v
      JOIN product_prices pp ON pp.product_id = v.product_id
      JOIN price_modes pm ON pm.id = pp.price_mode_id AND pm.code = '${PRICE_MODES.RETAIL}'
@@ -107,6 +123,9 @@ export async function createRetailOrder(
   );
   const priceMap = new Map<number, number>(
     priceRes.rows.map((r: { id: number; retail_price: string }) => [r.id, Number(r.retail_price)]),
+  );
+  const variantInfo = new Map<number, { productId: number; sizeId: number }>(
+    priceRes.rows.map((r: { id: number; product_id: number; size_id: number }) => [r.id, { productId: r.product_id, sizeId: r.size_id }]),
   );
 
   for (const item of items) {
@@ -118,6 +137,8 @@ export async function createRetailOrder(
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    const productIds = [...variantInfo.values()].map(v => v.productId);
+    await lockProducts(client, productIds);
 
     const orderRes = await client.query(
       `INSERT INTO orders (customer_id, purchase_type, status, notes)
@@ -154,6 +175,16 @@ export async function createRetailOrder(
         unitPrice: Number(inserted.unit_price),
       });
       totalAmount += item.quantity * retailPrice;
+    }
+
+    // Ya descontado: lo que queda tiene que seguir cubriendo lo reservado por pedidos pagados sin despachar
+    const stock = await loadStock(client, productIds);
+    for (const item of items) {
+      const { productId, sizeId } = variantInfo.get(item.variantId)!;
+      const p = stock.get(productId)!;
+      if (sizeAvailable(p, sizeId) < 0 || productAvailable(p) < 0) {
+        throw insufficientStockError(`No queda stock disponible para variante ${item.variantId}: las unidades que hay están reservadas por pedidos ya pagados`);
+      }
     }
 
     await client.query(
@@ -245,6 +276,16 @@ export async function addCurvaItems(orderId: number, productId: number, curves: 
       throw new AppError(422, 'Sin talles', 'https://jedami.com/errors/no-variants', 'El producto no tiene talles disponibles');
     }
 
+    // Cada talle tiene que tener disponibles las curvas pedidas (más lo que este pedido ya tenía del producto)
+    await lockProducts(client, [productId]);
+    const stock = (await loadStock(client, [productId])).get(productId)!;
+    const current = await pendingLinesOf(client, orderId, productId);
+    const wanted = new Map(current.bySize);
+    for (const size of sizesRes.rows) wanted.set(size.size_id, (wanted.get(size.size_id) ?? 0) + curves);
+    const labels = new Map<number, string>(sizesRes.rows.map((r: { size_id: number; size_label: string }) => [r.size_id, r.size_label]));
+    const missing = shortage(stock, wanted, current.withoutSize, id => labels.get(id) ?? String(id));
+    if (missing) throw insufficientStockError(missing);
+
     const items: { id: number; sizeId: number; size: string; quantity: number; unitPrice: number }[] = [];
     let itemsTotal = 0;
 
@@ -331,20 +372,16 @@ export async function addCantidadItems(orderId: number, productId: number, quant
     const perSize = Math.floor(quantity / sizes.length);
     const extra = quantity % sizes.length;
 
-    const totalStock = variants.reduce((sum, v) => sum + v.stock_quantity, 0);
-    if (totalStock < quantity) {
-      throw new AppError(422, 'Stock insuficiente', 'https://jedami.com/errors/insufficient-stock',
-        `Quedan ${totalStock} unidades de este producto y pediste ${quantity}`);
-    }
-
-    // Cada talle tiene que tener stock para su parte (sumando todos los colores)
-    for (const size of sizes) {
-      const stock = variants.filter(v => v.size_id === size.id).reduce((sum, v) => sum + v.stock_quantity, 0);
-      if (stock < perSize) {
-        throw new AppError(422, 'Stock insuficiente', 'https://jedami.com/errors/insufficient-stock',
-          `Del talle ${size.label} quedan ${stock} unidades y necesitás ${perSize}`);
-      }
-    }
+    // Cada talle tiene que tener disponible su parte (sumando todos los colores y descontando lo reservado
+    // por pedidos pagados sin despachar), y el producto, el total. También cuenta lo que este pedido ya tenía.
+    await lockProducts(client, [productId]);
+    const stock = (await loadStock(client, [productId])).get(productId)!;
+    const current = await pendingLinesOf(client, orderId, productId);
+    const wanted = new Map(current.bySize);
+    if (perSize > 0) for (const size of sizes) wanted.set(size.id, (wanted.get(size.id) ?? 0) + perSize);
+    const labels = new Map(sizes.map(sz => [sz.id, sz.label]));
+    const missing = shortage(stock, wanted, current.withoutSize + extra, id => labels.get(id) ?? String(id));
+    if (missing) throw insufficientStockError(missing);
 
     // El precio es del producto (igual para todas las variantes): mayorista, o minorista si no tiene
     const v0 = variants[0]!;

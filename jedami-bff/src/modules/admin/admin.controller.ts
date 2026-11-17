@@ -7,7 +7,7 @@ import { DASHBOARD_QUERY, RECENT_ORDERS_QUERY } from './queries/dashboard.js';
 import { ADMIN_PAYMENTS_QUERY, ADMIN_PAYMENTS_COUNT_QUERY } from './queries/payments.js';
 import { ADMIN_USERS_QUERY, ADMIN_USERS_COUNT_QUERY } from './queries/users.js';
 import { REPORTS_QUERY } from './queries/reports.js';
-import { notifyOrderPaid } from '../notifications/order-paid.js';
+import { onOrderPaid } from '../notifications/order-paid.js';
 
 const DASHBOARD_CACHE_KEY = 'admin:dashboard';
 const REPORTS_CACHE_KEY = (limit: number) => `admin:reports:${limit}`;
@@ -66,10 +66,11 @@ export async function getAdminPayments(req: Request, res: Response) {
   const status    = (req.query.status    as string) || null;
   const dateFrom  = (req.query.date_from as string) || null;
   const dateTo    = (req.query.date_to   as string) || null;
+  const search    = ((req.query.search as string) || '').trim() || null;
 
   const [dataResult, countResult] = await Promise.all([
-    pool.query(ADMIN_PAYMENTS_QUERY,       [limit, offset, status, dateFrom, dateTo]),
-    pool.query(ADMIN_PAYMENTS_COUNT_QUERY, [status, dateFrom, dateTo]),
+    pool.query(ADMIN_PAYMENTS_QUERY,       [limit, offset, status, dateFrom, dateTo, search]),
+    pool.query(ADMIN_PAYMENTS_COUNT_QUERY, [status, dateFrom, dateTo, search]),
   ]);
 
   const total = Number(countResult.rows[0].total);
@@ -130,7 +131,7 @@ export async function confirmBankTransfer(req: Request, res: Response, next: Nex
     );
 
     await client.query('COMMIT');
-    if (upd.rowCount) notifyOrderPaid(orderId);
+    if (upd.rowCount) onOrderPaid(orderId);
     res.status(200).json({ data: { orderId, status: 'paid' } });
   } catch (err) {
     await client.query('ROLLBACK');
@@ -147,10 +148,12 @@ export async function getAdminUsers(req: Request, res: Response) {
 
   const role   = (req.query.role   as string) || null;
   const search = (req.query.search as string) || null;
+  const dateFrom = (req.query.date_from as string) || null;
+  const dateTo   = (req.query.date_to   as string) || null;
 
   const [dataResult, countResult] = await Promise.all([
-    pool.query(ADMIN_USERS_QUERY,       [limit, offset, role, search]),
-    pool.query(ADMIN_USERS_COUNT_QUERY, [role, search]),
+    pool.query(ADMIN_USERS_QUERY,       [limit, offset, role, search, dateFrom, dateTo]),
+    pool.query(ADMIN_USERS_COUNT_QUERY, [role, search, dateFrom, dateTo]),
   ]);
 
   const total = Number(countResult.rows[0].total);

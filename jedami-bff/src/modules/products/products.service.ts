@@ -2,6 +2,8 @@ import { AppError } from '../../types/app-error.js';
 import * as productsRepository from './products.repository.js';
 import type { CatalogRow } from './products.repository.js';
 import { PRICE_MODES } from '../../lib/constants.js';
+import { pool } from '../../config/database.js';
+import { loadStock, variantAvailable } from './availability.js';
 
 // ─── Response Types ───────────────────────────────────────────────────────────
 
@@ -26,6 +28,8 @@ interface ProductResponse {
   retailPrice: number | null;
   wholesalePrice: number | null;
   variants: VariantResponse[];
+  /** Solo admin: unidades comprometidas en pedidos pagados sin despachar */
+  reserved?: number;
 }
 
 interface ProductDetailResponse extends ProductResponse {
@@ -64,6 +68,22 @@ function groupRowsIntoProducts(rows: CatalogRow[]): ProductResponse[] {
     }
   }
   return Array.from(map.values());
+}
+
+/**
+ * Tienda: cada variante muestra lo que se puede vender (sin lo reservado por pedidos pagados sin despachar).
+ * Admin: se deja el stock físico (es el que se edita) y se informa lo reservado del producto.
+ */
+async function applyReservations(products: ProductResponse[], forAdmin: boolean): Promise<void> {
+  const stock = await loadStock(pool, products.map(p => p.id));
+  for (const p of products) {
+    const s = stock.get(p.id);
+    if (forAdmin) {
+      p.reserved = s?.reservedTotal ?? 0;
+      continue;
+    }
+    for (const v of p.variants) v.stock.quantity = variantAvailable(s, v.sizeId, v.stock.quantity);
+  }
 }
 
 // ─── Create / Update Product ──────────────────────────────────────────────────
@@ -250,7 +270,9 @@ export async function getCatalog(page: number, pageSize: number, categoryId?: nu
     productsRepository.findAllWithVariants(pageSize, offset, categoryId, search, includeInactive),
     productsRepository.countProducts(categoryId, search, includeInactive),
   ]);
-  return { products: groupRowsIntoProducts(rows), total };
+  const products = groupRowsIntoProducts(rows);
+  await applyReservations(products, includeInactive);
+  return { products, total };
 }
 
 export async function reorderProductImages(productId: number, items: { id: number; position: number }[]) {
@@ -306,6 +328,7 @@ export async function getProductWithVariants(id: number): Promise<ProductDetailR
     throw new AppError(404, 'Producto no encontrado', 'https://jedami.com/errors/product-not-found', `No existe producto con id ${id}`);
   }
   const product = groupRowsIntoProducts(rows)[0];
+  await applyReservations([product], false);
   return {
     ...product,
     imageUrl: images.length > 0 ? (images[0].url ?? null) : null,
