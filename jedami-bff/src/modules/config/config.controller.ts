@@ -122,7 +122,7 @@ export async function updateBranding(req: Request, res: Response) {
       res.status(400).json({ detail: 'El link del mapa tiene que empezar con https://' });
       return;
     }
-    fields.push(`location_maps_url = $${idx++}`); values.push(locationMapsUrl || null);
+    fields.push(`location_maps_url = $${idx}`); values.push(locationMapsUrl || null);
   }
 
   if (fields.length === 0) {
