@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.0](https://github.com/OliveraMarcelo/tienda-jedami/compare/v1.9.0...v1.10.0) (2026-11-17)
+
+
+### Features
+
+* reserva de stock y panel con filtros, paginación y ubicación del local ([#20](https://github.com/OliveraMarcelo/tienda-jedami/issues/20)) ([b8ad592](https://github.com/OliveraMarcelo/tienda-jedami/commit/b8ad5924340f2cdf1250ffa74b88497718d0e4c4))
+
 ## [1.9.0](https://github.com/OliveraMarcelo/tienda-jedami/compare/v1.8.1...v1.9.0) (2026-11-16)
 
 
