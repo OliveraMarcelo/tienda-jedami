@@ -33,6 +33,8 @@ export interface Product {
   wholesalePrice: number | null
   images?: { id: number; url: string; position: number }[]
   variants: Variant[]
+  /** Solo admin: unidades comprometidas en pedidos pagados sin despachar (curva/cantidad) */
+  reserved?: number
 }
 
 export interface Category {

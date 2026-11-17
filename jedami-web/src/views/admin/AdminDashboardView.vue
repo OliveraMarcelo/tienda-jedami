@@ -55,11 +55,11 @@ const byType = computed(() => {
 
 <template>
   <AdminLayout>
-    <div class="max-w-5xl">
+    <div>
       <h1 class="text-[26px] font-bold mb-6">Tablero</h1>
 
       <div v-if="loading" class="space-y-4">
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="jd-stagger grid grid-cols-2 lg:grid-cols-4 gap-3">
           <div v-for="i in 4" :key="i" class="animate-pulse bg-white rounded-xl border border-[var(--a-border)] h-24"></div>
         </div>
         <div class="animate-pulse bg-white rounded-xl border border-[var(--a-border)] h-64"></div>
@@ -69,7 +69,7 @@ const byType = computed(() => {
 
       <template v-else-if="data">
         <!-- Lo que hay que hacer y cómo vienen las ventas -->
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <div class="jd-stagger grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
           <RouterLink
             to="/admin/despacho"
             class="rounded-xl border p-4 transition-colors"

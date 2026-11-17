@@ -38,6 +38,8 @@ export interface FetchAdminPaymentsParams {
   status?: string
   dateFrom?: string
   dateTo?: string
+  /** Email del cliente o número de pedido */
+  search?: string
 }
 
 export async function confirmBankTransfer(orderId: number): Promise<void> {
@@ -54,6 +56,7 @@ export async function fetchAdminPayments(
       status:    params.status    || undefined,
       date_from: params.dateFrom  || undefined,
       date_to:   params.dateTo    || undefined,
+      search:    params.search    || undefined,
     },
   })
   return res.data.data

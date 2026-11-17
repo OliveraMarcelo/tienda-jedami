@@ -193,7 +193,7 @@ function chipClass(active: boolean) {
     </section>
 
     <!-- Categorías destacadas -->
-    <section v-if="isHome && categoryCards.length > 0" class="mb-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3" aria-label="Categorías">
+    <section v-if="isHome && categoryCards.length > 0" class="jd-stagger mb-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3" aria-label="Categorías">
       <RouterLink
         v-for="cat in categoryCards"
         :key="cat.id"
@@ -232,7 +232,7 @@ function chipClass(active: boolean) {
         </button>
       </div>
 
-      <div class="grid grid-cols-2 gap-x-4 gap-y-8 sm:gap-x-5 md:grid-cols-3 lg:grid-cols-4">
+      <div class="jd-stagger grid grid-cols-2 gap-x-4 gap-y-8 sm:gap-x-5 md:grid-cols-3 lg:grid-cols-4">
         <ProductCard
           v-for="product in productsStore.products"
           :key="product.id"

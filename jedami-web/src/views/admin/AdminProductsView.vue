@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import ProductRowActions from '@/components/features/admin/ProductRowActions.vue'
 import ProductFormDialog from '@/components/features/admin/ProductFormDialog.vue'
 import VariantFormDialog from '@/components/features/admin/VariantFormDialog.vue'
 import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import AdminProductDiscounts from '@/components/features/admin/AdminProductDiscounts.vue'
+import SearchField from '@/components/features/admin/SearchField.vue'
+import TablePagination from '@/components/features/admin/TablePagination.vue'
+import { PAGE_SIZE } from '@/lib/date-range'
 import { useAdminProductsStore } from '@/stores/admin.products.store'
 import { useProductsStore } from '@/stores/products.store'
 import type { Product } from '@/types/api'
@@ -25,6 +28,8 @@ const expandedProducts = ref<Set<number>>(new Set())
 type ProductTab = 'all' | 'visible' | 'hidden'
 const tab = ref<ProductTab>('all')
 const searchTerm = ref('')
+const filterCategory = ref<string>('')   // '' = todas, 'none' = sin categoría, o el id
+const filterStock = ref<'' | 'with' | 'without'>('')
 const tabCounts = computed(() => {
   const hidden = adminStore.products.filter(p => p.active === false).length
   return { all: adminStore.products.length, visible: adminStore.products.length - hidden, hidden }
@@ -39,9 +44,29 @@ const filteredProducts = computed(() => {
   return adminStore.products.filter(p => {
     if (tab.value === 'visible' && p.active === false) return false
     if (tab.value === 'hidden' && p.active !== false) return false
+    if (filterCategory.value === 'none' && p.categoryId != null) return false
+    if (filterCategory.value && filterCategory.value !== 'none' && String(p.categoryId) !== filterCategory.value) return false
+    if (filterStock.value === 'with' && totalStock(p) === 0) return false
+    if (filterStock.value === 'without' && totalStock(p) > 0) return false
     return !term || p.name.toLowerCase().includes(term) || (p.categoryName ?? '').toLowerCase().includes(term)
   })
 })
+
+// Paginación en el navegador (la lista completa ya está cargada)
+const page = ref(1)
+const pagedProducts = computed(() => filteredProducts.value.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE))
+watch([tab, searchTerm, filterCategory, filterStock], () => { page.value = 1 })
+// Si al ocultar o borrar se vacía la página, volver a la última que tenga productos
+watch(() => filteredProducts.value.length, (n) => {
+  const last = Math.max(1, Math.ceil(n / PAGE_SIZE))
+  if (page.value > last) page.value = last
+})
+const hasFilters = computed(() => !!(searchTerm.value || filterCategory.value || filterStock.value))
+function clearFilters() {
+  searchTerm.value = ''
+  filterCategory.value = ''
+  filterStock.value = ''
+}
 const expandedDiscounts = ref<Set<number>>(new Set())
 const editMap = reactive<Map<number, { stock: number }>>(new Map())
 
@@ -324,15 +349,33 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
           {{ t.label }} <span class="font-medium text-[var(--a-muted)]">{{ tabCounts[t.id] }}</span>
         </button>
       </div>
-      <!-- Buscador -->
-      <div class="p-4">
-        <label class="flex max-w-md items-center gap-2.5 rounded-lg border border-[#C9CDD2] px-3 py-2">
-          <svg class="h-4 w-4 text-[var(--a-muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
-          <span class="sr-only">Buscar productos</span>
-          <input v-model="searchTerm" type="search" placeholder="Buscar por nombre o categoría" class="flex-1 bg-transparent text-sm outline-none" />
-        </label>
+      <!-- Filtros: se aplican al cambiar -->
+      <div class="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1.4fr)_minmax(170px,1fr)_minmax(150px,0.8fr)_auto] lg:items-end">
+        <SearchField v-model="searchTerm" label="Buscar" placeholder="Nombre o categoría" />
+        <div>
+          <label for="f-cat" class="mb-1 block text-xs text-[var(--a-muted)]">Categoría</label>
+          <select id="f-cat" v-model="filterCategory" class="h-10 w-full rounded-lg border border-[#C9CDD2] px-2 text-sm focus:outline-none">
+            <option value="">Todas</option>
+            <option v-for="c in productsStore.categories" :key="c.id" :value="String(c.id)">{{ c.name }}</option>
+            <option value="none">Sin categoría</option>
+          </select>
+        </div>
+        <div>
+          <label for="f-stock" class="mb-1 block text-xs text-[var(--a-muted)]">Stock</label>
+          <select id="f-stock" v-model="filterStock" class="h-10 w-full rounded-lg border border-[#C9CDD2] px-2 text-sm focus:outline-none">
+            <option value="">Todos</option>
+            <option value="with">Con stock</option>
+            <option value="without">Sin stock</option>
+          </select>
+        </div>
+        <button
+          v-if="hasFilters"
+          type="button"
+          class="h-10 rounded-lg px-3 text-sm font-medium text-[var(--a-muted)] hover:bg-[var(--a-bg)] hover:text-[var(--a-ink)]"
+          @click="clearFilters"
+        >Limpiar filtros</button>
       </div>
-      <div class="overflow-x-auto">
+      <div class="overflow-x-auto overflow-y-hidden">
       <table class="w-full text-sm">
         <thead class="border-y border-[var(--a-border)] bg-[#F9FAFB]">
           <tr>
@@ -346,8 +389,8 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
             <th class="px-4 py-3 hidden md:table-cell"><span class="sr-only">Acciones</span></th>
           </tr>
         </thead>
-        <tbody>
-          <template v-for="product in filteredProducts" :key="product.id">
+        <tbody :key="`${page}-${tab}`" class="jd-stagger">
+          <template v-for="product in pagedProducts" :key="product.id">
             <!-- Fila principal del producto -->
             <tr class="border-b border-[var(--a-border)] hover:bg-[var(--a-bg)] transition-colors" :class="{ 'opacity-60': product.active === false }">
               <td class="px-4 py-3 align-top md:align-middle">
@@ -369,7 +412,7 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
                 >Oculto</span>
                 <!-- Celular: datos y acciones debajo del nombre -->
                 <p class="md:hidden mt-0.5 text-xs font-normal text-[var(--a-muted)]">
-                  {{ product.categoryName ?? 'Sin categoría' }} · {{ totalStock(product) }} en stock
+                  {{ product.categoryName ?? 'Sin categoría' }} · {{ totalStock(product) }} en stock<template v-if="product.reserved"> ({{ product.reserved }} reservadas)</template>
                   <template v-if="product.retailPrice != null"> · ${{ product.retailPrice.toLocaleString('es-AR', { maximumFractionDigits: 0 }) }}</template>
                   <template v-if="product.wholesalePrice != null"> / may. ${{ product.wholesalePrice.toLocaleString('es-AR', { maximumFractionDigits: 0 }) }}</template>
                 </p>
@@ -393,7 +436,10 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
               <td class="px-4 py-3 text-right text-[var(--a-muted)] hidden lg:table-cell">
                 {{ product.wholesalePrice != null ? `$${product.wholesalePrice.toLocaleString('es-AR', { maximumFractionDigits: 0 })}` : '—' }}
               </td>
-              <td class="px-4 py-3 text-center text-[var(--a-muted)] hidden md:table-cell">{{ totalStock(product) }}</td>
+              <td class="px-4 py-3 text-center text-[var(--a-muted)] hidden md:table-cell">
+                {{ totalStock(product) }}
+                <span v-if="product.reserved" class="block text-[10px] font-semibold text-amber-700" title="Unidades de pedidos por curva o cantidad ya pagados, sin despachar: la tienda no las vende">{{ product.reserved }} reservadas</span>
+              </td>
               <td class="px-4 py-3 text-center align-top md:align-middle">
                 <button
                   type="button"
@@ -500,6 +546,9 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
                         <tr class="border-t-2 border-blue-100 bg-blue-50/60">
                           <td class="px-3 py-2 text-[var(--a-muted)] font-semibold" :colspan="getProductColors(product).length + 1">
                             Total de stock: <span class="text-[var(--a-ink)] font-bold">{{ totalStock(product) }}</span>
+                            <template v-if="product.reserved">
+                              · <span class="text-amber-700 font-bold">{{ product.reserved }} reservadas</span> por pedidos pagados sin despachar (la tienda no las vende hasta que despaches)
+                            </template>
                           </td>
                         </tr>
                       </tfoot>
@@ -545,9 +594,7 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
       <p v-if="filteredProducts.length === 0" class="px-4 py-10 text-center text-sm text-[var(--a-muted)]">
         No hay productos que coincidan con el filtro.
       </p>
-      <p v-else class="border-t border-[#EEF0F2] px-4 py-3.5 text-[13px] text-[var(--a-muted)]">
-        Mostrando {{ filteredProducts.length }} de {{ adminStore.products.length }} productos
-      </p>
+      <TablePagination v-else v-model:page="page" :total="filteredProducts.length" noun="productos" />
     </div>
 
     <ProductFormDialog

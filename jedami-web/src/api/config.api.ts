@@ -11,6 +11,10 @@ export interface BrandingConfig {
   bankTransferBankName: string | null
   bankTransferNotes: string | null
   whatsappNumber: string | null
+  locationName?: string | null
+  locationStall?: string | null
+  locationAisle?: string | null
+  locationMapsUrl?: string | null
 }
 
 export interface ConfigItem {

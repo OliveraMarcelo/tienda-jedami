@@ -279,7 +279,7 @@ const audienceBadgeClass: Record<string, string> = {
     </div>
 
     <!-- Lista de anuncios -->
-    <div v-else-if="items.length > 0" class="space-y-3">
+    <div v-else-if="items.length > 0" class="jd-stagger grid gap-3 xl:grid-cols-2">
       <div
         v-for="(a, index) in items"
         :key="a.id"

@@ -79,6 +79,10 @@ function mapBranding(row: Record<string, unknown>) {
     bankTransferBankName:   row.bank_transfer_bank_name ?? null,
     bankTransferNotes:      row.bank_transfer_notes ?? null,
     whatsappNumber:         row.whatsapp_number ?? null,
+    locationName:           row.location_name ?? null,
+    locationStall:          row.location_stall ?? null,
+    locationAisle:          row.location_aisle ?? null,
+    locationMapsUrl:        row.location_maps_url ?? null,
   };
 }
 
@@ -92,6 +96,7 @@ export async function updateBranding(req: Request, res: Response) {
     storeName, primaryColor, secondaryColor, logoUrl,
     bankTransferCvu, bankTransferAlias, bankTransferHolderName,
     bankTransferBankName, bankTransferNotes, whatsappNumber,
+    locationName, locationStall, locationAisle, locationMapsUrl,
   } = req.body;
 
   const fields: string[] = [];
@@ -107,7 +112,18 @@ export async function updateBranding(req: Request, res: Response) {
   if (bankTransferHolderName !== undefined) { fields.push(`bank_transfer_holder_name = $${idx++}`); values.push(bankTransferHolderName ?? null); }
   if (bankTransferBankName !== undefined)   { fields.push(`bank_transfer_bank_name = $${idx++}`);   values.push(bankTransferBankName ?? null); }
   if (bankTransferNotes !== undefined)      { fields.push(`bank_transfer_notes = $${idx++}`);       values.push(bankTransferNotes ?? null); }
-  if (whatsappNumber !== undefined)         { fields.push(`whatsapp_number = $${idx}`);              values.push(whatsappNumber ?? null); }
+  if (whatsappNumber !== undefined)         { fields.push(`whatsapp_number = $${idx++}`);            values.push(whatsappNumber ?? null); }
+  if (locationName !== undefined)           { fields.push(`location_name = $${idx++}`);              values.push(locationName ?? null); }
+  if (locationStall !== undefined)          { fields.push(`location_stall = $${idx++}`);             values.push(locationStall ?? null); }
+  if (locationAisle !== undefined)          { fields.push(`location_aisle = $${idx++}`);             values.push(locationAisle ?? null); }
+  if (locationMapsUrl !== undefined) {
+    // Solo links http(s): se muestran como enlace en la tienda
+    if (locationMapsUrl && !/^https?:\/\//i.test(String(locationMapsUrl))) {
+      res.status(400).json({ detail: 'El link del mapa tiene que empezar con https://' });
+      return;
+    }
+    fields.push(`location_maps_url = $${idx++}`); values.push(locationMapsUrl || null);
+  }
 
   if (fields.length === 0) {
     res.status(400).json({ detail: 'Debe enviar al menos un campo para actualizar' });
@@ -119,7 +135,8 @@ export async function updateBranding(req: Request, res: Response) {
     `UPDATE branding SET ${fields.join(', ')} WHERE id = 1
      RETURNING store_name, primary_color, secondary_color, logo_url,
                bank_transfer_cvu, bank_transfer_alias, bank_transfer_holder_name,
-               bank_transfer_bank_name, bank_transfer_notes, whatsapp_number`,
+               bank_transfer_bank_name, bank_transfer_notes, whatsapp_number,
+               location_name, location_stall, location_aisle, location_maps_url`,
     values,
   );
   res.status(200).json({ data: mapBranding(result.rows[0]) });

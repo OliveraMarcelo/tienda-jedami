@@ -6,7 +6,8 @@ import { pool } from '../../config/database.js';
 import * as posRepository from './pos.repository.js';
 import * as ordersRepository from '../orders/orders.repository.js';
 import { PosDevice, PosPaymentIntent, PosIntentStatus } from './pos.entity.js';
-import { notifyOrderPaid } from '../notifications/order-paid.js';
+import { assertOrderAvailable } from '../products/availability.js';
+import { onOrderPaid } from '../notifications/order-paid.js';
 
 const ACTIVE_STATUSES = new Set(['open', 'on_terminal', 'processing']);
 
@@ -110,6 +111,8 @@ export async function createIntent(orderId: number): Promise<{ intentId: string;
   if (Number(order.total_amount) <= 0) {
     throw new AppError(422, 'Sin monto', 'https://jedami.com/errors/no-amount', 'El pedido no tiene monto para pagar');
   }
+  // Curva/cantidad: las unidades tienen que seguir disponibles (otro pedido pagado pudo llevárselas)
+  await assertOrderAvailable(pool, orderId);
 
   const device = await posRepository.findActiveDevice();
   if (!device) {
@@ -245,7 +248,7 @@ export async function confirmPointPayment(
     );
 
     await client.query('COMMIT');
-    if (upd.rowCount) notifyOrderPaid(orderId);
+    if (upd.rowCount) onOrderPaid(orderId);
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
@@ -324,7 +327,7 @@ export async function processPointWebhook(mpIntentId: string): Promise<void> {
       "UPDATE orders SET status = 'paid' WHERE id = $1 AND status != 'paid'",
       [intent.order_id],
     );
-    if (upd.rowCount) notifyOrderPaid(intent.order_id);
+    if (upd.rowCount) onOrderPaid(intent.order_id);
     logger.info({ mpIntentId, mpPaymentId, orderId: intent.order_id }, '[POS] Pedido pagado vía Point');
   } else if (mpStatus === 'abandoned' || mpStatus === 'error') {
     // Pago rechazado

@@ -172,7 +172,7 @@ const hasActiveDevice = computed(() => !!configStore.pointDevice)
 
 <template>
   <AdminLayout>
-    <div class="max-w-4xl">
+    <div>
       <!-- Breadcrumb -->
       <div class="flex items-center gap-3 mb-6">
         <h1 class="text-[26px] font-bold">Cobros Point</h1>

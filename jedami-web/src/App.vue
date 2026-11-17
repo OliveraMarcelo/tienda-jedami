@@ -36,5 +36,10 @@ onMounted(async () => {
 
 <template>
   <AppSkeleton v-if="!ready" />
-  <RouterView v-else />
+  <!-- Transición suave entre páginas de la tienda (el panel anima su propio contenido) -->
+  <RouterView v-else v-slot="{ Component, route }">
+    <Transition :name="route.path.startsWith('/admin') ? 'jd-none' : 'jd-route'" mode="out-in">
+      <component :is="Component" :key="route.path" />
+    </Transition>
+  </RouterView>
 </template>

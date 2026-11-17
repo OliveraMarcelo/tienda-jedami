@@ -136,7 +136,7 @@ onMounted(load)
 
 <template>
   <AdminLayout>
-    <div class="max-w-3xl">
+    <div>
       <!-- Breadcrumb -->
       <div class="flex items-center gap-3 mb-6">
         <h1 class="text-[26px] font-bold">Banners del catálogo</h1>
@@ -146,6 +146,9 @@ onMounted(load)
         Las imágenes activas se muestran como carrusel en la parte superior del catálogo, en el orden indicado.
       </p>
 
+      <!-- Lista a la izquierda y el formulario para subir a la derecha (en la compu) -->
+      <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
+      <div>
       <!-- Skeleton -->
       <div v-if="loading" class="space-y-3 mb-6">
         <div v-for="i in 3" :key="i" class="animate-pulse bg-white rounded-xl border border-[var(--a-border)] h-20" />
@@ -154,7 +157,7 @@ onMounted(load)
       <p v-else-if="error" class="text-red-500 text-sm mb-6">{{ error }}</p>
 
       <!-- Lista de banners -->
-      <div v-else class="space-y-3 mb-8">
+      <div v-else class="jd-stagger space-y-3">
         <p v-if="banners.length === 0" class="text-sm text-[var(--a-muted)] text-center py-8">
           No hay banners cargados todavía.
         </p>
@@ -249,8 +252,10 @@ onMounted(load)
         </div>
       </div>
 
+      </div>
+
       <!-- Formulario de upload -->
-      <div class="bg-white rounded-xl border border-[var(--a-border)] p-6">
+      <div class="bg-white rounded-xl border border-[var(--a-border)] p-6 lg:sticky lg:top-24">
         <h2 class="text-base font-bold text-[var(--a-ink)] mb-4">Subir nuevo banner</h2>
 
         <div class="space-y-3">
@@ -286,6 +291,7 @@ onMounted(load)
             {{ uploading ? 'Subiendo…' : 'Subir banner' }}
           </button>
         </div>
+      </div>
       </div>
     </div>
   </AdminLayout>

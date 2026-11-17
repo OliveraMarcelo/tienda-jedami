@@ -420,8 +420,22 @@ async function handleCantidadConfirm() {
             >Por mayor: {{ formatPrice(product.wholesalePrice) }}</span>
           </div>
 
+          <!-- Administrador: ve la ficha como la ven los clientes, pero sin comprar sus propios productos -->
+          <div v-if="authStore.isAdmin" class="flex flex-col gap-3 rounded-[var(--t-radius-card)] bg-[var(--t-surface)] p-5">
+            <p class="text-base font-bold">Estás viendo tu producto como administrador</p>
+            <p class="text-sm text-[var(--t-muted)]">
+              Así lo ven tus clientes. Para cambiar precios, fotos o stock, editalo desde el panel.
+            </p>
+            <RouterLink
+              to="/admin/productos"
+              class="inline-flex min-h-12 items-center justify-center rounded-full bg-[var(--t-ink)] px-6 text-base font-semibold text-white hover:opacity-90"
+            >
+              Ir a Productos en el panel
+            </RouterLink>
+          </div>
+
           <!-- Modo Mayorista -->
-          <template v-if="authStore.mode === MODES.WHOLESALE">
+          <template v-else-if="authStore.mode === MODES.WHOLESALE">
             <div v-if="uniqueProductColors.length > 0">
               <p class="mb-2.5 text-sm font-semibold">Colores disponibles</p>
               <div class="flex flex-wrap gap-x-4 gap-y-2">
@@ -588,7 +602,7 @@ async function handleCantidadConfirm() {
           </template>
 
           <a
-            v-if="whatsappUrl"
+            v-if="whatsappUrl && !authStore.isAdmin"
             :href="whatsappUrl"
             target="_blank"
             rel="noopener"

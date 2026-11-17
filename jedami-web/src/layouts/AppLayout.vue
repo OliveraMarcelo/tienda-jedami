@@ -44,6 +44,17 @@ const navCategories = computed(() => productsStore.categories.filter(c => (c.pro
 const storeName = computed(() => configStore.branding.storeName)
 const year = new Date().getFullYear()
 
+// Local físico (se carga en Configuración → Marca y contacto)
+const location = computed(() => {
+  const b = configStore.branding
+  if (!b.locationName) return null
+  const spot = [b.locationStall && `Puesto ${b.locationStall}`, b.locationAisle && `Pasillo ${b.locationAisle}`].filter(Boolean).join(' · ')
+  const mapsUrl = b.locationMapsUrl && /^https?:\/\//i.test(b.locationMapsUrl)
+    ? b.locationMapsUrl
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(b.locationName)}`
+  return { name: b.locationName, spot, mapsUrl }
+})
+
 function isCategoryActive(id: number) {
   return route.path === '/catalogo' && Number(route.query.categoria) === id
 }
@@ -236,6 +247,17 @@ function isCategoryActive(id: number) {
             WhatsApp
           </a>
           <p class="text-[var(--t-muted)]">Escribinos y te ayudamos con tu compra.</p>
+        </div>
+        <div v-if="location" class="flex-[1_1_200px] flex flex-col gap-2.5 text-sm">
+          <p class="text-xl font-bold mb-1">Nuestro local</p>
+          <p class="flex items-start gap-2">
+            <svg class="mt-0.5 h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" /><circle cx="12" cy="10" r="2.3" /></svg>
+            <span>
+              <span class="block font-semibold">{{ location.name }}</span>
+              <span v-if="location.spot" class="block text-[var(--t-muted)]">{{ location.spot }}</span>
+            </span>
+          </p>
+          <a :href="location.mapsUrl" target="_blank" rel="noopener" class="font-semibold hover:underline">Cómo llegar</a>
         </div>
       </div>
       <div class="max-w-[1376px] mx-auto px-4 sm:px-6 lg:px-8 pb-8 text-xs text-[var(--t-muted)]">

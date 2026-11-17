@@ -42,7 +42,7 @@ const formatPrice = (n: number) => `$${n.toLocaleString('es-AR', { maximumFracti
 </script>
 
 <template>
-  <RouterLink :to="`/catalogo/${product.id}`" class="group flex flex-col gap-2.5">
+  <RouterLink :to="`/catalogo/${product.id}`" class="jd-lift group flex flex-col gap-2.5">
     <div class="relative aspect-[3/4] overflow-hidden rounded-[var(--t-radius-card)] bg-[var(--t-surface)]">
       <img
         v-if="product.imageUrl"

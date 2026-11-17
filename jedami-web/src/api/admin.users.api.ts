@@ -26,6 +26,9 @@ export interface FetchAdminUsersParams {
   limit?: number
   role?: string
   search?: string
+  /** ISO: alta desde / hasta */
+  dateFrom?: string
+  dateTo?: string
 }
 
 // Endpoint básico — usado para selects de roles en otras vistas
@@ -44,6 +47,8 @@ export async function fetchAdminUsers(
       limit:  params.limit,
       role:   params.role   || undefined,
       search: params.search || undefined,
+      date_from: params.dateFrom || undefined,
+      date_to:   params.dateTo   || undefined,
     },
   })
   return res.data.data
