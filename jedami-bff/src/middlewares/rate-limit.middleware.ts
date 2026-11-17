@@ -49,3 +49,13 @@ export const loginRateLimit = rateLimit({
   skip: skipLimit,
   handler: rateLimitHandler(ENV.LOGIN_RATE_LIMIT_MAX, ENV.RATE_LIMIT_WINDOW_MS),
 });
+
+/** Generación con IA (admin): cada pedido ocupa al modelo varios segundos */
+export const aiRateLimit = rateLimit({
+  windowMs: ENV.RATE_LIMIT_WINDOW_MS,
+  limit: ENV.AI_RATE_LIMIT_MAX,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  skip: skipLimit,
+  handler: rateLimitHandler(ENV.AI_RATE_LIMIT_MAX, ENV.RATE_LIMIT_WINDOW_MS),
+});

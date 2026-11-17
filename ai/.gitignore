@@ -1,0 +1,4 @@
+# Modelos entrenados y datasets: pesan mucho y pueden tener datos de la tienda
+*.gguf
+*.safetensors
+*.jsonl

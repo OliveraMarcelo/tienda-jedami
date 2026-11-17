@@ -60,7 +60,12 @@ export async function uploadImage(
   return res.data
 }
 
-export async function fetchProductDetail(id: number): Promise<{ data: { images: { id: number; url: string; position: number }[] } }> {
+export async function fetchProductDetail(id: number): Promise<{
+  data: {
+    images: { id: number; url: string; position: number }[]
+    variants?: { id: number; size: string | null; color: string | null }[]
+  }
+}> {
   const res = await apiClient.get(`/products/${id}`)
   return res.data
 }
