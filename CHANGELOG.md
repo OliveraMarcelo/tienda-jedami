@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.0](https://github.com/OliveraMarcelo/tienda-jedami/compare/v1.10.0...v1.11.0) (2026-11-18)
+
+
+### Features
+
+* **admin:** vistas sin scroll con filas de una línea y panel lateral de detalle ([#22](https://github.com/OliveraMarcelo/tienda-jedami/issues/22)) ([eec0652](https://github.com/OliveraMarcelo/tienda-jedami/commit/eec0652066edeeec07a673738fa302f5a217365b))
+
 ## [1.10.0](https://github.com/OliveraMarcelo/tienda-jedami/compare/v1.9.0...v1.10.0) (2026-11-17)
 
 
