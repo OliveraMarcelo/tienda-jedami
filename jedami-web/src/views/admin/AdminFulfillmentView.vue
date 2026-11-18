@@ -143,69 +143,124 @@ function clearFilters() {
   filterType.value = ''
   filterRange.value = { ...EMPTY_RANGE }
 }
+
+// Lista a la izquierda, pedido elegido a la derecha. Al despachar uno, se abre el siguiente.
+const selectedId = ref<number | null>(null)
+const selectedOrder = computed(() =>
+  filteredOrders.value.find(o => o.id === selectedId.value) ?? pagedOrders.value[0] ?? null,
+)
+// En el celular se ve una cosa por vez: la lista o el pedido
+const showDetailOnMobile = ref(false)
+function selectOrder(o: PendingOrder) {
+  selectedId.value = o.id
+  showDetailOnMobile.value = true
+}
+const orderUnits = (o: PendingOrder) => o.products.reduce((n, p) => n + p.lines.reduce((m, l) => m + l.quantity, 0), 0)
+const ready = (o: PendingOrder) => orderProblems(o).length === 0
 </script>
 
 <template>
-  <AdminLayout>
-    <div>
-      <h1 class="text-[26px] font-bold mb-2">Despacho</h1>
-      <p class="text-sm text-[var(--a-muted)] mb-6">
-        Pedidos pagados, del más viejo al más nuevo. En curva y cantidad elegí cuántas unidades de cada color mandás:
-        al confirmar se descuenta el stock y el pedido queda despachado.
-      </p>
+  <AdminLayout title="Despacho">
+    <div
+      v-if="toast"
+      role="status"
+      class="fixed bottom-6 right-6 z-50 rounded-full bg-gray-900 px-5 py-3 text-sm font-semibold text-white shadow-lg"
+    >
+      ✓ {{ toast }}
+    </div>
 
-      <div
-        v-if="toast"
-        role="status"
-        class="fixed bottom-6 right-6 z-50 rounded-full bg-gray-900 px-5 py-3 text-sm font-semibold text-white shadow-lg"
-      >
-        ✓ {{ toast }}
-      </div>
+    <div v-if="loading" class="grid gap-4 lg:grid-cols-[340px_minmax(0,1fr)]">
+      <div class="h-96 animate-pulse rounded-xl border border-[var(--a-border)] bg-white"></div>
+      <div class="hidden h-96 animate-pulse rounded-xl border border-[var(--a-border)] bg-white lg:block"></div>
+    </div>
 
-      <div v-if="loading" class="space-y-4">
-        <div v-for="i in 3" :key="i" class="animate-pulse bg-white rounded-xl border border-[var(--a-border)] h-32"></div>
-      </div>
+    <p v-else-if="error" class="text-sm text-red-500">{{ error }}</p>
 
-      <p v-else-if="error" class="text-red-500 text-sm">{{ error }}</p>
+    <div v-else-if="orders.length === 0" class="rounded-xl border border-[var(--a-border)] bg-white px-4 py-16 text-center">
+      <p class="font-semibold">No hay pedidos para despachar</p>
+      <p class="mt-1 text-sm text-[var(--a-muted)]">Cuando entre un pedido pagado, va a aparecer acá.</p>
+    </div>
 
-      <p v-else-if="orders.length === 0" class="text-center text-[var(--a-muted)] text-sm py-12">
-        No hay pedidos pagados para despachar.
-      </p>
-
-      <template v-else>
-      <!-- Filtros: se aplican al cambiar -->
-      <div class="mb-4 grid grid-cols-1 gap-3 rounded-xl border border-[var(--a-border)] bg-white p-4 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1.3fr)_minmax(160px,1fr)_minmax(230px,1fr)_auto] lg:items-end">
-        <SearchField v-model="filterSearch" label="Buscar" placeholder="Email o número de pedido" />
-        <div>
-          <label for="f-type" class="mb-1 block text-xs text-[var(--a-muted)]">Forma de compra</label>
-          <select id="f-type" v-model="filterType" class="h-10 w-full rounded-lg border border-[#C9CDD2] px-2 text-sm focus:outline-none">
-            <option value="">Todas</option>
-            <option value="curva">Curva</option>
-            <option value="cantidad">Cantidad</option>
-            <option value="retail">Minorista</option>
-          </select>
+    <div v-else class="grid gap-4 lg:grid-cols-[340px_minmax(0,1fr)] lg:items-start">
+      <!-- Lista de pedidos -->
+      <section :class="['flex flex-col rounded-xl border border-[var(--a-border)] bg-white', showDetailOnMobile ? 'hidden lg:flex' : '']">
+        <div class="space-y-2 border-b border-[var(--a-border)] p-3">
+          <SearchField v-model="filterSearch" compact label="Buscar pedido" placeholder="Email o número de pedido" />
+          <div class="grid grid-cols-2 gap-2">
+            <select v-model="filterType" aria-label="Forma de compra" class="h-10 w-full rounded-lg border border-[#C9CDD2] px-2 text-sm focus:outline-none">
+              <option value="">Todas</option>
+              <option value="curva">Curva</option>
+              <option value="cantidad">Cantidad</option>
+              <option value="retail">Minorista</option>
+            </select>
+            <DateRangeFilter v-model="filterRange" compact label="Fechas" />
+          </div>
+          <button
+            v-if="hasFilters"
+            type="button"
+            class="text-xs font-medium text-[var(--a-muted)] hover:text-[var(--a-ink)]"
+            @click="clearFilters"
+          >Limpiar filtros</button>
         </div>
-        <DateRangeFilter v-model="filterRange" label="Fecha del pedido" />
-        <button
-          v-if="hasFilters"
-          type="button"
-          class="h-10 rounded-lg px-3 text-sm font-medium text-[var(--a-muted)] hover:bg-[var(--a-bg)] hover:text-[var(--a-ink)]"
-          @click="clearFilters"
-        >Limpiar filtros</button>
-      </div>
 
-      <p v-if="filteredOrders.length === 0" class="rounded-xl border border-[var(--a-border)] bg-white py-10 text-center text-sm text-[var(--a-muted)]">
-        No hay pedidos con estos filtros.
-      </p>
+        <p v-if="filteredOrders.length === 0" class="px-4 py-10 text-center text-sm text-[var(--a-muted)]">No hay pedidos con estos filtros.</p>
 
-      <div v-else :key="page" class="jd-stagger space-y-6">
+        <ul v-else :key="page" class="jd-stagger divide-y divide-[var(--a-border)]">
+          <li v-for="o in pagedOrders" :key="o.id">
+            <button
+              type="button"
+              :aria-current="selectedOrder?.id === o.id ? 'true' : undefined"
+              :class="[
+                'flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors',
+                selectedOrder?.id === o.id ? 'bg-[var(--a-primary-soft)]' : 'hover:bg-[var(--a-bg)]',
+              ]"
+              @click="selectOrder(o)"
+            >
+              <div class="min-w-0 flex-1">
+                <p class="flex items-center gap-1.5 text-sm font-semibold">
+                  #{{ o.id }}
+                  <span
+                    class="rounded-full px-1.5 py-px text-[11px] font-semibold"
+                    :class="{
+                      'bg-purple-100 text-purple-700': o.purchaseType === 'curva',
+                      'bg-blue-100 text-blue-700': o.purchaseType === 'cantidad',
+                      'bg-gray-100 text-[var(--a-muted)]': o.purchaseType === 'retail',
+                    }"
+                  >{{ typeLabel(o.purchaseType) }}</span>
+                  <span v-if="ready(o)" class="text-xs font-semibold text-green-600" title="Reparto completo">✓</span>
+                </p>
+                <p class="truncate text-xs text-[var(--a-muted)]">{{ o.customerEmail }}</p>
+              </div>
+              <div class="shrink-0 text-right text-xs text-[var(--a-muted)]">
+                <p class="font-semibold text-[var(--a-ink)]">{{ orderUnits(o) }} u.</p>
+                <p>{{ new Date(o.createdAt).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }) }}</p>
+              </div>
+            </button>
+          </li>
+        </ul>
+
+        <TablePagination v-if="filteredOrders.length" v-model:page="page" :total="filteredOrders.length" noun="pedidos" />
+      </section>
+
+      <!-- Pedido elegido -->
+      <Transition name="jd-fade" mode="out-in">
         <article
-          v-for="order in pagedOrders"
-          :key="order.id"
-          class="bg-white rounded-xl border border-[var(--a-border)] overflow-hidden"
+          v-if="selectedOrder"
+          :key="selectedOrder.id"
+          :class="['overflow-hidden rounded-xl border border-[var(--a-border)] bg-white', showDetailOnMobile ? '' : 'hidden lg:block']"
         >
+          <button
+            type="button"
+            class="flex w-full items-center gap-1.5 border-b border-[var(--a-border)] px-4 py-2.5 text-sm font-semibold text-[var(--a-primary)] lg:hidden"
+            @click="showDetailOnMobile = false"
+          >
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+            Pedidos
+          </button>
+          <!-- Mismo bloque de siempre, con el pedido elegido como "order" -->
+          <template v-for="order in [selectedOrder]" :key="order.id">
           <!-- Cabecera -->
-          <header class="flex items-start justify-between px-5 py-4 border-b border-[var(--a-border)] bg-[var(--a-bg)] gap-3">
+          <header class="flex items-start justify-between px-5 py-3 border-b border-[var(--a-border)] bg-[var(--a-bg)] gap-3">
             <div class="min-w-0">
               <div class="flex items-center gap-2 flex-wrap mb-1">
                 <p class="font-bold text-[var(--a-ink)]">Pedido #{{ order.id }}</p>
@@ -227,7 +282,7 @@ function clearFilters() {
           </header>
 
           <!-- Productos -->
-          <section v-for="p in order.products" :key="p.productId" class="px-5 py-4 border-b border-[var(--a-border)] last:border-0">
+          <section v-for="p in order.products" :key="p.productId" class="px-5 py-3 border-b border-[var(--a-border)] last:border-0">
             <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
               <p class="font-medium text-[var(--a-ink)] text-sm">{{ p.productName }}</p>
               <div v-if="needsAllocation(p)" class="flex gap-2">
@@ -274,8 +329,8 @@ function clearFilters() {
                   </thead>
                   <tbody>
                     <tr v-for="s in gridSizes(p)" :key="s.id">
-                      <td class="py-1 pr-3 font-semibold text-[var(--a-ink)] sticky left-0 bg-white">{{ s.label }}</td>
-                      <td v-for="c in p.colors" :key="c.id" class="py-1 px-1.5 text-center">
+                      <td class="py-0.5 pr-3 font-semibold text-[var(--a-ink)] sticky left-0 bg-white">{{ s.label }}</td>
+                      <td v-for="c in p.colors" :key="c.id" class="py-0.5 px-1.5 text-center">
                         <template v-if="variantAt(p, s.id, c.id)">
                           <input
                             type="number"
@@ -286,11 +341,11 @@ function clearFilters() {
                             :disabled="variantAt(p, s.id, c.id)!.stock === 0"
                             :aria-label="`Talle ${s.label} ${c.name}`"
                             placeholder="0"
-                            class="w-14 h-9 rounded-lg border text-center text-sm disabled:bg-gray-50 disabled:opacity-50"
+                            class="w-14 h-8 rounded-lg border text-center text-sm disabled:bg-gray-50 disabled:opacity-50"
                             :class="(cellsOf(order, p)[variantAt(p, s.id, c.id)!.id] ?? 0) > variantAt(p, s.id, c.id)!.stock ? 'border-red-400 text-red-600' : 'border-[var(--a-border)]'"
                             @input="setCell(order, p, variantAt(p, s.id, c.id)!.id, ($event.target as HTMLInputElement).value)"
                           />
-                          <span class="block text-[10px] text-[var(--a-muted)] mt-0.5">stock {{ variantAt(p, s.id, c.id)!.stock }}</span>
+                          <span class="block text-[10px] leading-3 text-[var(--a-muted)]">stock {{ variantAt(p, s.id, c.id)!.stock }}</span>
                         </template>
                         <span v-else class="text-[var(--a-muted)]">—</span>
                       </td>
@@ -314,11 +369,11 @@ function clearFilters() {
           </section>
 
           <!-- Confirmar -->
-          <footer class="px-5 py-4 bg-[var(--a-bg)] flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <ul v-if="orderProblems(order).length" class="text-xs text-[var(--a-muted)] space-y-0.5">
-              <li v-for="msg in orderProblems(order).slice(0, 4)" :key="msg">• {{ msg }}</li>
-              <li v-if="orderProblems(order).length > 4">• y {{ orderProblems(order).length - 4 }} más</li>
-            </ul>
+          <footer class="px-5 py-3 bg-[var(--a-bg)] flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <!-- Lo que falta: el primero y cuántos más (el detalle está en la columna "Pedido" de cada grilla) -->
+            <p v-if="orderProblems(order).length" class="text-xs text-[var(--a-muted)]" :title="orderProblems(order).join('\n')">
+              {{ orderProblems(order)[0] }}<template v-if="orderProblems(order).length > 1"> · y {{ orderProblems(order).length - 1 }} más</template>
+            </p>
             <p v-else class="text-xs text-green-600 font-semibold">Listo para despachar</p>
             <div class="sm:text-right">
               <button
@@ -332,13 +387,9 @@ function clearFilters() {
               <p v-if="dispatchErrors[order.id]" role="alert" class="text-xs text-red-500 mt-1">{{ dispatchErrors[order.id] }}</p>
             </div>
           </footer>
+          </template>
         </article>
-      </div>
-
-      <div v-if="filteredOrders.length" class="mt-4 rounded-xl border border-[var(--a-border)] bg-white [&>div]:border-t-0">
-        <TablePagination v-model:page="page" :total="filteredOrders.length" noun="pedidos" />
-      </div>
-      </template>
+      </Transition>
     </div>
   </AdminLayout>
 </template>

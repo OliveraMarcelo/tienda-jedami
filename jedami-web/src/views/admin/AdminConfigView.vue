@@ -337,12 +337,10 @@ const TABS: { key: Tab; label: string }[] = [
 </script>
 
 <template>
-  <AdminLayout>
+  <AdminLayout title="Configuración">
     <div>
-      <h1 class="text-[26px] font-bold mb-5">Configuración</h1>
-
       <!-- Pestañas -->
-      <div class="mb-6 border-b border-[var(--a-border)]">
+      <div class="mb-4 border-b border-[var(--a-border)]">
         <nav class="-mb-px flex gap-1 overflow-x-auto">
           <button
             v-for="tab in TABS"

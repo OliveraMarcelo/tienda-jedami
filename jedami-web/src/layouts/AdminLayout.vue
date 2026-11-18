@@ -4,6 +4,9 @@ import { RouterLink, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth.store'
 import { useConfigStore } from '@/stores/config.store'
 
+// Título de la vista en la barra de arriba: ahorra una franja y deja más lugar para las tablas
+defineProps<{ title?: string }>()
+
 const authStore = useAuthStore()
 const configStore = useConfigStore()
 const route = useRoute()
@@ -147,7 +150,8 @@ const initials = computed(() => (authStore.user?.email ?? 'A').slice(0, 2).toUpp
         >
           <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
         </button>
-        <span class="truncate font-semibold lg:hidden">{{ storeName }}</span>
+        <h1 v-if="title" class="truncate text-lg font-semibold tracking-[-0.01em] lg:text-xl">{{ title }}</h1>
+        <span v-else class="truncate font-semibold lg:hidden">{{ storeName }}</span>
 
         <div class="ml-auto flex items-center gap-1.5">
           <div class="flex items-center gap-2.5 rounded-full py-1 pl-1 pr-1 sm:pr-3">
@@ -166,7 +170,7 @@ const initials = computed(() => (authStore.user?.email ?? 'A').slice(0, 2).toUpp
       </header>
 
       <!-- Ocupa todo el ancho disponible: sin franjas vacías a los costados -->
-      <main class="jd-page w-full px-4 py-6 sm:px-6 sm:py-8 xl:px-10">
+      <main class="jd-page w-full px-4 py-4 sm:px-6 sm:py-5 xl:px-8">
         <slot />
       </main>
     </div>

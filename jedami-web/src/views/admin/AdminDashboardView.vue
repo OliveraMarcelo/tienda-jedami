@@ -54,10 +54,8 @@ const byType = computed(() => {
 </script>
 
 <template>
-  <AdminLayout>
+  <AdminLayout title="Inicio">
     <div>
-      <h1 class="text-[26px] font-bold mb-6">Tablero</h1>
-
       <div v-if="loading" class="space-y-4">
         <div class="jd-stagger grid grid-cols-2 lg:grid-cols-4 gap-3">
           <div v-for="i in 4" :key="i" class="animate-pulse bg-white rounded-xl border border-[var(--a-border)] h-24"></div>
@@ -69,38 +67,38 @@ const byType = computed(() => {
 
       <template v-else-if="data">
         <!-- Lo que hay que hacer y cómo vienen las ventas -->
-        <div class="jd-stagger grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <div class="jd-stagger grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
           <RouterLink
             to="/admin/despacho"
-            class="rounded-xl border p-4 transition-colors"
+            class="rounded-xl border px-4 py-3 transition-colors"
             :class="data.ordersByStatus.paid > 0 ? 'bg-green-50 border-green-200 hover:border-green-400' : 'bg-white border-[var(--a-border)] hover:border-gray-300'"
           >
             <p class="text-sm text-[var(--a-muted)] mb-1">Para despachar</p>
-            <p class="text-3xl font-bold" :class="data.ordersByStatus.paid > 0 ? 'text-green-700' : 'text-[var(--a-ink)]'">{{ data.ordersByStatus.paid }}</p>
+            <p class="text-2xl font-bold" :class="data.ordersByStatus.paid > 0 ? 'text-green-700' : 'text-[var(--a-ink)]'">{{ data.ordersByStatus.paid }}</p>
             <p v-if="data.ordersByStatus.paid > 0" class="text-xs font-semibold text-green-700 mt-1">Ir a despacho →</p>
           </RouterLink>
-          <RouterLink to="/admin/pagos" class="bg-white rounded-xl border border-[var(--a-border)] p-4 hover:border-gray-300 transition-colors">
+          <RouterLink to="/admin/pagos" class="bg-white rounded-xl border border-[var(--a-border)] px-4 py-3 hover:border-gray-300 transition-colors">
             <p class="text-sm text-[var(--a-muted)] mb-1">Esperando pago</p>
-            <p class="text-3xl font-bold text-[var(--a-ink)]">{{ data.ordersByStatus.pending }}</p>
+            <p class="text-2xl font-bold text-[var(--a-ink)]">{{ data.ordersByStatus.pending }}</p>
           </RouterLink>
-          <div class="bg-white rounded-xl border border-[var(--a-border)] p-4">
+          <div class="bg-white rounded-xl border border-[var(--a-border)] px-4 py-3">
             <p class="text-sm text-[var(--a-muted)] mb-1">Ventas últimos 30 días</p>
-            <p class="text-2xl sm:text-3xl font-bold text-[var(--a-primary)]">{{ formatCurrency(data.revenueLast30d) }}</p>
+            <p class="text-2xl font-bold text-[var(--a-primary)]">{{ formatCurrency(data.revenueLast30d) }}</p>
           </div>
-          <div class="bg-white rounded-xl border border-[var(--a-border)] p-4">
+          <div class="bg-white rounded-xl border border-[var(--a-border)] px-4 py-3">
             <p class="text-sm text-[var(--a-muted)] mb-1">Ventas totales</p>
-            <p class="text-2xl sm:text-3xl font-bold text-[var(--a-ink)]">{{ formatCurrency(data.totalRevenue) }}</p>
+            <p class="text-2xl font-bold text-[var(--a-ink)]">{{ formatCurrency(data.totalRevenue) }}</p>
             <p class="text-xs text-[var(--a-muted)] mt-1">{{ data.totalOrders }} {{ data.totalOrders === 1 ? 'pedido' : 'pedidos' }}</p>
           </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
           <!-- Más vendidos -->
           <section class="bg-white rounded-xl border border-[var(--a-border)] overflow-hidden">
-            <h2 class="px-5 py-4 border-b border-[var(--a-border)] text-sm font-semibold text-[#45494E]">Productos más vendidos</h2>
+            <h2 class="px-4 py-3 border-b border-[var(--a-border)] text-sm font-semibold text-[#45494E]">Productos más vendidos</h2>
             <p v-if="!reports?.topProducts.length" class="px-5 py-6 text-sm text-center text-[var(--a-muted)]">Todavía no hay ventas.</p>
             <ol v-else>
-              <li v-for="(p, i) in reports.topProducts" :key="p.productId" class="flex items-center gap-3 px-5 py-3 border-b border-[var(--a-border)] last:border-0 text-sm">
+              <li v-for="(p, i) in reports.topProducts.slice(0, 5)" :key="p.productId" class="flex items-center gap-3 px-4 py-2 border-b border-[var(--a-border)] last:border-0 text-sm">
                 <span class="w-5 text-[var(--a-muted)]">{{ i + 1 }}</span>
                 <span class="flex-1 min-w-0 truncate text-[var(--a-ink)]">{{ p.name }}</span>
                 <span class="text-[var(--a-muted)] whitespace-nowrap">{{ p.totalUnits }} u.</span>
@@ -111,23 +109,23 @@ const byType = computed(() => {
 
           <!-- Mejores clientes -->
           <section class="bg-white rounded-xl border border-[var(--a-border)] overflow-hidden">
-            <h2 class="px-5 py-4 border-b border-[var(--a-border)] text-sm font-semibold text-[#45494E]">Mejores clientes</h2>
+            <h2 class="px-4 py-3 border-b border-[var(--a-border)] text-sm font-semibold text-[#45494E]">Mejores clientes</h2>
             <p v-if="!reports?.topCustomers.length" class="px-5 py-6 text-sm text-center text-[var(--a-muted)]">Todavía no hay ventas.</p>
             <ol v-else>
-              <li v-for="(c, i) in reports.topCustomers" :key="c.customerId" class="flex items-center gap-3 px-5 py-3 border-b border-[var(--a-border)] last:border-0 text-sm">
+              <li v-for="(c, i) in reports.topCustomers.slice(0, 5)" :key="c.customerId" class="flex items-center gap-3 px-4 py-2 border-b border-[var(--a-border)] last:border-0 text-sm">
                 <span class="w-5 text-[var(--a-muted)]">{{ i + 1 }}</span>
                 <span class="flex-1 min-w-0 truncate text-[var(--a-ink)]" :title="c.email">{{ c.email }}</span>
-                <span class="text-[var(--a-muted)] whitespace-nowrap">{{ c.totalOrders }} {{ c.totalOrders === 1 ? 'pedido' : 'pedidos' }}</span>
+                <span class="text-[var(--a-muted)] whitespace-nowrap">{{ c.totalOrders }} ped.</span>
                 <span class="w-24 text-right font-semibold whitespace-nowrap">{{ formatCurrency(c.totalRevenue) }}</span>
               </li>
             </ol>
           </section>
-        </div>
 
-        <!-- Ventas por forma de compra -->
-        <section v-if="data.totalOrders > 0" class="bg-white rounded-xl border border-[var(--a-border)] p-5 mb-6">
-          <h2 class="text-sm font-semibold text-[#45494E] mb-4">Ventas por forma de compra</h2>
-          <div class="space-y-2.5">
+          <!-- Ventas por forma de compra -->
+        <section class="bg-white rounded-xl border border-[var(--a-border)] overflow-hidden">
+          <h2 class="px-4 py-3 border-b border-[var(--a-border)] text-sm font-semibold text-[#45494E]">Ventas por forma de compra</h2>
+          <p v-if="data.totalOrders === 0" class="px-5 py-6 text-sm text-center text-[var(--a-muted)]">Todavía no hay ventas.</p>
+          <div v-else class="space-y-3 p-4">
             <div v-for="t in byType" :key="t.label" class="flex items-center gap-3 text-sm">
               <span class="w-24 shrink-0 text-[var(--a-muted)]">{{ t.label }}</span>
               <span class="flex-1 h-2.5 rounded-full bg-[var(--a-bg)] overflow-hidden">
@@ -137,16 +135,17 @@ const byType = computed(() => {
             </div>
           </div>
         </section>
+        </div>
 
         <!-- Últimos pedidos -->
         <section class="bg-white rounded-xl border border-[var(--a-border)] overflow-hidden">
-          <div class="flex items-center justify-between px-5 py-4 border-b border-[var(--a-border)]">
+          <div class="flex items-center justify-between px-4 py-3 border-b border-[var(--a-border)]">
             <h2 class="text-sm font-semibold text-[#45494E]">Últimos pedidos</h2>
             <RouterLink to="/admin/pagos" class="text-xs font-semibold text-[var(--a-primary)] hover:underline">Ver todos →</RouterLink>
           </div>
           <p v-if="!data.recentOrders.length" class="px-5 py-6 text-sm text-center text-[var(--a-muted)]">Todavía no hay pedidos.</p>
           <ul v-else>
-            <li v-for="o in data.recentOrders" :key="o.id" class="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3 border-b border-[var(--a-border)] last:border-0 text-sm">
+            <li v-for="o in data.recentOrders.slice(0, 5)" :key="o.id" class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 border-b border-[var(--a-border)] last:border-0 text-sm">
               <span class="font-semibold text-[var(--a-ink)]">#{{ o.id }}</span>
               <span class="flex-1 min-w-[140px] truncate text-[var(--a-ink)]">{{ o.customerEmail }}</span>
               <span class="text-[var(--a-muted)] hidden sm:inline">{{ configStore.purchaseTypeLabel[o.purchaseType] ?? o.purchaseType }}</span>

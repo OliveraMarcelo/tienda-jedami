@@ -4,7 +4,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { type DateRange, RANGE_PRESETS, fromYmd, rangeLabel, toYmd } from '@/lib/date-range'
 
-const props = withDefaults(defineProps<{ modelValue: DateRange; label?: string }>(), {
+const props = withDefaults(defineProps<{ modelValue: DateRange; label?: string; compact?: boolean }>(), {
   label: 'Fechas',
 })
 const emit = defineEmits<{ 'update:modelValue': [DateRange] }>()
@@ -127,20 +127,21 @@ onBeforeUnmount(() => {
 
 <template>
   <div ref="root" class="relative">
-    <span class="mb-1 block text-xs text-[var(--a-muted)]">{{ label }}</span>
+    <span :class="compact ? 'sr-only' : 'mb-1 block text-xs text-[var(--a-muted)]'">{{ label }}</span>
     <div class="flex">
       <button
         type="button"
         :aria-expanded="open"
         aria-haspopup="dialog"
         :class="[
-          'flex h-10 w-full min-w-[210px] items-center gap-2 border border-[#C9CDD2] px-3 text-left text-sm',
+          'flex h-10 w-full items-center gap-2 border border-[#C9CDD2] px-3 text-left text-sm',
+          compact ? 'min-w-0' : 'min-w-[210px]',
           hasValue ? 'rounded-l-lg text-[var(--a-ink)]' : 'rounded-lg text-[var(--a-muted)]',
         ]"
         @click="toggle"
       >
         <svg class="h-4 w-4 shrink-0 text-[var(--a-muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2" /><path d="M3.5 10h17M8 3v4M16 3v4" /></svg>
-        <span class="truncate">{{ rangeLabel(modelValue) }}</span>
+        <span class="truncate">{{ compact && !hasValue ? label : rangeLabel(modelValue) }}</span>
       </button>
       <button
         v-if="hasValue"
