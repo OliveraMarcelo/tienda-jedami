@@ -135,14 +135,9 @@ onMounted(load)
 </script>
 
 <template>
-  <AdminLayout>
+  <AdminLayout title="Banners">
     <div>
-      <!-- Breadcrumb -->
-      <div class="flex items-center gap-3 mb-6">
-        <h1 class="text-[26px] font-bold">Banners del catálogo</h1>
-      </div>
-
-      <p class="text-sm text-[var(--a-muted)] mb-6">
+      <p class="text-sm text-[var(--a-muted)] mb-4">
         Las imágenes activas se muestran como carrusel en la parte superior del catálogo, en el orden indicado.
       </p>
 

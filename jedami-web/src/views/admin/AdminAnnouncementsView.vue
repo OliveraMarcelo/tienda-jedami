@@ -155,11 +155,8 @@ const audienceBadgeClass: Record<string, string> = {
 </script>
 
 <template>
-  <AdminLayout>
-    <div class="flex items-center justify-between mb-6">
-      <div class="flex items-center gap-3">
-        <h1 class="text-[26px] font-bold">Anuncios</h1>
-      </div>
+  <AdminLayout title="Anuncios">
+    <div class="flex items-center justify-end mb-4">
       <button
         @click="showForm = !showForm"
         class="px-4 py-2 rounded-xl bg-[var(--a-primary)] text-white text-sm font-semibold hover:opacity-90 transition-opacity"

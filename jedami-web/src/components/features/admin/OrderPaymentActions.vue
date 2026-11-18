@@ -7,7 +7,7 @@ import { confirmBankTransfer, type AdminPayment } from '@/api/admin.payments.api
 import { cancelOrder } from '@/api/orders.api'
 import { retryPayment } from '@/api/payments.api'
 
-const props = defineProps<{ payment: AdminPayment }>()
+const props = defineProps<{ payment: AdminPayment; stacked?: boolean }>()
 const emit = defineEmits<{ changed: [patch: Partial<AdminPayment>] }>()
 
 const p = computed(() => props.payment)
@@ -23,6 +23,11 @@ const busy = ref<'' | 'cancel' | 'confirm' | 'link'>('')
 const askingCancel = ref(false)
 const error = ref('')
 const linkCopied = ref(false)
+
+// En el panel de detalle van como botones apilados; en una fila, como links
+const item = computed(() => props.stacked
+  ? 'flex min-h-10 w-full items-center rounded-lg border border-[var(--a-border)] px-3 text-left text-sm hover:bg-[var(--a-bg)] disabled:opacity-40'
+  : 'hover:opacity-80 disabled:opacity-40')
 
 async function run(kind: 'cancel' | 'confirm' | 'link', fn: () => Promise<void>, fallback: string) {
   busy.value = kind
@@ -57,8 +62,8 @@ const doLink = () => run('link', async () => {
 </script>
 
 <template>
-  <div class="flex flex-wrap gap-x-3 gap-y-1.5 items-center text-xs font-semibold">
-    <RouterLink v-if="payment.orderStatus === 'paid'" to="/admin/despacho" class="text-[var(--a-primary)] hover:underline">
+  <div :class="stacked ? 'grid gap-2 font-semibold' : 'flex flex-wrap gap-x-3 gap-y-1.5 items-center text-xs font-semibold'">
+    <RouterLink v-if="payment.orderStatus === 'paid'" to="/admin/despacho" :class="[item, 'text-[var(--a-primary)]']">
       Ir a despacho →
     </RouterLink>
 
@@ -66,7 +71,7 @@ const doLink = () => run('link', async () => {
       v-if="canConfirmTransfer"
       type="button"
       :disabled="busy !== ''"
-      class="text-indigo-600 hover:opacity-80 disabled:opacity-40"
+      :class="[item, 'text-indigo-600']"
       @click="doConfirm"
     >{{ busy === 'confirm' ? 'Confirmando…' : 'Confirmar transferencia' }}</button>
 
@@ -74,7 +79,7 @@ const doLink = () => run('link', async () => {
       v-if="canShareLink"
       type="button"
       :disabled="busy !== ''"
-      class="text-[#009EE3] hover:opacity-80 disabled:opacity-40"
+      :class="[item, 'text-[#009EE3]']"
       title="Copia el link de Mercado Pago para mandárselo al cliente"
       @click="doLink"
     >{{ busy === 'link' ? 'Generando…' : linkCopied ? '✓ Link copiado' : 'Copiar link de pago' }}</button>
@@ -83,10 +88,10 @@ const doLink = () => run('link', async () => {
       <button
         v-if="!askingCancel"
         type="button"
-        class="text-red-500 hover:text-red-700"
+        :class="[item, 'text-red-500 hover:text-red-700']"
         @click="askingCancel = true; error = ''"
       >Cancelar pedido</button>
-      <span v-else class="inline-flex items-center gap-2">
+      <span v-else :class="stacked ? 'flex min-h-10 items-center gap-3 rounded-lg bg-red-50 px-3 text-sm' : 'inline-flex items-center gap-2'">
         <span class="font-normal text-[var(--a-muted)]">¿Cancelar?</span>
         <button type="button" :disabled="busy !== ''" class="text-red-600 hover:underline" @click="doCancel">Sí</button>
         <button type="button" class="font-normal text-[var(--a-muted)] hover:underline" @click="askingCancel = false">No</button>

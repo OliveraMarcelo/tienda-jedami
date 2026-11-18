@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import DateRangeFilter from '@/components/features/admin/DateRangeFilter.vue'
 import SearchField from '@/components/features/admin/SearchField.vue'
 import TablePagination from '@/components/features/admin/TablePagination.vue'
+import SidePanel from '@/components/features/admin/SidePanel.vue'
 import { apiErrorDetail } from '@/lib/auth-errors'
 import { fetchAdminUsers, assignRole, removeRoleFromUser, type AdminUser } from '@/api/admin.users.api'
 import { ROLE_LABELS } from '@/lib/constants'
@@ -82,6 +83,14 @@ function clearFilters() {
   filterRole.value = ''
   filterRange.value = { ...EMPTY_RANGE }
 }
+
+// Panel con el detalle y los roles de una cuenta
+const selectedId = ref<number | null>(null)
+const selectedUser = computed(() => users.value.find(u => u.id === selectedId.value) ?? null)
+const panelOpen = computed({
+  get: () => selectedUser.value !== null,
+  set: (v) => { if (!v) { selectedId.value = null; confirmingAdminAssign.value = null } },
+})
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' })
@@ -182,136 +191,167 @@ async function doRemoveRole(userId: number, roleName: string) {
 </script>
 
 <template>
-  <AdminLayout>
-    <div>
-      <h1 class="text-[26px] font-bold mb-5">Clientes</h1>
+  <AdminLayout title="Clientes">
+    <div class="rounded-xl border border-[var(--a-border)] bg-white">
+      <!-- Filtros en una sola franja: se aplican al cambiar -->
+      <div class="grid grid-cols-1 gap-2 border-b border-[var(--a-border)] p-3 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1.4fr)_minmax(170px,1fr)_minmax(220px,1fr)_auto]">
+        <SearchField v-model="filterSearch" compact label="Buscar por email" placeholder="Buscar por email" />
+        <select v-model="filterRole" aria-label="Tipo de cuenta" class="h-10 w-full rounded-lg border border-[#C9CDD2] px-2 text-sm focus:outline-none">
+          <option value="">Todos los tipos</option>
+          <option v-for="role in roles" :key="role.id" :value="role.name">{{ ROLE_LABELS[role.name] ?? role.name }}</option>
+        </select>
+        <DateRangeFilter v-model="filterRange" compact label="Fecha de alta" />
+        <button
+          v-if="hasFilters()"
+          type="button"
+          class="h-10 rounded-lg px-3 text-sm font-medium text-[var(--a-muted)] hover:bg-[var(--a-bg)] hover:text-[var(--a-ink)]"
+          @click="clearFilters"
+        >Limpiar</button>
+      </div>
 
-      <div class="rounded-xl border border-[var(--a-border)] bg-white">
-        <!-- Filtros: se aplican al cambiar -->
-        <div class="grid grid-cols-1 gap-3 border-b border-[var(--a-border)] p-4 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1.3fr)_minmax(160px,1fr)_minmax(230px,1fr)_auto] lg:items-end">
-          <SearchField v-model="filterSearch" label="Buscar por email" placeholder="email@…" />
-          <div>
-            <label for="f-role" class="block text-xs text-[var(--a-muted)] mb-1">Tipo</label>
-            <select id="f-role" v-model="filterRole" class="h-10 w-full rounded-lg border border-[#C9CDD2] px-2 text-sm focus:outline-none">
-              <option value="">Todos</option>
-              <option v-for="role in roles" :key="role.id" :value="role.name">{{ ROLE_LABELS[role.name] ?? role.name }}</option>
-            </select>
-          </div>
-          <DateRangeFilter v-model="filterRange" label="Fecha de alta" />
-          <button
-            v-if="hasFilters()"
-            type="button"
-            class="h-10 rounded-lg px-3 text-sm font-medium text-[var(--a-muted)] hover:bg-[var(--a-bg)] hover:text-[var(--a-ink)]"
-            @click="clearFilters"
-          >Limpiar filtros</button>
+      <div v-if="!loaded" class="space-y-2 p-3">
+        <div v-for="i in 8" :key="i" class="h-10 animate-pulse rounded-lg bg-[var(--a-bg)]"></div>
+      </div>
+
+      <p v-else-if="error" class="p-4 text-sm text-red-500">{{ error }}</p>
+
+      <div v-else :class="['transition-opacity duration-200', loading ? 'opacity-50' : 'opacity-100']">
+        <p v-if="users.length === 0" class="px-4 py-10 text-center text-sm text-[var(--a-muted)]">No hay clientes con estos filtros.</p>
+
+        <div v-else class="overflow-x-auto overflow-y-hidden">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-[var(--a-border)] text-left">
+                <th class="px-4 py-2.5">Cliente</th>
+                <th class="px-4 py-2.5">Tipo</th>
+                <th class="hidden px-4 py-2.5 sm:table-cell">Alta</th>
+                <th class="px-4 py-2.5 text-right"><span class="sr-only">Acciones</span></th>
+              </tr>
+            </thead>
+            <tbody :key="page" class="jd-stagger">
+              <tr
+                v-for="user in users"
+                :key="user.id"
+                :class="['h-12 cursor-pointer border-b border-[var(--a-border)] last:border-0 hover:bg-[var(--a-bg)]', selectedId === user.id ? 'bg-[var(--a-primary-soft)]' : '']"
+                @click="selectedId = user.id"
+              >
+                <td class="max-w-[320px] px-4">
+                  <span class="block truncate font-medium" :title="user.email">{{ user.email }}</span>
+                </td>
+                <td class="whitespace-nowrap px-4">
+                  <span
+                    v-for="role in user.roles"
+                    :key="role"
+                    class="mr-1 inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold"
+                    :class="roleColors[role] ?? 'bg-[var(--a-bg)] text-[var(--a-muted)] border-[var(--a-border)]'"
+                  >{{ ROLE_LABELS[role] ?? role }}</span>
+                  <span v-if="user.roles.length === 0" class="text-xs italic text-[var(--a-muted)]">sin roles</span>
+                </td>
+                <td class="hidden whitespace-nowrap px-4 text-[var(--a-muted)] sm:table-cell">{{ formatDate(user.createdAt) }}</td>
+                <td class="whitespace-nowrap px-4 text-right" @click.stop>
+                  <Transition name="jd-fade">
+                    <span v-if="successMsg[user.id]" class="mr-2 text-xs font-semibold text-green-600">✓ {{ successMsg[user.id] }}</span>
+                  </Transition>
+                  <button
+                    v-if="user.roles.includes('retail') && !user.roles.includes('wholesale')"
+                    type="button"
+                    :disabled="changingType === user.id"
+                    class="h-8 rounded-lg border border-[#C9CDD2] px-3 text-xs font-semibold text-[var(--a-primary)] disabled:opacity-40"
+                    @click="changeCustomerType(user, 'wholesale')"
+                  >{{ changingType === user.id ? 'Cambiando…' : 'Pasar a mayorista' }}</button>
+                  <button
+                    v-else-if="user.roles.includes('wholesale')"
+                    type="button"
+                    :disabled="changingType === user.id"
+                    class="h-8 rounded-lg border border-[#C9CDD2] px-3 text-xs font-semibold text-[var(--a-muted)] hover:text-[var(--a-ink)] disabled:opacity-40"
+                    @click="changeCustomerType(user, 'retail')"
+                  >{{ changingType === user.id ? 'Cambiando…' : 'Pasar a minorista' }}</button>
+                  <button
+                    type="button"
+                    class="ml-1 inline-flex h-8 w-8 items-center justify-center rounded-lg align-middle text-[var(--a-muted)] hover:bg-white hover:text-[var(--a-ink)]"
+                    :aria-label="`Ver ${user.email}`"
+                    @click="selectedId = user.id"
+                  >
+                    <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+                  </button>
+                  <p v-if="removeError[user.id]" class="mt-1 text-xs font-normal text-red-500">{{ removeError[user.id] }}</p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
-        <div v-if="!loaded" class="space-y-2 p-4">
-          <div v-for="i in 6" :key="i" class="h-12 animate-pulse rounded-lg bg-[var(--a-bg)]"></div>
-        </div>
-
-        <p v-else-if="error" class="p-4 text-sm text-red-500">{{ error }}</p>
-
-        <div v-else :class="['transition-opacity duration-200', loading ? 'opacity-50' : 'opacity-100']">
-          <p v-if="users.length === 0" class="px-4 py-10 text-center text-sm text-[var(--a-muted)]">No hay clientes con estos filtros.</p>
-
-          <div v-else class="overflow-x-auto overflow-y-hidden">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="border-b border-[var(--a-border)] text-left">
-                  <th class="px-4 py-3">Cliente</th>
-                  <th class="px-4 py-3">Tipo</th>
-                  <th class="hidden px-4 py-3 sm:table-cell">Alta</th>
-                  <th class="px-4 py-3 text-right">Acciones</th>
-                </tr>
-              </thead>
-              <tbody :key="page" class="jd-stagger">
-                <tr v-for="user in users" :key="user.id" class="border-b border-[var(--a-border)] align-top last:border-0 hover:bg-[var(--a-bg)]">
-                  <td class="max-w-[300px] px-4 py-3">
-                    <p class="truncate font-medium text-[var(--a-ink)]" :title="user.email">{{ user.email }}</p>
-                    <p class="text-xs text-[var(--a-muted)] sm:hidden">Alta {{ formatDate(user.createdAt) }}</p>
-                    <p v-if="removeError[user.id]" class="mt-1 text-xs text-red-500">{{ removeError[user.id] }}</p>
-                  </td>
-                  <td class="px-4 py-3">
-                    <div class="flex flex-wrap gap-1.5">
-                      <span
-                        v-for="role in user.roles"
-                        :key="role"
-                        class="inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-semibold"
-                        :class="roleColors[role] ?? 'bg-[var(--a-bg)] text-[var(--a-muted)] border-[var(--a-border)]'"
-                      >
-                        {{ ROLE_LABELS[role] ?? role }}
-                        <button
-                          type="button"
-                          class="leading-none opacity-60 transition-colors hover:text-red-500 hover:opacity-100"
-                          :title="`Quitar rol ${ROLE_LABELS[role] ?? role}`"
-                          :aria-label="`Quitar rol ${ROLE_LABELS[role] ?? role}`"
-                          @click="doRemoveRole(user.id, role)"
-                        >×</button>
-                      </span>
-                      <span v-if="user.roles.length === 0" class="text-xs italic text-[var(--a-muted)]">sin roles</span>
-                    </div>
-                  </td>
-                  <td class="hidden whitespace-nowrap px-4 py-3 text-[var(--a-muted)] sm:table-cell">{{ formatDate(user.createdAt) }}</td>
-                  <td class="px-4 py-3">
-                    <div class="flex flex-col items-end gap-1.5">
-                      <div class="flex items-center gap-2">
-                        <Transition name="jd-fade">
-                          <span v-if="successMsg[user.id]" class="whitespace-nowrap text-xs font-semibold text-green-600">✓ {{ successMsg[user.id] }}</span>
-                        </Transition>
-                        <button
-                          v-if="user.roles.includes('retail') && !user.roles.includes('wholesale')"
-                          type="button"
-                          :disabled="changingType === user.id"
-                          class="h-8 whitespace-nowrap rounded-lg bg-[var(--a-primary)] px-3 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-40"
-                          @click="changeCustomerType(user, 'wholesale')"
-                        >{{ changingType === user.id ? 'Cambiando…' : 'Pasar a mayorista' }}</button>
-                        <button
-                          v-else-if="user.roles.includes('wholesale')"
-                          type="button"
-                          :disabled="changingType === user.id"
-                          class="h-8 whitespace-nowrap rounded-lg border border-[#C9CDD2] px-3 text-sm text-[var(--a-muted)] hover:text-[var(--a-ink)] disabled:opacity-40"
-                          @click="changeCustomerType(user, 'retail')"
-                        >{{ changingType === user.id ? 'Cambiando…' : 'Pasar a minorista' }}</button>
-                      </div>
-                      <details class="text-xs text-[var(--a-muted)]">
-                        <summary class="cursor-pointer select-none text-right">Otros roles</summary>
-                        <div class="mt-1.5 flex items-center justify-end gap-2">
-                          <select
-                            v-model="selectedRole[user.id]"
-                            class="h-8 rounded-lg border border-[#C9CDD2] px-2 text-sm focus:outline-none"
-                            :disabled="assigning === user.id"
-                            @change="confirmingAdminAssign = null"
-                          >
-                            <option value="">Asignar rol…</option>
-                            <option v-for="role in roles" :key="role.id" :value="role.id">{{ ROLE_LABELS[role.name] ?? role.name }}</option>
-                          </select>
-                          <button
-                            type="button"
-                            :disabled="assigning === user.id || !selectedRole[user.id]"
-                            class="h-8 rounded-lg bg-[var(--a-primary)] px-3 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:pointer-events-none disabled:opacity-40"
-                            @click="handleAssignRoleWithConfirm(user.id)"
-                          >{{ assigning === user.id ? '…' : 'Asignar' }}</button>
-                        </div>
-                        <!-- Confirmación para dar acceso de administrador -->
-                        <div v-if="confirmingAdminAssign === user.id" class="mt-1.5 text-right">
-                          <p class="text-xs text-orange-600">¿Hacer administrador a {{ user.email }}? Va a tener acceso total al panel.</p>
-                          <div class="mt-1 flex justify-end gap-3">
-                            <button type="button" class="text-xs font-semibold text-orange-600 hover:underline" @click="handleAssignRole(user.id)">Confirmar</button>
-                            <button type="button" class="text-xs text-[var(--a-muted)] hover:underline" @click="confirmingAdminAssign = null">Cancelar</button>
-                          </div>
-                        </div>
-                      </details>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <TablePagination v-model:page="page" :total="total" noun="cuentas" />
-        </div>
+        <TablePagination v-model:page="page" :total="total" noun="cuentas" />
       </div>
     </div>
+
+    <!-- Detalle y roles de la cuenta -->
+    <SidePanel v-model:open="panelOpen" :title="selectedUser?.email ?? ''" :subtitle="selectedUser ? `Alta ${formatDate(selectedUser.createdAt)}` : ''">
+      <div v-if="selectedUser" class="space-y-6 text-sm">
+        <section>
+          <h3 class="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--a-muted)]">Tipo de cuenta</h3>
+          <p class="mb-3 text-[var(--a-muted)]">Define qué precios ve. El cambio le llega cuando vuelve a entrar.</p>
+          <div class="flex items-center gap-2">
+            <button
+              v-if="selectedUser.roles.includes('retail') && !selectedUser.roles.includes('wholesale')"
+              type="button"
+              :disabled="changingType === selectedUser.id"
+              class="h-10 rounded-lg bg-[var(--a-primary)] px-4 font-semibold text-white disabled:opacity-40"
+              @click="changeCustomerType(selectedUser, 'wholesale')"
+            >{{ changingType === selectedUser.id ? 'Cambiando…' : 'Pasar a mayorista' }}</button>
+            <button
+              v-else-if="selectedUser.roles.includes('wholesale')"
+              type="button"
+              :disabled="changingType === selectedUser.id"
+              class="h-10 rounded-lg border border-[#C9CDD2] px-4 font-semibold disabled:opacity-40"
+              @click="changeCustomerType(selectedUser, 'retail')"
+            >{{ changingType === selectedUser.id ? 'Cambiando…' : 'Pasar a minorista' }}</button>
+            <span v-else class="text-[var(--a-muted)]">No es cliente minorista ni mayorista.</span>
+            <span v-if="successMsg[selectedUser.id]" class="text-xs font-semibold text-green-600">✓ {{ successMsg[selectedUser.id] }}</span>
+          </div>
+        </section>
+
+        <section>
+          <h3 class="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--a-muted)]">Roles</h3>
+          <ul class="divide-y divide-[var(--a-border)] rounded-lg border border-[var(--a-border)]">
+            <li v-for="role in selectedUser.roles" :key="role" class="flex items-center justify-between px-3 py-2">
+              <span
+                class="inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold"
+                :class="roleColors[role] ?? 'bg-[var(--a-bg)] text-[var(--a-muted)] border-[var(--a-border)]'"
+              >{{ ROLE_LABELS[role] ?? role }}</span>
+              <button type="button" class="text-xs font-semibold text-red-500 hover:text-red-700" @click="doRemoveRole(selectedUser.id, role)">Quitar</button>
+            </li>
+            <li v-if="selectedUser.roles.length === 0" class="px-3 py-2 italic text-[var(--a-muted)]">Sin roles</li>
+          </ul>
+          <p v-if="removeError[selectedUser.id]" class="mt-1 text-xs text-red-500">{{ removeError[selectedUser.id] }}</p>
+
+          <div class="mt-3 flex items-center gap-2">
+            <select
+              v-model="selectedRole[selectedUser.id]"
+              aria-label="Rol para asignar"
+              class="h-10 flex-1 rounded-lg border border-[#C9CDD2] px-2 text-sm focus:outline-none"
+              :disabled="assigning === selectedUser.id"
+              @change="confirmingAdminAssign = null"
+            >
+              <option value="">Asignar otro rol…</option>
+              <option v-for="role in roles" :key="role.id" :value="role.id">{{ ROLE_LABELS[role.name] ?? role.name }}</option>
+            </select>
+            <button
+              type="button"
+              :disabled="assigning === selectedUser.id || !selectedRole[selectedUser.id]"
+              class="h-10 rounded-lg bg-[var(--a-primary)] px-4 font-semibold text-white disabled:pointer-events-none disabled:opacity-40"
+              @click="handleAssignRoleWithConfirm(selectedUser.id)"
+            >{{ assigning === selectedUser.id ? '…' : 'Asignar' }}</button>
+          </div>
+          <div v-if="confirmingAdminAssign === selectedUser.id" class="mt-3 rounded-lg border border-orange-200 bg-orange-50 p-3">
+            <p class="text-orange-700">¿Hacer administrador a {{ selectedUser.email }}? Va a tener acceso total al panel.</p>
+            <div class="mt-2 flex gap-3">
+              <button type="button" class="font-semibold text-orange-700 hover:underline" @click="handleAssignRole(selectedUser.id)">Confirmar</button>
+              <button type="button" class="text-[var(--a-muted)] hover:underline" @click="confirmingAdminAssign = null">Cancelar</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </SidePanel>
   </AdminLayout>
 </template>

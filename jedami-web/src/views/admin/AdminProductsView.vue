@@ -8,6 +8,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog.vue'
 import AdminProductDiscounts from '@/components/features/admin/AdminProductDiscounts.vue'
 import SearchField from '@/components/features/admin/SearchField.vue'
 import TablePagination from '@/components/features/admin/TablePagination.vue'
+import SidePanel from '@/components/features/admin/SidePanel.vue'
 import { PAGE_SIZE } from '@/lib/date-range'
 import { useAdminProductsStore } from '@/stores/admin.products.store'
 import { useProductsStore } from '@/stores/products.store'
@@ -22,7 +23,14 @@ const showVariantDialog = ref(false)
 const variantProductId = ref<number>(0)
 const actionError = ref<string | null>(null)
 
-const expandedProducts = ref<Set<number>>(new Set())
+// Panel al costado con el stock por talle y color, o los descuentos, de un producto
+const panelProductId = ref<number | null>(null)
+const panelKind = ref<'variants' | 'discounts'>('variants')
+const panelProduct = computed(() => adminStore.products.find(p => p.id === panelProductId.value) ?? null)
+const panelOpen = computed({
+  get: () => panelProduct.value !== null,
+  set: (v) => { if (!v) panelProductId.value = null },
+})
 
 // ─── Pestañas y búsqueda (estilo Tiendanube) ─────────────────────────────────
 type ProductTab = 'all' | 'visible' | 'hidden'
@@ -67,7 +75,6 @@ function clearFilters() {
   filterCategory.value = ''
   filterStock.value = ''
 }
-const expandedDiscounts = ref<Set<number>>(new Set())
 const editMap = reactive<Map<number, { stock: number }>>(new Map())
 
 // Toast
@@ -79,12 +86,9 @@ function showToast(msg: string) {
   toastTimer = setTimeout(() => { toastMessage.value = '' }, 3000)
 }
 
-function toggleDiscounts(productId: number) {
-  if (expandedDiscounts.value.has(productId)) {
-    expandedDiscounts.value.delete(productId)
-  } else {
-    expandedDiscounts.value.add(productId)
-  }
+function openDiscounts(product: Product) {
+  panelKind.value = 'discounts'
+  panelProductId.value = product.id
 }
 
 // Confirm dialog
@@ -97,17 +101,12 @@ onMounted(() => {
   productsStore.loadCategories()
 })
 
-function toggleVariants(product: Product) {
-  if (expandedProducts.value.has(product.id)) {
-    expandedProducts.value.delete(product.id)
-  } else {
-    expandedProducts.value.add(product.id)
-    for (const v of product.variants) {
-      if (!editMap.has(v.id)) {
-        editMap.set(v.id, { stock: v.stock.quantity })
-      }
-    }
+function openVariants(product: Product) {
+  for (const v of product.variants) {
+    editMap.set(v.id, { stock: v.stock.quantity })
   }
+  panelKind.value = 'variants'
+  panelProductId.value = product.id
 }
 
 function totalStock(product: Product): number {
@@ -175,7 +174,7 @@ async function handleDeleteProduct(product: Product) {
     actionError.value = null
     try {
       await adminStore.deleteProduct(product.id)
-      expandedProducts.value.delete(product.id)
+      if (panelProductId.value === product.id) panelProductId.value = null
     } catch (err: unknown) {
       const e = err as { response?: { data?: { detail?: string } } }
       actionError.value = e.response?.data?.detail ?? 'Error al eliminar el producto.'
@@ -241,6 +240,11 @@ async function handleSaveVariantStock(productId: number, variantId: number) {
   }
 }
 
+async function saveAllStock(product: Product) {
+  await Promise.all(product.variants.map(v => handleSaveVariantStock(product.id, v.id)))
+  if (!actionError.value) showToast('Stock guardado')
+}
+
 async function handleProductSaved(data: { name: string; description: string; categoryId: number | null; retailPrice: number; wholesalePrice: number | null }) {
   actionError.value = null
   try {
@@ -284,24 +288,13 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
 </script>
 
 <template>
-  <AdminLayout>
+  <AdminLayout title="Productos">
     <!-- Toast -->
     <div
       v-if="toastMessage"
       class="fixed bottom-6 right-6 z-50 bg-green-50 border border-green-200 text-green-900 rounded-xl px-4 py-3 shadow-lg text-sm font-semibold flex items-center gap-2"
     >
       <span class="text-green-600">✓</span> {{ toastMessage }}
-    </div>
-
-    <div class="mb-6 flex flex-wrap items-center gap-3">
-      <h1 class="flex-1 text-[26px] font-bold">Productos</h1>
-      <button
-        type="button"
-        @click="openNewProduct"
-        class="inline-flex min-h-11 items-center gap-2 rounded-lg bg-[var(--a-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--a-primary-hover)] transition-colors"
-      >
-        Agregar producto
-      </button>
     </div>
 
     <!-- Error de carga -->
@@ -331,263 +324,132 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
       No hay productos. Creá el primero.
     </div>
 
-    <div v-else-if="adminStore.products.length > 0" class="overflow-hidden rounded-xl border border-[var(--a-border)] bg-white">
-      <!-- Pestañas -->
-      <div role="tablist" aria-label="Filtrar productos" class="flex flex-wrap gap-1 border-b border-[var(--a-border)] px-4">
-        <button
-          v-for="t in tabs"
-          :key="t.id"
-          type="button"
-          role="tab"
-          :aria-selected="tab === t.id"
-          @click="tab = t.id"
-          :class="[
-            'min-h-11 border-b-2 px-3 text-sm font-semibold transition-colors',
-            tab === t.id ? 'border-[var(--a-primary)] text-[var(--a-primary)]' : 'border-transparent text-[#45494E] hover:text-[var(--a-ink)]',
-          ]"
-        >
-          {{ t.label }} <span class="font-medium text-[var(--a-muted)]">{{ tabCounts[t.id] }}</span>
-        </button>
-      </div>
-      <!-- Filtros: se aplican al cambiar -->
-      <div class="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1.4fr)_minmax(170px,1fr)_minmax(150px,0.8fr)_auto] lg:items-end">
-        <SearchField v-model="searchTerm" label="Buscar" placeholder="Nombre o categoría" />
-        <div>
-          <label for="f-cat" class="mb-1 block text-xs text-[var(--a-muted)]">Categoría</label>
-          <select id="f-cat" v-model="filterCategory" class="h-10 w-full rounded-lg border border-[#C9CDD2] px-2 text-sm focus:outline-none">
-            <option value="">Todas</option>
-            <option v-for="c in productsStore.categories" :key="c.id" :value="String(c.id)">{{ c.name }}</option>
-            <option value="none">Sin categoría</option>
-          </select>
+    <div v-else-if="adminStore.products.length > 0" class="rounded-xl border border-[var(--a-border)] bg-white">
+      <!-- Filtros en una sola franja: se aplican al cambiar -->
+      <div class="flex flex-wrap items-center gap-2 border-b border-[var(--a-border)] p-3">
+        <div role="tablist" aria-label="Visibilidad" class="flex h-10 items-center rounded-lg bg-[var(--a-bg)] p-1">
+          <button
+            v-for="t in tabs"
+            :key="t.id"
+            type="button"
+            role="tab"
+            :aria-selected="tab === t.id"
+            :class="[
+              'h-8 rounded-md px-3 text-sm font-semibold transition-colors',
+              tab === t.id ? 'bg-white text-[var(--a-ink)] shadow-sm' : 'text-[var(--a-muted)] hover:text-[var(--a-ink)]',
+            ]"
+            @click="tab = t.id"
+          >{{ t.label }} <span class="font-medium text-[var(--a-muted)]">{{ tabCounts[t.id] }}</span></button>
         </div>
-        <div>
-          <label for="f-stock" class="mb-1 block text-xs text-[var(--a-muted)]">Stock</label>
-          <select id="f-stock" v-model="filterStock" class="h-10 w-full rounded-lg border border-[#C9CDD2] px-2 text-sm focus:outline-none">
-            <option value="">Todos</option>
-            <option value="with">Con stock</option>
-            <option value="without">Sin stock</option>
-          </select>
+        <div class="min-w-[200px] flex-[2_1_220px]">
+          <SearchField v-model="searchTerm" compact label="Buscar productos" placeholder="Buscar por nombre o categoría" />
         </div>
+        <select v-model="filterCategory" aria-label="Categoría" class="h-10 min-w-[150px] flex-[1_1_150px] rounded-lg border border-[#C9CDD2] px-2 text-sm focus:outline-none">
+          <option value="">Todas las categorías</option>
+          <option v-for="c in productsStore.categories" :key="c.id" :value="String(c.id)">{{ c.name }}</option>
+          <option value="none">Sin categoría</option>
+        </select>
+        <select v-model="filterStock" aria-label="Stock" class="h-10 min-w-[130px] flex-[1_1_130px] rounded-lg border border-[#C9CDD2] px-2 text-sm focus:outline-none">
+          <option value="">Todo el stock</option>
+          <option value="with">Con stock</option>
+          <option value="without">Sin stock</option>
+        </select>
         <button
           v-if="hasFilters"
           type="button"
           class="h-10 rounded-lg px-3 text-sm font-medium text-[var(--a-muted)] hover:bg-[var(--a-bg)] hover:text-[var(--a-ink)]"
           @click="clearFilters"
-        >Limpiar filtros</button>
+        >Limpiar</button>
+        <button
+          type="button"
+          class="ml-auto inline-flex h-10 items-center gap-1.5 rounded-lg bg-[var(--a-primary)] px-4 text-sm font-semibold text-white hover:bg-[var(--a-primary-hover)]"
+          @click="openNewProduct"
+        >
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+          Agregar producto
+        </button>
       </div>
+
       <div class="overflow-x-auto overflow-y-hidden">
       <table class="w-full text-sm">
-        <thead class="border-y border-[var(--a-border)] bg-[#F9FAFB]">
-          <tr>
-            <th class="text-left px-4 py-3 font-semibold text-[#45494E] w-12"><span class="sr-only">Foto</span></th>
-            <th class="text-left px-4 py-3 font-semibold text-[#45494E]">Nombre</th>
-            <th class="text-left px-4 py-3 font-semibold text-[#45494E] hidden md:table-cell">Categoría</th>
-            <th class="text-right px-4 py-3 font-semibold text-[#45494E] hidden lg:table-cell">Minorista</th>
-            <th class="text-right px-4 py-3 font-semibold text-[#45494E] hidden lg:table-cell">Mayorista</th>
-            <th class="text-center px-4 py-3 font-semibold text-[#45494E] hidden md:table-cell">Stock</th>
-            <th class="text-center px-4 py-3 font-semibold text-[#45494E]">Visible</th>
-            <th class="px-4 py-3 hidden md:table-cell"><span class="sr-only">Acciones</span></th>
+        <thead>
+          <tr class="border-b border-[var(--a-border)] text-left">
+            <th class="w-14 px-4 py-2.5"><span class="sr-only">Foto</span></th>
+            <th class="px-2 py-2.5">Nombre</th>
+            <th class="hidden px-4 py-2.5 md:table-cell">Categoría</th>
+            <th class="hidden px-4 py-2.5 text-right lg:table-cell">Minorista</th>
+            <th class="hidden px-4 py-2.5 text-right lg:table-cell">Mayorista</th>
+            <th class="hidden px-4 py-2.5 text-right md:table-cell">Stock</th>
+            <th class="px-4 py-2.5 text-center">Visible</th>
+            <th class="px-4 py-2.5"><span class="sr-only">Acciones</span></th>
           </tr>
         </thead>
         <tbody :key="`${page}-${tab}`" class="jd-stagger">
-          <template v-for="product in pagedProducts" :key="product.id">
-            <!-- Fila principal del producto -->
-            <tr class="border-b border-[var(--a-border)] hover:bg-[var(--a-bg)] transition-colors" :class="{ 'opacity-60': product.active === false }">
-              <td class="px-4 py-3 align-top md:align-middle">
-                <img
-                  v-if="product.imageUrl"
-                  :src="product.imageUrl"
-                  :alt="product.name"
-                  class="w-12 h-12 min-w-12 max-w-none object-cover object-top rounded-lg border border-[var(--a-border)]"
-                />
-                <div v-else class="w-12 h-12 min-w-12 bg-gray-100 rounded-lg border border-[var(--a-border)] flex items-center justify-center text-[var(--a-muted)] text-xs">
-                  Sin foto
-                </div>
-              </td>
-              <td class="px-4 py-3 font-medium text-[var(--a-ink)]">
-                {{ product.name }}
-                <span
-                  v-if="product.active === false"
-                  class="ml-2 px-2 py-0.5 rounded-full bg-gray-200 text-[var(--a-muted)] text-[10px] font-semibold uppercase align-middle"
-                >Oculto</span>
-                <!-- Celular: datos y acciones debajo del nombre -->
-                <p class="md:hidden mt-0.5 text-xs font-normal text-[var(--a-muted)]">
-                  {{ product.categoryName ?? 'Sin categoría' }} · {{ totalStock(product) }} en stock<template v-if="product.reserved"> ({{ product.reserved }} reservadas)</template>
-                  <template v-if="product.retailPrice != null"> · ${{ product.retailPrice.toLocaleString('es-AR', { maximumFractionDigits: 0 }) }}</template>
-                  <template v-if="product.wholesalePrice != null"> / may. ${{ product.wholesalePrice.toLocaleString('es-AR', { maximumFractionDigits: 0 }) }}</template>
-                </p>
-                <div class="md:hidden mt-2.5">
-                  <ProductRowActions
-                    :variants-count="product.variants.length"
-                    :variants-open="expandedProducts.has(product.id)"
-                    :discounts-open="expandedDiscounts.has(product.id)"
-                    :can-delete="!hasActiveStock(product)"
-                    @edit="openEditProduct(product)"
-                    @variants="toggleVariants(product)"
-                    @discounts="toggleDiscounts(product.id)"
-                    @delete="handleDeleteProduct(product)"
-                  />
-                </div>
-              </td>
-              <td class="px-4 py-3 text-[var(--a-muted)] hidden md:table-cell">{{ product.categoryName ?? '—' }}</td>
-              <td class="px-4 py-3 text-right text-[#45494E] hidden lg:table-cell">
-                {{ product.retailPrice != null ? `$${product.retailPrice.toLocaleString('es-AR', { maximumFractionDigits: 0 })}` : '—' }}
-              </td>
-              <td class="px-4 py-3 text-right text-[var(--a-muted)] hidden lg:table-cell">
-                {{ product.wholesalePrice != null ? `$${product.wholesalePrice.toLocaleString('es-AR', { maximumFractionDigits: 0 })}` : '—' }}
-              </td>
-              <td class="px-4 py-3 text-center text-[var(--a-muted)] hidden md:table-cell">
-                {{ totalStock(product) }}
-                <span v-if="product.reserved" class="block text-[10px] font-semibold text-amber-700" title="Unidades de pedidos por curva o cantidad ya pagados, sin despachar: la tienda no las vende">{{ product.reserved }} reservadas</span>
-              </td>
-              <td class="px-4 py-3 text-center align-top md:align-middle">
-                <button
-                  type="button"
-                  role="switch"
-                  :aria-checked="product.active !== false"
-                  :aria-label="`Visible en la tienda: ${product.name}`"
-                  @click="handleToggleActive(product)"
-                  :class="[
-                    'relative inline-flex h-[26px] w-11 shrink-0 rounded-full transition-colors',
-                    product.active === false ? 'bg-[#C9CDD2]' : 'bg-[var(--a-primary)]',
-                  ]"
-                >
-                  <span
-                    :class="[
-                      'absolute top-[3px] h-5 w-5 rounded-full bg-white shadow transition-all',
-                      product.active === false ? 'left-[3px]' : 'left-[21px]',
-                    ]"
-                  />
-                </button>
-              </td>
-              <td class="px-4 py-3 hidden md:table-cell">
-                <ProductRowActions
-                  :variants-count="product.variants.length"
-                  :variants-open="expandedProducts.has(product.id)"
-                  :discounts-open="expandedDiscounts.has(product.id)"
-                  :can-delete="!hasActiveStock(product)"
-                  @edit="openEditProduct(product)"
-                  @variants="toggleVariants(product)"
-                  @discounts="toggleDiscounts(product.id)"
-                  @delete="handleDeleteProduct(product)"
-                />
-              </td>
-            </tr>
-
-            <!-- Subtabla de variantes (expandida) — matriz Talle × Color -->
-            <tr v-if="expandedProducts.has(product.id)" class="bg-blue-50/40">
-              <td colspan="8" class="px-3 md:px-6 py-3">
-                <!-- En el celular el ancho se limita a la pantalla y la matriz scrollea adentro -->
-                <div class="rounded-xl border border-blue-100 overflow-hidden max-w-[calc(100vw-4rem)] md:max-w-none">
-                  <div v-if="product.variants.length === 0" class="px-4 py-4 text-center text-[var(--a-muted)] italic text-xs bg-white">
-                    Sin variantes
-                  </div>
-                  <div v-else class="overflow-x-auto">
-                    <table class="w-full text-xs border-collapse">
-                      <thead class="bg-blue-100/60 border-b border-blue-100">
-                        <tr>
-                          <th class="px-3 py-2 text-left font-semibold text-[#45494E] whitespace-nowrap">Talle \ Color</th>
-                          <th
-                            v-for="color in getProductColors(product)"
-                            :key="color.id"
-                            class="px-3 py-2 text-center font-semibold text-[#45494E] whitespace-nowrap"
-                          >
-                            <div class="flex items-center justify-center gap-1">
-                              <span
-                                v-if="color.hexCode"
-                                class="w-2.5 h-2.5 rounded-full border border-[#C9CDD2] flex-none"
-                                :style="{ backgroundColor: color.hexCode }"
-                              />
-                              {{ color.name }}
-                            </div>
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody class="divide-y divide-blue-100">
-                        <tr
-                          v-for="size in getProductSizes(product)"
-                          :key="size.id"
-                          class="border-t border-blue-100 bg-white hover:bg-blue-50/30 transition-colors"
-                        >
-                          <td class="px-3 py-2 font-semibold text-[#45494E] whitespace-nowrap">{{ size.label }}</td>
-                          <td
-                            v-for="color in getProductColors(product)"
-                            :key="color.id"
-                            class="px-2 py-1.5 text-center"
-                          >
-                            <div v-if="getVariantByCell(product, size.id, color.id)" class="flex items-center justify-center gap-1">
-                              <input
-                                type="number"
-                                min="0"
-                                step="1"
-                                :value="editMap.get(getVariantByCell(product, size.id, color.id)!.id)?.stock ?? getVariantByCell(product, size.id, color.id)!.stock.quantity"
-                                @input="editMap.get(getVariantByCell(product, size.id, color.id)!.id)!.stock = Number(($event.target as HTMLInputElement).value)"
-                                class="w-14 px-1 py-0.5 border border-[#C9CDD2] rounded text-center focus:outline-none focus:ring-1 focus:ring-[#1565C0]"
-                              />
-                              <button
-                                @click="handleDeleteVariant(product.id, getVariantByCell(product, size.id, color.id)!.id, `${size.label} / ${color.name}`)"
-                                class="text-gray-300 hover:text-red-500 transition-colors leading-none"
-                                title="Eliminar variante"
-                              >×</button>
-                            </div>
-                            <button
-                              v-else
-                              @click="handleAddVariantFromCell(product.id, size.id, color.id)"
-                              :disabled="creatingCell.has(`${product.id}-${size.id}-${color.id}`)"
-                              class="w-14 h-6 rounded border border-dashed border-[#C9CDD2] text-[var(--a-muted)] text-xs hover:border-[var(--a-primary)] hover:text-[var(--a-primary)] transition-colors disabled:opacity-40 disabled:pointer-events-none"
-                              title="Agregar esta combinación con stock 0"
-                            >
-                              {{ creatingCell.has(`${product.id}-${size.id}-${color.id}`) ? '…' : '+' }}
-                            </button>
-                          </td>
-                        </tr>
-                      </tbody>
-                      <tfoot>
-                        <tr class="border-t-2 border-blue-100 bg-blue-50/60">
-                          <td class="px-3 py-2 text-[var(--a-muted)] font-semibold" :colspan="getProductColors(product).length + 1">
-                            Total de stock: <span class="text-[var(--a-ink)] font-bold">{{ totalStock(product) }}</span>
-                            <template v-if="product.reserved">
-                              · <span class="text-amber-700 font-bold">{{ product.reserved }} reservadas</span> por pedidos pagados sin despachar (la tienda no las vende hasta que despaches)
-                            </template>
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-                  <div class="px-3 py-2 bg-white border-t border-blue-100 flex items-center gap-3">
-                    <button
-                      @click="openAddVariant(product.id)"
-                      class="px-3 py-1 rounded-lg border border-[var(--a-primary)] text-xs font-medium text-[var(--a-primary)] hover:bg-[var(--a-primary)] hover:text-white transition-colors"
-                    >
-                      + Agregar variante
-                    </button>
-                    <button
-                      @click="product.variants.forEach(v => handleSaveVariantStock(product.id, v.id))"
-                      class="px-3 py-1 rounded-lg bg-green-600 text-white text-xs font-medium hover:bg-green-700 transition-colors"
-                    >
-                      Guardar cambios
-                    </button>
-                  </div>
-                </div>
-              </td>
-            </tr>
-            <!-- Panel de descuentos (expandido) -->
-            <tr v-if="expandedDiscounts.has(product.id)" class="bg-green-50/40">
-              <td colspan="8" class="px-3 md:px-6 py-3">
-                <div class="rounded-xl border border-green-100 bg-white overflow-hidden max-w-[calc(100vw-4rem)] md:max-w-none">
-                  <div class="px-4 py-2 bg-green-50 border-b border-green-100">
-                    <p class="text-xs font-semibold text-green-800">Descuentos por volumen — {{ product.name }}</p>
-                  </div>
-                  <div class="px-4">
-                    <AdminProductDiscounts
-                      :product-id="product.id"
-                      @toast="showToast"
-                    />
-                  </div>
-                </div>
-              </td>
-            </tr>
-          </template>
+          <tr
+            v-for="product in pagedProducts"
+            :key="product.id"
+            class="h-14 border-b border-[var(--a-border)] last:border-0 hover:bg-[var(--a-bg)]"
+            :class="{ 'opacity-60': product.active === false }"
+          >
+            <td class="py-2 pl-4 pr-0">
+              <img
+                v-if="product.imageUrl"
+                :src="product.imageUrl"
+                :alt="product.name"
+                class="h-10 w-10 min-w-10 max-w-none rounded-lg border border-[var(--a-border)] object-cover object-top"
+              />
+              <div v-else class="flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--a-border)] bg-gray-100 text-[var(--a-muted)]">
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3 5h18v14H3zM3 15l5-5 4 4 3-3 6 6" /></svg>
+              </div>
+            </td>
+            <td class="max-w-[280px] px-2">
+              <span class="block truncate font-medium" :title="product.name">{{ product.name }}</span>
+              <!-- Celular: datos debajo del nombre -->
+              <span class="block truncate text-xs text-[var(--a-muted)] md:hidden">
+                {{ totalStock(product) }} en stock<template v-if="product.retailPrice != null"> · ${{ product.retailPrice.toLocaleString('es-AR', { maximumFractionDigits: 0 }) }}</template>
+              </span>
+            </td>
+            <td class="hidden whitespace-nowrap px-4 text-[var(--a-muted)] md:table-cell">{{ product.categoryName ?? '—' }}</td>
+            <td class="hidden whitespace-nowrap px-4 text-right lg:table-cell">
+              {{ product.retailPrice != null ? `$${product.retailPrice.toLocaleString('es-AR', { maximumFractionDigits: 0 })}` : '—' }}
+            </td>
+            <td class="hidden whitespace-nowrap px-4 text-right text-[var(--a-muted)] lg:table-cell">
+              {{ product.wholesalePrice != null ? `$${product.wholesalePrice.toLocaleString('es-AR', { maximumFractionDigits: 0 })}` : '—' }}
+            </td>
+            <td class="hidden whitespace-nowrap px-4 text-right md:table-cell">
+              {{ totalStock(product) }}
+              <span
+                v-if="product.reserved"
+                class="ml-1 text-xs font-semibold text-amber-700"
+                title="Unidades de pedidos por curva o cantidad ya pagados, sin despachar: la tienda no las vende"
+              >· {{ product.reserved }} res.</span>
+            </td>
+            <td class="px-4 text-center">
+              <button
+                type="button"
+                role="switch"
+                :aria-checked="product.active !== false"
+                :aria-label="`Visible en la tienda: ${product.name}`"
+                :class="[
+                  'relative inline-flex h-6 w-10 shrink-0 rounded-full align-middle transition-colors',
+                  product.active === false ? 'bg-[#C9CDD2]' : 'bg-[var(--a-primary)]',
+                ]"
+                @click="handleToggleActive(product)"
+              >
+                <span :class="['absolute top-[3px] h-[18px] w-[18px] rounded-full bg-white shadow transition-all', product.active === false ? 'left-[3px]' : 'left-[19px]']" />
+              </button>
+            </td>
+            <td class="px-4">
+              <ProductRowActions
+                :variants-count="product.variants.length"
+                :can-delete="!hasActiveStock(product)"
+                @edit="openEditProduct(product)"
+                @variants="openVariants(product)"
+                @discounts="openDiscounts(product)"
+                @delete="handleDeleteProduct(product)"
+              />
+            </td>
+          </tr>
         </tbody>
       </table>
       </div>
@@ -596,6 +458,93 @@ async function handleVariantSaved(data: { sizeId: number; colorId: number; initi
       </p>
       <TablePagination v-else v-model:page="page" :total="filteredProducts.length" noun="productos" />
     </div>
+
+    <!-- Stock por talle y color, o descuentos, al costado -->
+    <SidePanel
+      v-model:open="panelOpen"
+      size="lg"
+      :title="panelProduct ? (panelKind === 'variants' ? 'Stock y variantes' : 'Descuentos por mayor') : ''"
+      :subtitle="panelProduct?.name ?? ''"
+    >
+      <template v-if="panelProduct && panelKind === 'variants'">
+        <p v-if="actionError" class="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{{ actionError }}</p>
+        <div v-if="panelProduct.variants.length === 0" class="rounded-lg border border-dashed border-[var(--a-border)] px-4 py-8 text-center text-sm text-[var(--a-muted)]">
+          Todavía no tiene talles ni colores. Agregá la primera variante.
+        </div>
+        <div v-else class="overflow-x-auto rounded-xl border border-[var(--a-border)]">
+          <table class="w-full border-collapse text-xs">
+            <thead>
+              <tr class="border-b border-[var(--a-border)]">
+                <th class="whitespace-nowrap px-3 py-2 text-left">Talle \ Color</th>
+                <th v-for="color in getProductColors(panelProduct)" :key="color.id" class="whitespace-nowrap px-3 py-2 text-center">
+                  <span class="inline-flex items-center gap-1">
+                    <span v-if="color.hexCode" class="h-2.5 w-2.5 flex-none rounded-full border border-[#C9CDD2]" :style="{ backgroundColor: color.hexCode }" />
+                    {{ color.name }}
+                  </span>
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-[var(--a-border)]">
+              <tr v-for="size in getProductSizes(panelProduct)" :key="size.id">
+                <td class="whitespace-nowrap px-3 py-2 font-semibold">{{ size.label }}</td>
+                <td v-for="color in getProductColors(panelProduct)" :key="color.id" class="px-2 py-1.5 text-center">
+                  <div v-if="getVariantByCell(panelProduct, size.id, color.id)" class="flex items-center justify-center gap-1">
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      :aria-label="`Stock talle ${size.label} ${color.name}`"
+                      :value="editMap.get(getVariantByCell(panelProduct, size.id, color.id)!.id)?.stock ?? getVariantByCell(panelProduct, size.id, color.id)!.stock.quantity"
+                      class="w-14 rounded border border-[#C9CDD2] px-1 py-0.5 text-center"
+                      @input="editMap.get(getVariantByCell(panelProduct, size.id, color.id)!.id)!.stock = Number(($event.target as HTMLInputElement).value)"
+                    />
+                    <button
+                      type="button"
+                      class="leading-none text-gray-300 transition-colors hover:text-red-500"
+                      :aria-label="`Eliminar variante ${size.label} / ${color.name}`"
+                      @click="handleDeleteVariant(panelProduct.id, getVariantByCell(panelProduct, size.id, color.id)!.id, `${size.label} / ${color.name}`)"
+                    >×</button>
+                  </div>
+                  <button
+                    v-else
+                    type="button"
+                    :disabled="creatingCell.has(`${panelProduct.id}-${size.id}-${color.id}`)"
+                    class="h-6 w-14 rounded border border-dashed border-[#C9CDD2] text-xs text-[var(--a-muted)] transition-colors hover:border-[var(--a-primary)] hover:text-[var(--a-primary)] disabled:pointer-events-none disabled:opacity-40"
+                    title="Agregar esta combinación con stock 0"
+                    @click="handleAddVariantFromCell(panelProduct.id, size.id, color.id)"
+                  >{{ creatingCell.has(`${panelProduct.id}-${size.id}-${color.id}`) ? '…' : '+' }}</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="mt-3 text-sm text-[var(--a-muted)]">
+          Total de stock: <span class="font-bold text-[var(--a-ink)]">{{ totalStock(panelProduct) }}</span>
+          <template v-if="panelProduct.reserved">
+            · <span class="font-bold text-amber-700">{{ panelProduct.reserved }} reservadas</span> por pedidos pagados sin despachar (la tienda no las vende hasta que despaches)
+          </template>
+        </p>
+      </template>
+
+      <template v-else-if="panelProduct && panelKind === 'discounts'">
+        <AdminProductDiscounts :product-id="panelProduct.id" @toast="showToast" />
+      </template>
+
+      <template v-if="panelProduct && panelKind === 'variants'" #footer>
+        <div class="flex items-center gap-2">
+          <button
+            type="button"
+            class="h-10 rounded-lg border border-[#C9CDD2] px-4 text-sm font-semibold"
+            @click="openAddVariant(panelProduct.id)"
+          >+ Agregar variante</button>
+          <button
+            type="button"
+            class="ml-auto h-10 rounded-lg bg-[var(--a-primary)] px-5 text-sm font-semibold text-white"
+            @click="saveAllStock(panelProduct)"
+          >Guardar stock</button>
+        </div>
+      </template>
+    </SidePanel>
 
     <ProductFormDialog
       :open="showProductDialog"
