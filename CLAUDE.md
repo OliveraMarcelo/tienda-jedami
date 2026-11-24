@@ -34,3 +34,5 @@ Sin tocar BMAD (`_bmad/` queda como está):
 ❌ rota = el endpoint no existe (falla el check), ⚠ sin uso = endpoint que nadie llama.
 `graphify-out/mapa-api.html` muestra el recorrido de cada endpoint: pantalla → store → función de la API →
 endpoint → controller → servicio → repositorio → tabla.
+`graphify-out/graph.html` es el grafo completo (incluye las conexiones `http_calls`). `make mapa-ver` abre los dos.
+Si `make mapa-check` avisa "⏳ el grafo está desactualizado", corré `make mapa` antes de usar el grafo.

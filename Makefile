@@ -6,7 +6,7 @@
         clean clean-bff clean-web clean-mobile \
         mobile-get mobile-run-android mobile-run-ios mobile-run-web \
         infra-plan infra-up infra-down infra-ssh-dev infra-ssh-stg \
-        mapa mapa-check
+        mapa mapa-check mapa-ver
 
 # ─── Colores ────────────────────────────────────────────────────────────────
 CYAN  := \033[0;36m
@@ -65,6 +65,7 @@ help:
 	@echo "  Mapa del código (graphify):"
 	@echo "    make mapa              Actualiza el grafo y el mapa front ↔ back (graphify-out/mapa-api.html)"
 	@echo "    make mapa-check        Valida que cada llamada del front tenga su endpoint (falla si hay rotas)"
+	@echo "    make mapa-ver          Abre el mapa front ↔ back y el grafo completo en el navegador"
 	@echo ""
 
 # ─── Instalación ────────────────────────────────────────────────────────────
@@ -183,8 +184,14 @@ infra-ssh-stg:
 mapa:
 	$(call log,Grafo del código con graphify + conexiones front ↔ back...)
 	graphify update .
-	node scripts/mapa-api.mjs
-	@echo "  Abrí graphify-out/mapa-api.html"
+	-node scripts/mapa-api.mjs
+	graphify export html --graph graphify-out/graph.json --labels graphify-out/.graphify_labels.pending.json
+	@echo "  Mirá todo con: make mapa-ver"
+
+mapa-ver:
+	@test -f graphify-out/mapa-api.html || $(MAKE) mapa
+	xdg-open graphify-out/mapa-api.html
+	xdg-open graphify-out/graph.html
 
 mapa-check:
 	node scripts/mapa-api.mjs --check

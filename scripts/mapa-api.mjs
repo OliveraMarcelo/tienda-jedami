@@ -18,6 +18,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execSync } from 'node:child_process';
 
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const BFF = join(RAIZ, 'jedami-bff/src');
@@ -289,6 +290,18 @@ for (const ll of llamadas) {
   else ll.estado = 'rota';
 }
 for (const r of rutas) r.estado = r.usos?.length ? 'ok' : USO_EXTERNO.some((re) => re.test(r.ruta)) ? 'externo' : 'sin-uso';
+// ¿El grafo de graphify está al día? Archivos de código modificados después de armarlo.
+const FUENTES = ['jedami-bff/src', 'jedami-web/src', 'jedami-mobile/lib'];
+function masNuevosQueElGrafo() {
+  const g = join(OUT, 'graph.json');
+  if (!existsSync(g)) return null;
+  const t = statSync(g).mtimeMs, nuevos = [];
+  const andar = (d) => { for (const n of readdirSync(d)) { const f = join(d, n), st = statSync(f); if (st.isDirectory()) { if (n !== 'node_modules') andar(f); } else if (/\.(ts|vue|dart|sql)$/.test(n) && st.mtimeMs > t) nuevos.push(rel(f)); } };
+  for (const d of FUENTES) if (existsSync(join(RAIZ, d))) andar(join(RAIZ, d));
+  return nuevos;
+}
+const git = (c) => { try { return execSync(`git ${c}`, { cwd: RAIZ, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { return ''; } };
+const viejos = masNuevosQueElGrafo();
 const grafo = conGrafo(rutas, llamadas);
 
 const rotas = llamadas.filter((l) => l.estado === 'rota');
@@ -298,6 +311,8 @@ const resumen = {
   endpoints: rutas.length, conectados: rutas.filter((r) => r.estado === 'ok').length, externos: rutas.filter((r) => r.estado === 'externo').length,
   sinUso: sinUso.length, llamadas: llamadas.length, web: llamadas.filter((l) => l.cliente === 'web').length, app: llamadas.filter((l) => l.cliente === 'app').length,
   rotas: rotas.length, dinamicas: dinamicas.length, conexionesGrafo: grafo?.agregadas ?? null, fecha: new Date().toISOString(),
+  commit: git('rev-parse --short HEAD'), rama: git('branch --show-current'),
+  sinCommitear: git(`status --porcelain -- ${FUENTES.join(' ')}`).split('\n').filter(Boolean).length,
 };
 
 const v = (s) => (process.stdout.isTTY ? s : s.replace(/\x1b\[\d+m/g, ''));
@@ -307,6 +322,8 @@ for (const l of rotas) console.log(v(`  \x1b[31m❌ rota\x1b[0m     ${l.metodo} 
 for (const l of dinamicas) console.log(`  ?  dinámica ${l.metodo} ${l.original}  ← ${l.archivo}:${l.linea}  (la URL se arma con variables)`);
 for (const r of sinUso) console.log(v(`  \x1b[33m⚠  sin uso\x1b[0m  ${r.metodo} ${r.ruta}  → ${r.handler} (${r.archivo}:${r.linea})`));
 if (grafo) console.log(`  🔗 ${grafo.agregadas} conexiones HTTP agregadas al grafo de graphify (relación http_calls)`);
+if (viejos?.length) console.log(v(`  \x1b[33m⏳ el grafo está desactualizado\x1b[0m: ${viejos.length} archivo(s) cambiaron después de armarlo (${viejos.slice(0, 3).join(', ')}${viejos.length > 3 ? '…' : ''}). Corré \`make mapa\`.`));
+else if (grafo) console.log('  🕒 el grafo está al día con el código');
 else console.log('  (sin graphify-out/graph.json: corré `graphify update .` para ver la cadena completa)');
 
 if (!SOLO_CHECK) {
