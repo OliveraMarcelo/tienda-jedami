@@ -5,7 +5,8 @@
         lint lint-bff lint-web \
         clean clean-bff clean-web clean-mobile \
         mobile-get mobile-run-android mobile-run-ios mobile-run-web \
-        infra-plan infra-up infra-down infra-ssh-dev infra-ssh-stg
+        infra-plan infra-up infra-down infra-ssh-dev infra-ssh-stg \
+        mapa mapa-check
 
 # ─── Colores ────────────────────────────────────────────────────────────────
 CYAN  := \033[0;36m
@@ -60,6 +61,10 @@ help:
 	@echo "    make infra-down        Destruye las VMs (datos incluidos)"
 	@echo "    make infra-ssh-dev     Abre SSH a jedami.dev.local"
 	@echo "    make infra-ssh-stg     Abre SSH a jedami.stg.local"
+	@echo ""
+	@echo "  Mapa del código (graphify):"
+	@echo "    make mapa              Actualiza el grafo y el mapa front ↔ back (graphify-out/mapa-api.html)"
+	@echo "    make mapa-check        Valida que cada llamada del front tenga su endpoint (falla si hay rotas)"
 	@echo ""
 
 # ─── Instalación ────────────────────────────────────────────────────────────
@@ -172,3 +177,14 @@ infra-ssh-dev:
 
 infra-ssh-stg:
 	ssh jedami@jedami.stg.local
+
+# ─── Mapa del código (graphify) ─────────────────────────────────────────────
+# Necesita graphify (uv tool install "graphifyy[sql]"). El grafo queda en graphify-out/ (no se commitea).
+mapa:
+	$(call log,Grafo del código con graphify + conexiones front ↔ back...)
+	graphify update .
+	node scripts/mapa-api.mjs
+	@echo "  Abrí graphify-out/mapa-api.html"
+
+mapa-check:
+	node scripts/mapa-api.mjs --check

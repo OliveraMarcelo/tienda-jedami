@@ -49,3 +49,6 @@ jedami-mobile/devtools_options.yaml
 
 # Capturas de pantalla generadas por Playwright MCP
 *.png
+
+# Grafo de graphify y mapa de la API (se generan: graphify update . && node scripts/mapa-api.mjs)
+graphify-out/

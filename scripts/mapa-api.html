@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mapa de la API</title>
+<!-- Plantilla de scripts/mapa-api.mjs: el script reemplaza los datos y la escribe en graphify-out/mapa-api.html -->
+<style>
+:root {
+  --bg: #f6f7f9; --panel: #fff; --line: #e3e6eb; --text: #1b1f24; --muted: #667085;
+  --accent: #3b6fd8; --ok: #1f9d55; --warn: #c27c0e; --bad: #d23c3c; --ext: #7a5cc7;
+  --get: #1f7a4d; --post: #3b6fd8; --put: #a35d00; --patch: #8a4fc7; --delete: #c43d3d;
+  --edge: #9aa6b8; --shadow: 0 1px 2px rgb(16 24 40 / .06), 0 1px 3px rgb(16 24 40 / .08);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1216; --panel: #171b21; --line: #2a3038; --text: #e6e9ee; --muted: #98a2b3;
+    --accent: #7aa2f7; --ok: #4ade80; --warn: #f5b84a; --bad: #f87171; --ext: #b49bf0;
+    --get: #4ade80; --post: #7aa2f7; --put: #f5b84a; --patch: #c4a5f5; --delete: #f87171; --edge: #4b5563; --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1216; --panel: #171b21; --line: #2a3038; --text: #e6e9ee; --muted: #98a2b3;
+  --accent: #7aa2f7; --ok: #4ade80; --warn: #f5b84a; --bad: #f87171; --ext: #b49bf0;
+  --get: #4ade80; --post: #7aa2f7; --put: #f5b84a; --patch: #c4a5f5; --delete: #f87171; --edge: #4b5563; --shadow: none;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--text); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+code, .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12.5px; }
+header { padding: 16px 20px 10px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; }
+h1 { font-size: 20px; margin: 0; }
+.sub { color: var(--muted); font-size: 13px; }
+.stats { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 20px 14px; }
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; min-width: 112px; box-shadow: var(--shadow); cursor: pointer; text-align: left; color: inherit; font: inherit; }
+.stat b { display: block; font-size: 20px; font-variant-numeric: tabular-nums; }
+.stat span { color: var(--muted); font-size: 12px; }
+.stat.on { outline: 2px solid var(--accent); }
+.stat.ok b { color: var(--ok); } .stat.warn b { color: var(--warn); } .stat.bad b { color: var(--bad); }
+main { display: grid; grid-template-columns: minmax(280px, 380px) 1fr; gap: 14px; padding: 0 20px 20px; height: calc(100% - 150px); min-height: 520px; }
+.list, .detail { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); min-height: 0; }
+.list { display: flex; flex-direction: column; }
+.search { padding: 10px; border-bottom: 1px solid var(--line); }
+.search input { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: inherit; }
+.rows { overflow-y: auto; flex: 1; }
+.area { position: sticky; top: 0; background: var(--panel); padding: 8px 12px 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); border-bottom: 1px solid var(--line); z-index: 1; }
+.row { display: grid; grid-template-columns: 54px 1fr auto; gap: 8px; align-items: center; padding: 7px 12px; border: 0; border-bottom: 1px solid var(--line); background: none; width: 100%; text-align: left; color: inherit; font: inherit; cursor: pointer; }
+.row:hover { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.row.sel { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.row .p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m { font: 700 10.5px ui-monospace, monospace; padding: 2px 0; border-radius: 4px; text-align: center; color: #fff; }
+.m.GET { background: var(--get); } .m.POST { background: var(--post); } .m.PUT { background: var(--put); } .m.PATCH { background: var(--patch); } .m.DELETE { background: var(--delete); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .m { color: #0f1216; } }
+:root[data-theme="dark"] .m { color: #0f1216; }
+.st { font-size: 11px; display: flex; gap: 4px; align-items: center; }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.ok { background: var(--ok); } .dot.sin-uso { background: var(--warn); } .dot.externo { background: var(--ext); } .dot.rota { background: var(--bad); }
+.tag { font-size: 10.5px; padding: 1px 6px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.detail { overflow: auto; padding: 16px 18px; position: relative; }
+.detail h2 { margin: 0 0 4px; font-size: 17px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.detail .meta { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+/* El recorrido de arriba hacia abajo: una fila por capa (pantalla → … → tabla) */
+.flow { position: relative; display: flex; flex-direction: column; gap: 30px; padding: 4px 2px 10px; }
+.col { display: grid; grid-template-columns: 118px 1fr; gap: 12px; align-items: start; position: relative; z-index: 1; }
+.col h3 { margin: 9px 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+.cards { display: flex; flex-wrap: wrap; gap: 10px 14px; }
+.n { max-width: 280px; min-width: 150px; background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 7px 9px; box-shadow: var(--shadow); font-size: 12.5px; overflow-wrap: anywhere; }
+.n b { display: block; font-weight: 600; }
+.n small { color: var(--muted); display: block; font-size: 11px; }
+.n.ep { border: 2px solid var(--accent); }
+.n.tb { border-style: dashed; }
+.n.empty { color: var(--muted); border-style: dashed; box-shadow: none; }
+svg.edges { position: absolute; inset: 0; pointer-events: none; overflow: visible; z-index: 0; }
+svg.edges path { fill: none; stroke: var(--edge); stroke-width: 1.6; }
+svg.edges path.inner { opacity: .4; stroke-width: 1.2; }
+svg.edges path.http { stroke: var(--accent); stroke-width: 2.4; stroke-dasharray: 6 4; }
+.callout { border-radius: 10px; padding: 10px 12px; margin: 0 0 14px; font-size: 13px; border: 1px solid; }
+.callout.bad { border-color: color-mix(in srgb, var(--bad) 45%, transparent); background: color-mix(in srgb, var(--bad) 8%, transparent); }
+.callout.warn { border-color: color-mix(in srgb, var(--warn) 45%, transparent); background: color-mix(in srgb, var(--warn) 8%, transparent); }
+.callout.ext { border-color: color-mix(in srgb, var(--ext) 45%, transparent); background: color-mix(in srgb, var(--ext) 8%, transparent); }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--muted); margin-top: 8px; }
+.legend i { display: inline-block; width: 22px; height: 0; border-top: 2px solid var(--edge); vertical-align: middle; margin-right: 4px; }
+.legend i.http { border-top: 2.4px dashed var(--accent); }
+.broken li { margin: 4px 0; }
+.theme { margin-left: auto; background: var(--panel); border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 4px 10px; cursor: pointer; font: inherit; }
+@media (max-width: 820px) {
+  main { grid-template-columns: 1fr; height: auto; padding: 0 16px 16px; }
+  header, .stats { padding-left: 16px; padding-right: 16px; }
+  .list { max-height: 44vh; }
+  .detail { min-height: 60vh; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>Mapa de la API</h1>
+  <span class="sub" id="sub"></span>
+  <button class="theme" id="theme" type="button">Tema</button>
+</header>
+<div class="stats" id="stats"></div>
+<main>
+  <section class="list" aria-label="Endpoints">
+    <div class="search"><input id="q" type="search" placeholder="Buscar endpoint, archivo, función o tabla…" autocomplete="off"></div>
+    <div class="rows" id="rows"></div>
+  </section>
+  <section class="detail" id="detail" aria-live="polite"></section>
+</main>
+<script>
+const DATOS = /*DATOS*/null;
+const { resumen, rutas, llamadas } = DATOS;
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const corto = (f) => String(f || '').replace(/^jedami-(web|bff|mobile)\/(src|lib)\//, '');
+const area = (r) => r.ruta.replace('/api/v1/', '').split('/')[0] || 'raíz';
+const ESTADO = { ok: 'conectado', 'sin-uso': 'sin uso', externo: 'uso externo', rota: 'rota' };
+let filtro = 'todos', sel = null;
+
+try { const t = localStorage.getItem('mapa-api-tema'); if (t) document.documentElement.dataset.theme = t; } catch {}
+$('#theme').onclick = () => {
+  const oscuro = getComputedStyle(document.body).backgroundColor !== 'rgb(246, 247, 249)';
+  document.documentElement.dataset.theme = oscuro ? 'light' : 'dark';
+  try { localStorage.setItem('mapa-api-tema', document.documentElement.dataset.theme); } catch {}
+  dibujarLineas();
+};
+
+$('#sub').textContent = `${resumen.endpoints} endpoints · ${resumen.llamadas} llamadas (web ${resumen.web}, app ${resumen.app}) · ${new Date(resumen.fecha).toLocaleString('es-AR')}`;
+const STATS = [
+  ['todos', resumen.endpoints, 'endpoints', ''],
+  ['ok', resumen.conectados, 'conectados al front', 'ok'],
+  ['sin-uso', resumen.sinUso, 'sin uso', resumen.sinUso ? 'warn' : ''],
+  ['rota', resumen.rotas, 'llamadas rotas', resumen.rotas ? 'bad' : 'ok'],
+  ['externo', resumen.externos, 'uso externo', ''],
+  ['dinamica', resumen.dinamicas, 'URLs dinámicas', ''],
+];
+function pintarStats() {
+  $('#stats').innerHTML = STATS.map(([k, n, t, c]) => `<button class="stat ${c} ${filtro === k ? 'on' : ''}" data-f="${k}"><b>${n}</b><span>${t}</span></button>`).join('');
+  document.querySelectorAll('.stat').forEach((b) => (b.onclick = () => { filtro = filtro === b.dataset.f ? 'todos' : b.dataset.f; pintarStats(); pintarLista(); }));
+}
+
+// Lista: endpoints por área; las llamadas rotas y dinámicas aparecen como filas propias (no tienen endpoint)
+function items() {
+  const q = $('#q').value.trim().toLowerCase();
+  const txt = (r) => [r.metodo, r.ruta, r.handler, r.archivo, ...(r.abajo?.tablas || []), ...(r.usos || []).map((i) => `${llamadas[i].archivo} ${llamadas[i].funcion}`)].join(' ').toLowerCase();
+  let rs = rutas.map((r, i) => ({ ...r, i, tipo: 'ruta' }));
+  let ls = llamadas.map((l, i) => ({ ...l, i, tipo: 'llamada' })).filter((l) => l.estado === 'rota' || l.estado === 'dinamica');
+  if (filtro === 'rota' || filtro === 'dinamica') { rs = []; ls = ls.filter((l) => l.estado === filtro); }
+  else if (filtro !== 'todos') { rs = rs.filter((r) => r.estado === filtro); ls = []; }
+  if (q) { rs = rs.filter((r) => txt(r).includes(q)); ls = ls.filter((l) => `${l.metodo} ${l.ruta || l.original} ${l.archivo} ${l.funcion}`.toLowerCase().includes(q)); }
+  return { rs, ls };
+}
+function pintarLista() {
+  const { rs, ls } = items();
+  let h = '';
+  if (ls.length) {
+    h += `<div class="area">Llamadas del front sin endpoint</div>`;
+    h += ls.map((l) => `<button class="row ${sel === 'l' + l.i ? 'sel' : ''}" data-k="l${l.i}"><span class="m ${l.metodo}">${l.metodo}</span>
+      <span class="p mono" title="${esc(l.ruta || l.original)}">${esc((l.ruta || l.original).replace('/api/v1', ''))}</span>
+      <span class="st"><span class="dot ${l.estado === 'rota' ? 'rota' : 'externo'}"></span>${l.estado === 'rota' ? 'rota' : 'dinámica'}</span></button>`).join('');
+  }
+  const grupos = {};
+  for (const r of rs) (grupos[area(r)] ||= []).push(r);
+  for (const [a, lista] of Object.entries(grupos).sort()) {
+    h += `<div class="area">${esc(a)} · ${lista.length}</div>`;
+    h += lista.map((r) => {
+      const cli = [...new Set((r.usos || []).map((i) => llamadas[i].cliente))];
+      return `<button class="row ${sel === 'r' + r.i ? 'sel' : ''}" data-k="r${r.i}"><span class="m ${r.metodo}">${r.metodo}</span>
+        <span class="p mono" title="${esc(r.ruta)}">${esc(r.ruta.replace('/api/v1', ''))}</span>
+        <span class="st">${cli.map((c) => `<span class="tag">${c}</span>`).join('')}<span class="dot ${r.estado}" title="${ESTADO[r.estado]}"></span></span></button>`;
+    }).join('');
+  }
+  $('#rows').innerHTML = h || '<p style="padding:14px;color:var(--muted)">Nada coincide.</p>';
+  document.querySelectorAll('.row').forEach((b) => (b.onclick = () => elegir(b.dataset.k)));
+}
+
+function elegir(k) {
+  sel = k;
+  document.querySelectorAll('.row').forEach((b) => b.classList.toggle('sel', b.dataset.k === k));
+  try { history.replaceState(null, '', '#' + k); } catch {}
+  k[0] === 'r' ? verRuta(rutas[+k.slice(1)]) : verLlamada(llamadas[+k.slice(1)]);
+}
+
+// Una tarjeta del diagrama: id para las líneas
+const nodo = (id, titulo, sub, cls = '') => `<div class="n ${cls}" data-id="${esc(id)}"><b>${esc(titulo)}</b>${sub ? `<small class="mono">${esc(sub)}</small>` : ''}</div>`;
+const col = (titulo, html) => `<div class="col"><h3>${titulo}</h3><div class="cards">${html || '<div class="n empty">—</div>'}</div></div>`;
+let aristas = [];
+
+function verRuta(r) {
+  aristas = [];
+  const usos = (r.usos || []).map((i) => llamadas[i]);
+  const pantallas = new Map(), stores = new Map(), funcs = new Map();
+  for (const l of usos) {
+    const fid = `f:${l.archivo}:${l.funcion}`;
+    funcs.set(fid, nodo(fid, `${l.funcion || '¿?'}()`, `${l.cliente} · ${corto(l.archivo)}:${l.linea}`));
+    aristas.push([fid, 'ep', 'http']);
+    for (const u of l.arriba || []) {
+      if (u.tipo === 'pantalla') {
+        const pid = `p:${u.archivo}`; pantallas.set(pid, nodo(pid, corto(u.archivo).split('/').pop(), corto(u.archivo)));
+        aristas.push([pid, fid]);
+      } else {
+        const sid = `s:${u.archivo}:${u.accion}`;
+        stores.set(sid, nodo(sid, u.accion ? `${u.accion}()` : corto(u.archivo).split('/').pop(), corto(u.archivo)));
+        aristas.push([sid, fid]);
+        for (const p of u.pantallas || []) {
+          const pid = `p:${p}`; pantallas.set(pid, nodo(pid, p.split('/').pop(), corto(p)));
+          aristas.push([pid, sid]);
+        }
+      }
+    }
+  }
+  const pasos = r.abajo?.pasos || [];
+  const hId = 'h';
+  const porCapa = { servicio: [], otro: [], repositorio: [] };
+  for (const p of pasos) {
+    porCapa[p.capa].push(nodo(p.id, p.nombre, `${corto(p.archivo)}:${String(p.linea).replace('L', '')}`));
+    aristas.push([pasos.some((x) => x.id === p.desde) ? p.desde : hId, p.id]);
+  }
+  // las tablas salen de los repositorios (o del controller si no hay)
+  const origenTablas = pasos.filter((p) => p.capa === 'repositorio').map((p) => p.id);
+  const tablas = (r.abajo?.tablas || []).map((t) => { (origenTablas.length ? origenTablas : [hId]).forEach((o) => aristas.push([o, 't:' + t])); return nodo('t:' + t, t, 'tabla', 'tb'); });
+  aristas.push(['ep', hId]);
+  const aviso = {
+    'sin-uso': `<div class="callout warn"><b>Sin uso:</b> ni la web ni la app llaman a este endpoint. Puede ser código muerto, o una pantalla que falta conectar.</div>`,
+    externo: `<div class="callout ext"><b>Uso externo:</b> lo llama un servicio de afuera (por ejemplo, un webhook) o un monitoreo, no el front.</div>`,
+  }[r.estado] || '';
+  $('#detail').innerHTML = `
+    <h2><span class="m ${r.metodo}" style="padding:2px 6px">${r.metodo}</span><span class="mono">${esc(r.ruta)}</span>
+      <span class="st"><span class="dot ${r.estado}"></span>${ESTADO[r.estado]}</span>${r.protegida ? '<span class="tag">🔒 con login</span>' : '<span class="tag">público</span>'}</h2>
+    <div class="meta">Definido en <code>${esc(r.archivo)}:${r.linea}</code> · handler <code>${esc(r.handler)}</code></div>
+    ${aviso}
+    <div class="flow" id="flow">
+      ${col('Pantalla', [...pantallas.values()].join(''))}
+      ${col('Store · acción', [...stores.values()].join(''))}
+      ${col('Función de la API', [...funcs.values()].join(''))}
+      ${col('Endpoint', nodo('ep', `${r.metodo} ${r.ruta.replace('/api/v1', '')}`, 'HTTP', 'ep'))}
+      ${col('Controller', nodo(hId, `${r.handler}()`, corto(r.handlerArchivo)))}
+      ${col('Servicio', [...porCapa.servicio, ...porCapa.otro].join(''))}
+      ${col('Repositorio', porCapa.repositorio.join(''))}
+      ${col('Tabla', tablas.join(''))}
+      <svg class="edges" id="edges"></svg>
+    </div>
+    <div class="legend"><span><i></i>llamada en el código</span><span><i class="http"></i>HTTP (lo une el mapa)</span>
+      <span>Las pantallas salen de quién usa la acción del store; los pasos del backend, del grafo de graphify.</span></div>`;
+  requestAnimationFrame(dibujarLineas);
+}
+
+function verLlamada(l) {
+  aristas = [];
+  $('#detail').innerHTML = `
+    <h2><span class="m ${l.metodo}" style="padding:2px 6px">${l.metodo}</span><span class="mono">${esc(l.ruta || l.original)}</span>
+      <span class="st"><span class="dot ${l.estado === 'rota' ? 'rota' : 'externo'}"></span>${l.estado === 'rota' ? 'rota' : 'URL dinámica'}</span></h2>
+    <div class="meta">Desde <code>${esc(l.archivo)}:${l.linea}</code>${l.funcion ? ` · <code>${esc(l.funcion)}()</code>` : ''} · ${l.cliente}</div>
+    ${l.estado === 'rota'
+      ? `<div class="callout bad"><b>Llamada rota:</b> el ${l.cliente === 'app' ? 'celu' : 'front'} llama a <code>${esc(l.metodo)} ${esc(l.ruta)}</code> y el backend no tiene ese endpoint (o lo tiene con otro método). En producción esto da 404.</div>`
+      : `<div class="callout ext"><b>URL dinámica:</b> la dirección se arma con variables (<code>${esc(l.original)}</code>), así que no se puede comprobar leyendo el código. Revisala a mano o escribila como texto fijo.</div>`}
+    <div class="flow">${col('Función de la API', nodo('x', `${l.funcion || '¿?'}()`, corto(l.archivo)))}${col('Endpoint', '<div class="n empty">no existe en el backend</div>')}</div>`;
+}
+
+// Líneas entre tarjetas: del borde de abajo de una al borde de arriba de la siguiente capa.
+// Si las dos están en la misma fila (un servicio que llama a otro), una curva por arriba.
+function dibujarLineas() {
+  const flow = $('#flow'), svg = $('#edges');
+  if (!flow || !svg) return;
+  const base = flow.getBoundingClientRect();
+  svg.setAttribute('width', flow.scrollWidth); svg.setAttribute('height', flow.scrollHeight);
+  const pos = (id) => { const el = flow.querySelector(`[data-id="${CSS.escape(id)}"]`); return el && el.getBoundingClientRect(); };
+  const vistos = new Set();
+  svg.innerHTML = aristas.map(([a, b, cls]) => {
+    const k = a + '>' + b; if (vistos.has(k)) return ''; vistos.add(k);
+    const A = pos(a), B = pos(b);
+    if (!A || !B) return '';
+    const ax = A.left + A.width / 2 - base.left, bx = B.left + B.width / 2 - base.left;
+    if (Math.abs(A.top - B.top) < 4) {
+      const y = A.top - base.top;
+      return `<path class="inner" d="M${ax},${y} C${ax},${y - 22} ${bx},${y - 22} ${bx},${y}" />`;
+    }
+    const [y1, y2] = B.top > A.top ? [A.bottom - base.top, B.top - base.top] : [A.top - base.top, B.bottom - base.top];
+    const dy = (y2 - y1) / 2;
+    return `<path class="${cls || ''}" d="M${ax},${y1} C${ax},${y1 + dy} ${bx},${y2 - dy} ${bx},${y2}" />`;
+  }).join('');
+}
+addEventListener('resize', dibujarLineas);
+$('#q').oninput = pintarLista;
+
+pintarStats();
+pintarLista();
+const inicial = location.hash.slice(1);
+if (/^[rl]\d+$/.test(inicial)) elegir(inicial);
+else {
+  const r = rutas.findIndex((x) => x.estado === 'ok' && x.ruta === '/api/v1/orders' && x.metodo === 'POST');
+  elegir('r' + (r >= 0 ? r : 0));
+}
+</script>
+</body>
+</html>
