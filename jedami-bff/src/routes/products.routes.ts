@@ -9,10 +9,8 @@ import {
   listSizesHandler,
   listColorsHandler,
   createSizeHandler,
-  deleteSizeHandler,
   updateSizeHandler,
   createColorHandler,
-  deleteColorHandler,
   updateColorHandler,
   uploadImageHandler,
   deleteImageHandler,
@@ -116,30 +114,6 @@ router.post('/sizes',        authMiddleware, requireRole([ROLES.ADMIN]), createS
 /**
  * @swagger
  * /products/sizes/{id}:
- *   delete:
- *     tags: [Products]
- *     summary: Soft-delete de talle (solo admin)
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: integer }
- *     responses:
- *       204:
- *         description: Talle desactivado
- *       404:
- *         description: Talle no encontrado
- *         content:
- *           application/json:
- *             schema: { $ref: '#/components/schemas/Error' }
- */
-router.delete('/sizes/:id',  authMiddleware, requireRole([ROLES.ADMIN]), deleteSizeHandler);
-
-/**
- * @swagger
- * /products/sizes/{id}:
  *   patch:
  *     tags: [Products]
  *     summary: Actualizar talle (solo admin)
@@ -196,30 +170,6 @@ router.patch('/sizes/:id',   authMiddleware, requireRole([ROLES.ADMIN]), updateS
  *             schema: { $ref: '#/components/schemas/Error' }
  */
 router.post('/colors',       authMiddleware, requireRole([ROLES.ADMIN]), createColorHandler);
-
-/**
- * @swagger
- * /products/colors/{id}:
- *   delete:
- *     tags: [Products]
- *     summary: Soft-delete de color (solo admin)
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: integer }
- *     responses:
- *       204:
- *         description: Color desactivado
- *       404:
- *         description: Color no encontrado
- *         content:
- *           application/json:
- *             schema: { $ref: '#/components/schemas/Error' }
- */
-router.delete('/colors/:id', authMiddleware, requireRole([ROLES.ADMIN]), deleteColorHandler);
 
 /**
  * @swagger

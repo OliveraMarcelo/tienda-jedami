@@ -66,8 +66,9 @@ export async function createSize(data: { label: string; sortOrder?: number }): P
   return res.data.data
 }
 
+/** El backend no borra talles: los desactiva (dejan de ofrecerse, los productos que ya los usan no se tocan). */
 export async function deleteSize(id: number): Promise<void> {
-  await apiClient.delete(`/products/sizes/${id}`)
+  await apiClient.patch(`/products/sizes/${id}`, { active: false })
 }
 
 // ─── Colors ──────────────────────────────────────────────────────────────────
@@ -82,8 +83,38 @@ export async function createColor(data: { name: string; hexCode?: string }): Pro
   return res.data.data
 }
 
+/** Igual que los talles: se desactiva en vez de borrarse. */
 export async function deleteColor(id: number): Promise<void> {
-  await apiClient.delete(`/products/colors/${id}`)
+  await apiClient.patch(`/products/colors/${id}`, { active: false })
+}
+
+// ─── Categories ──────────────────────────────────────────────────────────────
+
+export interface CategoryItem {
+  id: number
+  name: string
+  slug: string
+  productCount?: number
+}
+
+export async function fetchCategories(): Promise<CategoryItem[]> {
+  const res = await apiClient.get<{ data: CategoryItem[] }>('/categories')
+  return res.data.data
+}
+
+export async function createCategory(name: string): Promise<CategoryItem> {
+  const res = await apiClient.post<{ data: CategoryItem }>('/categories', { name })
+  return res.data.data
+}
+
+export async function updateCategory(id: number, name: string): Promise<CategoryItem> {
+  const res = await apiClient.put<{ data: CategoryItem }>(`/categories/${id}`, { name })
+  return res.data.data
+}
+
+/** Los productos de la categoría quedan sin categoría (ON DELETE SET NULL). */
+export async function deleteCategory(id: number): Promise<void> {
+  await apiClient.delete(`/categories/${id}`)
 }
 
 // ─── Payment Gateway ─────────────────────────────────────────────────────────

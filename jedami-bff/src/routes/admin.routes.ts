@@ -197,6 +197,31 @@ router.post('/orders/:id/confirm-transfer', confirmBankTransfer);
 
 // Descuentos por volumen — escalones y mínimo de compra por producto
 router.use('/products/:id/discount-rules', discountsAdminRouter);
+/**
+ * @swagger
+ * /admin/products/{id}/min-quantity:
+ *   patch:
+ *     tags: [Discounts]
+ *     summary: Actualizar mínimo de compra del producto (admin)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               minQuantity: { type: integer, nullable: true, minimum: 1 }
+ *     responses:
+ *       200:
+ *         description: Mínimo actualizado
+ */
 router.patch('/products/:id/min-quantity', updateMinQuantityHandler);
 
 // Ajuste de stock desde app desktop
