@@ -11,7 +11,6 @@ import {
   createCurvaRuleHandler,
   updateCurvaRuleHandler,
   deleteCurvaRuleHandler,
-  updateMinQuantityHandler,
 } from '../modules/discounts/discounts.controller.js';
 
 const router = Router({ mergeParams: true });
@@ -106,32 +105,5 @@ router.delete('/quantity/:ruleId', deleteQuantityRuleHandler);
 router.post('/curva', createCurvaRuleHandler);
 router.patch('/curva/:ruleId', updateCurvaRuleHandler);
 router.delete('/curva/:ruleId', deleteCurvaRuleHandler);
-
-/**
- * @swagger
- * /admin/products/{id}/min-quantity:
- *   patch:
- *     tags: [Discounts]
- *     summary: Actualizar mínimo de compra del producto (admin)
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: integer }
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               minQuantity: { type: integer, nullable: true, minimum: 1 }
- *     responses:
- *       200:
- *         description: Mínimo actualizado
- */
-router.patch('/min-quantity', updateMinQuantityHandler);
 
 export default router;

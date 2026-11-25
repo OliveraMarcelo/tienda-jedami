@@ -157,10 +157,6 @@ export async function createSizeHandler(req: Request, res: Response, next: NextF
   } catch (err) { next(err); }
 }
 
-export async function deleteSizeHandler(req: Request, res: Response): Promise<void> {
-  res.status(405).json({ detail: 'Usar PATCH con { active: false } para desactivar' });
-}
-
 export async function updateSizeHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const id = parseId(req.params.id);
@@ -179,10 +175,6 @@ export async function createColorHandler(req: Request, res: Response, next: Next
     const color = await productsService.createColor(name, hexCode ?? null);
     res.status(201).json({ data: color });
   } catch (err) { next(err); }
-}
-
-export async function deleteColorHandler(req: Request, res: Response): Promise<void> {
-  res.status(405).json({ detail: 'Usar PATCH con { active: false } para desactivar' });
 }
 
 export async function updateColorHandler(req: Request, res: Response, next: NextFunction): Promise<void> {

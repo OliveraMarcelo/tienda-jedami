@@ -6,9 +6,10 @@ import { useConfigStore } from '@/stores/config.store'
 import {
   fetchSizes, createSize, deleteSize,
   fetchColors, createColor, deleteColor,
+  fetchCategories, createCategory, updateCategory, deleteCategory,
   updateBranding, uploadBrandingLogo, updatePaymentGateway,
   fetchPaymentGatewayRules, patchPaymentGatewayRule,
-  type SizeItem, type ColorItem, type PaymentGatewayRulesMap,
+  type SizeItem, type ColorItem, type CategoryItem, type PaymentGatewayRulesMap,
 } from '@/api/admin.config.api'
 import type { BrandingConfig } from '@/api/config.api'
 import { GATEWAY_LABELS, ALL_GATEWAYS, type SupportedGateway } from '@/lib/gateway-labels'
@@ -19,7 +20,7 @@ type ConfigApiError = AxiosError<{ detail?: string }>
 
 const configStore = useConfigStore()
 
-type Tab = 'catalog' | 'branding' | 'payments' | 'point'
+type Tab = 'catalog' | 'categories' | 'branding' | 'payments' | 'point'
 const activeTab = ref<Tab>('branding')
 
 // ─── Sizes ────────────────────────────────────────────────────────────────────
@@ -100,6 +101,70 @@ async function removeColor(id: number) {
     const e = err as ConfigApiError
     clError.value = e?.response?.data?.detail ?? 'No se pudo eliminar el color.'
   } finally { clDeleting.value = null }
+}
+
+// ─── Categories ───────────────────────────────────────────────────────────────
+const categories = ref<CategoryItem[]>([])
+const ctgLoading = ref(false)
+const ctgNew = ref('')
+const ctgSaving = ref(false)
+const ctgBusy = ref<number | null>(null)
+const ctgEditing = ref<number | null>(null)
+const ctgEditName = ref('')
+const ctgError = ref('')
+
+function ctgErr(err: unknown, fallback: string) {
+  const e = err as ConfigApiError
+  ctgError.value = e?.response?.data?.detail ?? fallback
+}
+
+async function loadCategories() {
+  ctgLoading.value = true
+  try { categories.value = await fetchCategories() }
+  finally { ctgLoading.value = false }
+}
+
+async function addCategory() {
+  const name = ctgNew.value.trim()
+  if (!name) return
+  ctgSaving.value = true
+  ctgError.value = ''
+  try {
+    const item = await createCategory(name)
+    categories.value.push({ ...item, productCount: 0 })
+    ctgNew.value = ''
+  } catch (err) { ctgErr(err, 'Error al guardar.') }
+  finally { ctgSaving.value = false }
+}
+
+function startEditCategory(item: CategoryItem) {
+  ctgEditing.value = item.id
+  ctgEditName.value = item.name
+  ctgError.value = ''
+}
+
+async function saveCategory(item: CategoryItem) {
+  const name = ctgEditName.value.trim()
+  if (!name || name === item.name) { ctgEditing.value = null; return }
+  ctgBusy.value = item.id
+  ctgError.value = ''
+  try {
+    const updated = await updateCategory(item.id, name)
+    Object.assign(item, updated)
+    ctgEditing.value = null
+  } catch (err) { ctgErr(err, 'No se pudo renombrar la categoría.') }
+  finally { ctgBusy.value = null }
+}
+
+async function removeCategory(item: CategoryItem) {
+  if (!window.confirm(`¿Eliminar "${item.name}"? Sus productos quedan sin categoría.`)) return
+  ctgBusy.value = item.id
+  ctgError.value = ''
+  try {
+    await deleteCategory(item.id)
+    categories.value = categories.value.filter(c => c.id !== item.id)
+  } catch (err) { ctgErr(err, 'No se pudo eliminar la categoría.') }
+  finally { ctgBusy.value = null }
 }
 
 // ─── Branding ─────────────────────────────────────────────────────────────────
@@ -324,7 +389,7 @@ async function togglePosDevice(device: PosDevice) {
 }
 
 onMounted(async () => {
-  await Promise.all([loadSizes(), loadColors(), loadPaymentGatewayRules(), loadPosDevices()])
+  await Promise.all([loadCategories(), loadSizes(), loadColors(), loadPaymentGatewayRules(), loadPosDevices()])
   brandingForm.value = { ...configStore.branding }
 })
 
@@ -332,6 +397,7 @@ onMounted(async () => {
 const TABS: { key: Tab; label: string }[] = [
   { key: 'branding', label: 'Marca y contacto' },
   { key: 'payments', label: 'Medios de pago' },
+  { key: 'categories', label: 'Categorías' },
   { key: 'catalog',  label: 'Talles y colores' },
 ]
 </script>
@@ -553,6 +619,53 @@ const TABS: { key: Tab; label: string }[] = [
             <Transition name="jd-fade"><span v-if="bankTransferSuccess" class="text-xs font-semibold text-green-600">✓ Guardado</span></Transition>
             <span v-if="bankTransferError" class="text-xs text-red-500">{{ bankTransferError }}</span>
           </div>
+        </section>
+      </div>
+
+      <!-- ── Categorías ── -->
+      <div v-else-if="activeTab === 'categories'" key="categories" class="max-w-2xl">
+        <section class="overflow-hidden rounded-xl border border-[var(--a-border)] bg-white">
+          <header class="border-b border-[var(--a-border)] px-5 py-4">
+            <h2 class="text-sm font-semibold text-[#45494E]">Categorías</h2>
+            <p class="text-xs text-[var(--a-muted)]">Ordenan el catálogo de la tienda. Al eliminar una, sus productos quedan sin categoría.</p>
+          </header>
+          <div v-if="ctgLoading" class="space-y-2 p-4">
+            <div v-for="i in 4" :key="i" class="h-9 animate-pulse rounded-lg bg-[var(--a-bg)]"></div>
+          </div>
+          <template v-else>
+            <ul class="max-h-[420px] divide-y divide-[var(--a-border)] overflow-y-auto">
+              <li v-for="cat in categories" :key="cat.id" class="flex items-center gap-3 px-5 py-2.5">
+                <input
+                  v-if="ctgEditing === cat.id"
+                  v-model="ctgEditName"
+                  type="text"
+                  aria-label="Nombre de la categoría"
+                  class="h-9 flex-1 rounded-lg border border-[#C9CDD2] px-3 text-sm focus:outline-none"
+                  @keydown.enter="saveCategory(cat)"
+                  @keydown.esc="ctgEditing = null"
+                />
+                <span v-else class="flex-1 text-sm font-semibold text-[var(--a-ink)]">{{ cat.name }}</span>
+                <span class="text-xs tabular-nums text-[var(--a-muted)]" title="Productos activos">{{ cat.productCount ?? 0 }} prod.</span>
+                <template v-if="ctgEditing === cat.id">
+                  <button type="button" :disabled="ctgBusy === cat.id" class="text-xs font-semibold text-[var(--a-primary)] disabled:opacity-40" @click="saveCategory(cat)">Guardar</button>
+                  <button type="button" class="text-xs text-[var(--a-muted)] hover:text-[#45494E]" @click="ctgEditing = null">Cancelar</button>
+                </template>
+                <template v-else>
+                  <button type="button" class="text-xs text-[var(--a-muted)] hover:text-[#45494E]" @click="startEditCategory(cat)">Renombrar</button>
+                  <button type="button" :disabled="ctgBusy === cat.id" class="text-xs text-red-500 hover:text-red-700 disabled:opacity-40" @click="removeCategory(cat)">Eliminar</button>
+                </template>
+              </li>
+              <li v-if="categories.length === 0" class="py-6 text-center text-sm text-[var(--a-muted)]">Sin categorías.</li>
+            </ul>
+            <form class="flex flex-wrap items-end gap-2 border-t border-[var(--a-border)] bg-[#FAFBFC] px-5 py-4" @submit.prevent="addCategory">
+              <div class="flex-1">
+                <label for="ctg-name" class="mb-1 block text-xs text-[var(--a-muted)]">Nueva categoría</label>
+                <input id="ctg-name" v-model="ctgNew" type="text" placeholder="ej: Bodies" class="h-10 w-full rounded-lg border border-[#C9CDD2] px-3 text-sm focus:outline-none" />
+              </div>
+              <button type="submit" :disabled="ctgSaving || !ctgNew.trim()" class="h-10 px-5 rounded-lg bg-[var(--a-primary)] text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:pointer-events-none">Agregar</button>
+              <p v-if="ctgError" class="w-full text-xs text-red-500">{{ ctgError }}</p>
+            </form>
+          </template>
         </section>
       </div>
 
