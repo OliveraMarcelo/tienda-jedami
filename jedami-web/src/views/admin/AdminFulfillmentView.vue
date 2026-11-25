@@ -19,7 +19,6 @@ import {
   freeUnits,
   gridSizes,
   totalTarget,
-  rowAssigned,
   totalAssigned,
   problems,
   allocationState,
@@ -317,6 +316,9 @@ const ready = (o: PendingOrder) => orderState(o) === 'full' && orderProblems(o).
               <p v-if="order.purchaseType === 'cantidad' && sizeTargets(p).size > 0" class="text-xs font-semibold text-[var(--a-ink)] mb-1">
                 Equivale a {{ curvasOf(p) === 1 ? '1 curva' : `${curvasOf(p)} curvas` }}<template v-if="freeUnits(p) > 0"> + {{ freeUnits(p) === 1 ? '1 unidad suelta' : `${freeUnits(p)} unidades sueltas` }} que elige el mayorista</template>
               </p>
+              <p v-else-if="order.purchaseType === 'curva' && sizeTargets(p).size > 0" class="text-xs font-semibold text-[var(--a-ink)] mb-1">
+                {{ curvasOf(p) === 1 ? '1 curva' : `${curvasOf(p)} curvas` }} ({{ curvasOf(p) === 1 ? '1 unidad' : `${curvasOf(p)} unidades` }} por talle)
+              </p>
               <p v-else-if="freeUnits(p) > 0" class="text-xs font-semibold text-[var(--a-ink)] mb-1">
                 {{ freeUnits(p) === 1 ? '1 unidad suelta' : `${freeUnits(p)} unidades sueltas` }} que elige el mayorista
               </p>
@@ -335,7 +337,6 @@ const ready = (o: PendingOrder) => orderState(o) === 'full' && orderProblems(o).
                           {{ c.name }}
                         </span>
                       </th>
-                      <th v-if="sizeTargets(p).size > 0" class="font-medium pb-2 pl-3 text-right">Pedido</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -359,14 +360,6 @@ const ready = (o: PendingOrder) => orderState(o) === 'full' && orderProblems(o).
                           <span class="block text-[10px] leading-3 text-[var(--a-muted)]">stock {{ variantAt(p, s.id, c.id)!.stock }}</span>
                         </template>
                         <span v-else class="text-[var(--a-muted)]">—</span>
-                      </td>
-                      <td v-if="sizeTargets(p).size > 0" class="py-1 pl-3 text-right whitespace-nowrap font-semibold"
-                        :class="rowAssigned(p, cellsOf(order, p), s.id) >= (sizeTargets(p).get(s.id) ?? 0) ? 'text-green-600' : 'text-[var(--a-ink)]'">
-                        {{ rowAssigned(p, cellsOf(order, p), s.id) }} / {{ sizeTargets(p).get(s.id) ?? 0 }}
-                        <span v-if="rowAssigned(p, cellsOf(order, p), s.id) >= (sizeTargets(p).get(s.id) ?? 0)">✓</span>
-                        <span v-if="rowAssigned(p, cellsOf(order, p), s.id) > (sizeTargets(p).get(s.id) ?? 0)" class="block text-[10px] font-normal text-[var(--a-muted)]">
-                          +{{ rowAssigned(p, cellsOf(order, p), s.id) - (sizeTargets(p).get(s.id) ?? 0) }} a elección
-                        </span>
                       </td>
                     </tr>
                   </tbody>
