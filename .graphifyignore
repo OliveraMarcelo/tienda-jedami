@@ -1,0 +1,18 @@
+# Lo que no es código de la app: queda fuera del grafo de graphify
+_bmad/
+_bmad-output/
+docs/
+specs/
+infra/
+graphify-out/
+jedami-mobile/linux/
+jedami-mobile/windows/
+jedami-mobile/macos/
+jedami-mobile/ios/
+jedami-mobile/android/
+jedami-mobile/web/
+**/*.test.ts
+**/*.spec.ts
+**/e2e/
+**/dist/
+**/node_modules/
