@@ -4,6 +4,7 @@ import AdminLayout from '@/layouts/AdminLayout.vue'
 import DateRangeFilter from '@/components/features/admin/DateRangeFilter.vue'
 import SearchField from '@/components/features/admin/SearchField.vue'
 import TablePagination from '@/components/features/admin/TablePagination.vue'
+import AllocationGrid from '@/components/features/admin/AllocationGrid.vue'
 import { PAGE_SIZE, EMPTY_RANGE, inRange, type DateRange } from '@/lib/date-range'
 import { apiErrorDetail } from '@/lib/auth-errors'
 import {
@@ -17,7 +18,6 @@ import {
   needsAllocation,
   sizeTargets,
   freeUnits,
-  gridSizes,
   totalTarget,
   totalAssigned,
   problems,
@@ -51,9 +51,6 @@ async function load() {
     loading.value = false
   }
 }
-
-const variantAt = (p: PendingProduct, sizeId: number, colorId: number) =>
-  p.variants.find(v => v.sizeId === sizeId && v.colorId === colorId)
 
 function setCell(o: PendingOrder, p: PendingProduct, variantId: number, value: string) {
   const n = Math.max(0, Math.floor(Number(value) || 0))
@@ -326,45 +323,7 @@ const ready = (o: PendingOrder) => orderState(o) === 'full' && orderProblems(o).
                 Recomendado: cargá los colores que mandás y se descuenta ese stock. Si no, despachalo igual y ajustá el stock en Productos.
                 <template v-if="freeUnits(p) > 0"> Las sueltas sumalas en el talle y color que pidió el mayorista<template v-if="order.notes"> (mirá la nota)</template>.</template>
               </p>
-              <div class="overflow-x-auto -mx-1 px-1">
-                <table class="text-xs border-separate border-spacing-0">
-                  <thead>
-                    <tr class="text-[var(--a-muted)]">
-                      <th class="text-left font-medium pb-2 pr-3 sticky left-0 bg-white">Talle</th>
-                      <th v-for="c in p.colors" :key="c.id" class="font-medium pb-2 px-1.5 min-w-[64px]">
-                        <span class="inline-flex flex-col items-center gap-1">
-                          <span class="w-4 h-4 rounded-full border border-[var(--a-border)]" :style="{ backgroundColor: c.hexCode ?? '#ccc' }"></span>
-                          {{ c.name }}
-                        </span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="s in gridSizes(p)" :key="s.id">
-                      <td class="py-0.5 pr-3 font-semibold text-[var(--a-ink)] sticky left-0 bg-white">{{ s.label }}</td>
-                      <td v-for="c in p.colors" :key="c.id" class="py-0.5 px-1.5 text-center">
-                        <template v-if="variantAt(p, s.id, c.id)">
-                          <input
-                            type="number"
-                            inputmode="numeric"
-                            min="0"
-                            :max="variantAt(p, s.id, c.id)!.stock"
-                            :value="cellsOf(order, p)[variantAt(p, s.id, c.id)!.id] || ''"
-                            :disabled="variantAt(p, s.id, c.id)!.stock === 0"
-                            :aria-label="`Talle ${s.label} ${c.name}`"
-                            placeholder="0"
-                            class="w-14 h-8 rounded-lg border text-center text-sm disabled:bg-gray-50 disabled:opacity-50"
-                            :class="(cellsOf(order, p)[variantAt(p, s.id, c.id)!.id] ?? 0) > variantAt(p, s.id, c.id)!.stock ? 'border-red-400 text-red-600' : 'border-[var(--a-border)]'"
-                            @input="setCell(order, p, variantAt(p, s.id, c.id)!.id, ($event.target as HTMLInputElement).value)"
-                          />
-                          <span class="block text-[10px] leading-3 text-[var(--a-muted)]">stock {{ variantAt(p, s.id, c.id)!.stock }}</span>
-                        </template>
-                        <span v-else class="text-[var(--a-muted)]">—</span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+              <AllocationGrid :product="p" :cells="cellsOf(order, p)" @set="(vid, n) => setCell(order, p, vid, String(n))" />
               <p class="mt-2 text-xs font-semibold"
                 :class="totalAssigned(p, cellsOf(order, p)) === totalTarget(p) ? 'text-green-600' : 'text-[var(--a-muted)]'">
                 Total: {{ totalAssigned(p, cellsOf(order, p)) }} de {{ totalTarget(p) }} unidades
