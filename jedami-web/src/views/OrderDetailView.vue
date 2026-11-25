@@ -32,6 +32,12 @@ onMounted(async () => {
 })
 
 const order = computed(() => ordersStore.currentOrder)
+// Por cantidad: las unidades que no entran parejas en los talles las elige el mayorista (por la nota del pedido)
+const looseUnits = computed(() =>
+  order.value?.purchaseType === PURCHASE_TYPES.CANTIDAD
+    ? (order.value.items ?? []).filter(i => !i.size).reduce((n, i) => n + i.quantity, 0)
+    : 0,
+)
 const bankDetails = computed(() => paymentsStore.bankDetails)
 // Se puede pagar si está pendiente o si un intento anterior fue rechazado
 const canPay = computed(() => !!order.value && ['pending', 'rejected'].includes(order.value.status) && order.value.totalAmount > 0)
@@ -204,6 +210,12 @@ watch(() => paymentsStore.checkoutPublicKey, async (newKey) => {
           <p class="text-sm italic">"{{ order.notes }}"</p>
         </div>
 
+        <!-- Por cantidad: unidades sueltas que elige el mayorista -->
+        <div v-if="looseUnits > 0 && order.status === 'pending'" class="mb-4 rounded-2xl bg-[var(--t-surface)] px-5 py-3 text-sm">
+          Tenés {{ looseUnits === 1 ? '1 unidad suelta' : `${looseUnits} unidades sueltas` }} para elegir.
+          Contanos talle y color en la nota del pedido, desde <RouterLink to="/pedidos" class="font-semibold underline underline-offset-4">Mis pedidos</RouterLink>.
+        </div>
+
         <!-- Artículos y total -->
         <section class="overflow-hidden rounded-[var(--t-radius-card)] border border-[var(--t-border)] bg-white" aria-labelledby="items-title">
           <h2 id="items-title" class="border-b border-[var(--t-border)] bg-[var(--t-surface)] px-5 py-3 text-sm font-semibold">Artículos</h2>
@@ -219,7 +231,7 @@ watch(() => paymentsStore.checkoutPublicKey, async (newKey) => {
                   <template v-if="order.purchaseType === PURCHASE_TYPES.CURVA">{{ item.size ? `Talle ${item.size}` : '—' }}</template>
                   <template v-else-if="item.size && item.color">{{ item.size }} · {{ item.color }}</template>
                   <template v-else-if="item.size">Talle {{ item.size }} · colores surtidos</template>
-                  <template v-else-if="order.purchaseType === PURCHASE_TYPES.CANTIDAD">Talle y color a elección de la tienda</template>
+                  <template v-else-if="order.purchaseType === PURCHASE_TYPES.CANTIDAD">Unidades sueltas: talle y color a tu elección</template>
                   <template v-else>Distribución proporcional</template>
                 </p>
                 <p class="text-sm text-[var(--t-muted)]">

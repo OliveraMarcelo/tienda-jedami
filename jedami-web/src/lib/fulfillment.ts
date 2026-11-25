@@ -1,6 +1,7 @@
-// Reparto del despacho: el admin carga cuántas unidades de cada talle × color manda.
-// - Líneas con talle (curva, o la parte pareja de "por cantidad"): ese talle tiene que llevar justo esas unidades.
-// - Líneas sin talle (lo que sobra de "por cantidad", ej. 102 en 5 talles → 2): van al talle y color que elija el admin.
+// Reparto del despacho: el admin carga cuántas unidades de cada talle × color manda. Es opcional:
+// lo que reparte descuenta stock de esa variante; lo que no, no descuenta (lo ajusta él en Productos).
+// - Líneas con talle (curva, o la parte pareja de "por cantidad"): ese talle lleva hasta esas unidades.
+// - Líneas sin talle (lo que sobra de "por cantidad", ej. 102 en 5 talles → 2): las elige el mayorista; van al talle y color que cargue el admin.
 // - Líneas minoristas: el cliente ya eligió la variante, no llevan reparto.
 import type { Allocation, PendingProduct } from '@/api/admin.fulfillment.api'
 
@@ -8,7 +9,6 @@ import type { Allocation, PendingProduct } from '@/api/admin.fulfillment.api'
 export type Cells = Record<number, number>
 
 type Line = PendingProduct['lines'][number]
-type Variant = PendingProduct['variants'][number]
 
 const openLines = (p: PendingProduct) => p.lines.filter(l => l.variantId === null)
 const sizedLines = (p: PendingProduct) => openLines(p).filter(l => l.sizeId !== null)
@@ -43,7 +43,7 @@ export function gridSizes(p: PendingProduct) {
   return freeUnits(p) > 0 ? p.sizes : p.sizes.filter(s => targets.has(s.id))
 }
 
-/** Qué falta para poder despachar este producto (vacío = listo) */
+/** Lo que impide despachar: más unidades que el stock o que el pedido (vacío = se puede despachar) */
 export function problems(p: PendingProduct, cells: Cells): string[] {
   if (!needsAllocation(p)) return []
   const out: string[] = []
@@ -56,52 +56,22 @@ export function problems(p: PendingProduct, cells: Cells): string[] {
   const free = freeUnits(p)
   for (const [sizeId, target] of sizeTargets(p)) {
     const got = rowAssigned(p, cells, sizeId)
-    if (got < target) out.push(`Talle ${label(sizeId)}: ${target - got === 1 ? 'falta 1' : `faltan ${target - got}`}`)
-    else if (got > target && free === 0) out.push(`Talle ${label(sizeId)}: ${got - target === 1 ? 'sobra 1' : `sobran ${got - target}`}`)
+    if (got > target && free === 0) out.push(`Talle ${label(sizeId)}: ${got - target === 1 ? 'sobra 1' : `sobran ${got - target}`}`)
   }
   const got = totalAssigned(p, cells)
   const target = totalTarget(p)
-  if (got !== target && (free > 0 || out.length === 0)) {
-    const n = Math.abs(target - got)
-    const units = n === 1 ? '1 unidad' : `${n} unidades`
-    out.push(got < target ? `${n === 1 ? 'Falta' : 'Faltan'} ${units}${free > 0 ? ' (a elección)' : ''}` : `${n === 1 ? 'Sobra' : 'Sobran'} ${units}`)
+  if (got > target) {
+    const n = got - target
+    out.push(`${n === 1 ? 'Sobra' : 'Sobran'} ${n === 1 ? '1 unidad' : `${n} unidades`}`)
   }
   return out
 }
 
-/** Sugerencia: llena cada talle con los colores de más stock y reparte las libres de a una entre talles */
-export function autoFill(p: PendingProduct): Cells {
-  const cells: Cells = {}
-  const left = new Map(p.variants.map(v => [v.id, v.stock]))
-  const take = (v: Variant, n: number) => {
-    cells[v.id] = (cells[v.id] ?? 0) + n
-    left.set(v.id, left.get(v.id)! - n)
-  }
-  const byStock = (vs: Variant[]) => [...vs].sort((a, b) => (left.get(b.id) ?? 0) - (left.get(a.id) ?? 0))
-
-  for (const [sizeId, target] of sizeTargets(p)) {
-    let pending = target
-    for (const v of byStock(p.variants.filter(x => x.sizeId === sizeId))) {
-      if (pending <= 0) break
-      const n = Math.min(left.get(v.id) ?? 0, pending)
-      if (n > 0) { take(v, n); pending -= n }
-    }
-  }
-
-  let pending = freeUnits(p)
-  while (pending > 0) {
-    let moved = false
-    for (const s of p.sizes) {
-      if (pending === 0) break
-      const best = byStock(p.variants.filter(v => v.sizeId === s.id && (left.get(v.id) ?? 0) > 0))[0]
-      if (!best) continue
-      take(best, 1)
-      pending--
-      moved = true
-    }
-    if (!moved) break // no queda stock
-  }
-  return cells
+/** Cómo quedó el reparto: sin cargar, parcial o completo */
+export function allocationState(p: PendingProduct, cells: Cells): 'none' | 'partial' | 'full' {
+  const got = totalAssigned(p, cells)
+  if (got === 0) return 'none'
+  return got >= totalTarget(p) ? 'full' : 'partial'
 }
 
 /** Convierte la grilla en el reparto por línea del pedido que espera el BFF */

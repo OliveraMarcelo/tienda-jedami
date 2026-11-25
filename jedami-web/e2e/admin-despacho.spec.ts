@@ -25,15 +25,14 @@ test.describe('Admin – Despacho (/admin/despacho)', () => {
   })
 
   // ── DESP-003 (condicional: solo si hay pedidos) ────────────────────────────────
-  test('DESP-003 | Curva/cantidad: grilla talle × color con sugerencia de reparto', async ({ page }) => {
-    const grid = page.locator('article').filter({ has: page.getByRole('button', { name: 'Sugerir reparto' }) }).first()
+  test('DESP-003 | Curva/cantidad: grilla talle × color opcional, sin sugerencia automática', async ({ page }) => {
+    const grid = page.locator('article').filter({ has: page.locator('table') }).first()
     if (await grid.count() === 0) test.skip() // no hay pedidos por curva o cantidad en este entorno
 
-    await expect(grid.locator('table')).toBeVisible()
-    await expect(grid.getByRole('button', { name: 'Confirmar despacho' })).toBeDisabled()
-    await grid.getByRole('button', { name: 'Sugerir reparto' }).first().click()
-    // Con stock suficiente la sugerencia completa el reparto
-    await expect(grid.getByText(/Total: (\d+) de \1 unidades/).first()).toBeVisible()
+    await expect(grid.getByRole('button', { name: 'Sugerir reparto' })).toHaveCount(0)
+    // Sin cargar colores igual se puede despachar: el stock no se descuenta
+    await expect(grid.getByText(/Sin reparto/)).toBeVisible()
+    await expect(grid.getByRole('button', { name: 'Confirmar despacho' })).toBeEnabled()
   })
 
   // ── DESP-004 (condicional: solo si hay pedidos) ────────────────────────────────

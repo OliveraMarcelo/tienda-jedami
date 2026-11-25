@@ -513,8 +513,8 @@ async function handleCantidadConfirm() {
 
             <div v-else-if="wholesaleTab === 'cantidad'" class="flex flex-col gap-4">
               <p class="text-sm text-[var(--t-muted)]">
-                Se reparten en partes iguales entre los talles<span v-if="productSizes.length > 1"> ({{ productSizes[0] }} a {{ productSizes[productSizes.length - 1] }})</span>;
-                si sobran, la tienda elige el talle. Los colores van surtidos según disponibilidad.
+                Se reparten en partes iguales entre los talles<span v-if="productSizes.length > 1"> ({{ productSizes[0] }} a {{ productSizes[productSizes.length - 1] }})</span>,
+                como curvas. Si sobran unidades, las elegís vos: avisanos talle y color en la nota del pedido. Los colores van surtidos según disponibilidad.
               </p>
 
               <DiscountRulesTable
@@ -532,9 +532,9 @@ async function handleCantidadConfirm() {
                 </div>
               </div>
               <p v-if="sizesCount > 1" class="-mt-2 text-sm font-semibold">
-                <template v-if="perSize > 0">{{ perSize }} por talle</template>
+                <template v-if="perSize > 0">Te llevás aprox. {{ perSize === 1 ? '1 curva' : `${perSize} curvas` }} ({{ perSize }} por talle)</template>
                 <template v-if="perSize > 0 && extraUnits > 0"> + </template>
-                <template v-if="extraUnits > 0">{{ extraUnits }} a elección de la tienda</template>
+                <template v-if="extraUnits > 0">{{ extraUnits === 1 ? '1 unidad suelta' : `${extraUnits} unidades sueltas` }} que elegís vos</template>
               </p>
 
               <p v-if="activeQuantityHint" class="rounded-2xl bg-[#E6F2EC] px-4 py-2.5 text-sm font-semibold text-[var(--t-price)]">

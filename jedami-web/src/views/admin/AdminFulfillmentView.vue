@@ -22,7 +22,7 @@ import {
   rowAssigned,
   totalAssigned,
   problems,
-  autoFill,
+  allocationState,
   toAllocations,
 } from '@/lib/fulfillment'
 
@@ -61,10 +61,6 @@ function setCell(o: PendingOrder, p: PendingProduct, variantId: number, value: s
   grids[key(o, p)] = { ...grids[key(o, p)], [variantId]: n }
 }
 
-function suggest(o: PendingOrder, p: PendingProduct) {
-  grids[key(o, p)] = autoFill(p)
-}
-
 function clearGrid(o: PendingOrder, p: PendingProduct) {
   grids[key(o, p)] = {}
 }
@@ -72,6 +68,17 @@ function clearGrid(o: PendingOrder, p: PendingProduct) {
 function orderProblems(o: PendingOrder) {
   return o.products.flatMap(p => problems(p, cellsOf(o, p)).map(msg => `${p.productName} — ${msg}`))
 }
+
+/** Reparto del pedido entero: null si no tiene curva/cantidad (minorista, ya trae color) */
+function orderState(o: PendingOrder): 'none' | 'partial' | 'full' | null {
+  const states = o.products.filter(needsAllocation).map(p => allocationState(p, cellsOf(o, p)))
+  if (states.length === 0) return null
+  if (states.every(st => st === 'none')) return 'none'
+  return states.every(st => st === 'full') ? 'full' : 'partial'
+}
+
+/** Por cantidad: curvas completas que equivale (las mismas unidades en cada talle) */
+const curvasOf = (p: PendingProduct) => Math.min(...[...sizeTargets(p).values()], Number.POSITIVE_INFINITY)
 
 /** Línea minorista: talle y color ya elegidos por el cliente */
 function retailLabel(p: PendingProduct, variantId: number) {
@@ -92,9 +99,12 @@ async function doDispatch(o: PendingOrder) {
   dispatchErrors.value[o.id] = ''
   try {
     const allocations = o.products.filter(needsAllocation).flatMap(p => toAllocations(p, cellsOf(o, p)))
+    const state = orderState(o)
     await dispatchOrder(o.id, allocations)
     orders.value = orders.value.filter(x => x.id !== o.id)
-    toast.value = `Pedido #${o.id} despachado y stock actualizado`
+    toast.value = state === 'none'
+      ? `Pedido #${o.id} despachado (sin descontar stock)`
+      : `Pedido #${o.id} despachado y stock actualizado`
     setTimeout(() => { toast.value = '' }, 3500)
   } catch (e: unknown) {
     dispatchErrors.value[o.id] = apiErrorDetail(e, 'Error al despachar')
@@ -156,7 +166,7 @@ function selectOrder(o: PendingOrder) {
   showDetailOnMobile.value = true
 }
 const orderUnits = (o: PendingOrder) => o.products.reduce((n, p) => n + p.lines.reduce((m, l) => m + l.quantity, 0), 0)
-const ready = (o: PendingOrder) => orderProblems(o).length === 0
+const ready = (o: PendingOrder) => orderState(o) === 'full' && orderProblems(o).length === 0
 </script>
 
 <template>
@@ -285,12 +295,7 @@ const ready = (o: PendingOrder) => orderProblems(o).length === 0
           <section v-for="p in order.products" :key="p.productId" class="px-5 py-3 border-b border-[var(--a-border)] last:border-0">
             <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
               <p class="font-medium text-[var(--a-ink)] text-sm">{{ p.productName }}</p>
-              <div v-if="needsAllocation(p)" class="flex gap-2">
-                <button
-                  type="button"
-                  class="h-8 px-3 rounded-lg border border-[#C9CDD2] text-xs font-semibold text-[var(--a-ink)] hover:border-gray-400"
-                  @click="suggest(order, p)"
-                >Sugerir reparto</button>
+              <div v-if="needsAllocation(p) && allocationState(p, cellsOf(order, p)) !== 'none'" class="flex gap-2">
                 <button
                   type="button"
                   class="h-8 px-3 rounded-lg text-xs text-[var(--a-muted)] hover:text-[var(--a-ink)]"
@@ -309,9 +314,15 @@ const ready = (o: PendingOrder) => orderProblems(o).length === 0
 
             <!-- Curva / cantidad: grilla talle × color -->
             <template v-else>
-              <p v-if="freeUnits(p) > 0" class="text-xs text-[var(--a-muted)] mb-2">
-                <template v-if="sizeTargets(p).size > 0">Además de lo de cada talle, </template>
-                {{ freeUnits(p) === 1 ? 'hay 1 unidad' : `hay ${freeUnits(p)} unidades` }} a tu elección: sumalas en el talle y color que quieras.
+              <p v-if="order.purchaseType === 'cantidad' && sizeTargets(p).size > 0" class="text-xs font-semibold text-[var(--a-ink)] mb-1">
+                Equivale a {{ curvasOf(p) === 1 ? '1 curva' : `${curvasOf(p)} curvas` }}<template v-if="freeUnits(p) > 0"> + {{ freeUnits(p) === 1 ? '1 unidad suelta' : `${freeUnits(p)} unidades sueltas` }} que elige el mayorista</template>
+              </p>
+              <p v-else-if="freeUnits(p) > 0" class="text-xs font-semibold text-[var(--a-ink)] mb-1">
+                {{ freeUnits(p) === 1 ? '1 unidad suelta' : `${freeUnits(p)} unidades sueltas` }} que elige el mayorista
+              </p>
+              <p class="text-xs text-[var(--a-muted)] mb-2">
+                Recomendado: cargá los colores que mandás y se descuenta ese stock. Si no, despachalo igual y ajustá el stock en Productos.
+                <template v-if="freeUnits(p) > 0"> Las sueltas sumalas en el talle y color que pidió el mayorista<template v-if="order.notes"> (mirá la nota)</template>.</template>
               </p>
               <div class="overflow-x-auto -mx-1 px-1">
                 <table class="text-xs border-separate border-spacing-0">
@@ -371,10 +382,12 @@ const ready = (o: PendingOrder) => orderProblems(o).length === 0
           <!-- Confirmar -->
           <footer class="px-5 py-3 bg-[var(--a-bg)] flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <!-- Lo que falta: el primero y cuántos más (el detalle está en la columna "Pedido" de cada grilla) -->
-            <p v-if="orderProblems(order).length" class="text-xs text-[var(--a-muted)]" :title="orderProblems(order).join('\n')">
+            <p v-if="orderProblems(order).length" class="text-xs text-red-600" :title="orderProblems(order).join('\n')">
               {{ orderProblems(order)[0] }}<template v-if="orderProblems(order).length > 1"> · y {{ orderProblems(order).length - 1 }} más</template>
             </p>
-            <p v-else class="text-xs text-green-600 font-semibold">Listo para despachar</p>
+            <p v-else-if="orderState(order) === 'none'" class="text-xs text-[var(--a-muted)]">Sin reparto: se despacha sin descontar stock.</p>
+            <p v-else-if="orderState(order) === 'partial'" class="text-xs text-amber-700">Reparto parcial: se descuenta solo lo cargado.</p>
+            <p v-else class="text-xs text-green-600 font-semibold">{{ orderState(order) === 'full' ? 'Reparto completo: se descuenta el stock' : 'Listo para despachar' }}</p>
             <div class="sm:text-right">
               <button
                 type="button"

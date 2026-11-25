@@ -124,8 +124,8 @@ router.get('/orders/pending-fulfillment', getPendingFulfillment);
  * /admin/orders/{id}/dispatch:
  *   post:
  *     tags: [Admin]
- *     summary: Despachar un pedido pagado — guarda el reparto por color, descuenta el stock y lo marca despachado
- *     description: Las líneas de curva y cantidad (sin color) necesitan un reparto que sume exactamente sus unidades. Las minoristas ya tienen color.
+ *     summary: Despachar un pedido pagado — guarda el reparto por color (si lo hay), descuenta ese stock y lo marca despachado
+ *     description: El reparto de las líneas de curva y cantidad (sin color) es opcional; puede ser parcial pero no superar las unidades de la línea. Solo se descuenta lo repartido. Las minoristas ya tienen color y descuentan siempre. Al despachar, el pedido deja de reservar stock.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -152,7 +152,7 @@ router.get('/orders/pending-fulfillment', getPendingFulfillment);
  *       200:
  *         description: Pedido despachado
  *       422:
- *         description: Reparto incompleto, stock insuficiente o pedido no pagado
+ *         description: Reparto inválido (de más o de otro producto), stock insuficiente o pedido no pagado
  *         content:
  *           application/json:
  *             schema: { $ref: '#/components/schemas/Error' }
