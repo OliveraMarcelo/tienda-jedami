@@ -1,6 +1,7 @@
 // Despacho de pedidos pagados.
-// En curva y cantidad el cliente no elige color: el admin reparte las unidades en una grilla talle × color
-// y al confirmar se descuenta el stock y se marca el pedido como despachado, todo junto.
+// En curva y cantidad el cliente no elige color. El admin puede repartir las unidades en una grilla talle × color
+// para que se descuente el stock de cada variante; es recomendable pero no obligatorio. Lo que no reparte no
+// descuenta stock (lo ajusta él en Productos). Al despachar, el pedido deja de reservar sus unidades.
 import { Request, Response, NextFunction } from 'express';
 import type { PoolClient } from 'pg';
 import { pool } from '../../config/database.js';
@@ -90,8 +91,8 @@ export async function getPendingFulfillment(_req: Request, res: Response, next: 
 }
 
 // ─── POST /admin/orders/:id/dispatch ──────────────────────────────────────────
-// Body: { allocations: [{ itemId, variantId, quantity }] } — obligatorio para las líneas sin color (curva/cantidad).
-// Las líneas minoristas ya tienen variante y no llevan reparto.
+// Body: { allocations?: [{ itemId, variantId, quantity }] } — opcional para las líneas sin color (curva/cantidad):
+// vacío o parcial se acepta, y solo se descuenta lo repartido. Las líneas minoristas ya tienen variante y no llevan reparto.
 
 type Allocation = { itemId: number; variantId: number; quantity: number };
 
@@ -171,7 +172,7 @@ export async function dispatchOrder(req: Request, res: Response, next: NextFunct
       const parts = byItem.get(item.id) ?? [];
       const total = parts.reduce((s, a) => s + a.quantity, 0);
       const what = item.size_label ? `el talle ${item.size_label}` : 'el producto';
-      if (total !== item.quantity) throw invalid(`Para ${what} repartiste ${total} de ${item.quantity} unidades`);
+      if (total > item.quantity) throw invalid(`Para ${what} repartiste ${total} y el pedido tiene ${item.quantity} unidades`);
       if (new Set(parts.map(a => a.variantId)).size !== parts.length) throw invalid('Hay un color repetido en el reparto');
       for (const a of parts) {
         const v = variantRows.find(x => x.id === a.variantId);
@@ -180,13 +181,17 @@ export async function dispatchOrder(req: Request, res: Response, next: NextFunct
       }
     }
 
-    // Descontar stock (una sola vez por línea) y guardar el reparto
+    // Descontar stock (una sola vez por línea) y guardar el reparto.
+    // stock_deducted queda en TRUE solo en las líneas que descontaron algo: las que el admin no repartió
+    // siguen sin descontar (y al pasar a 'shipped' dejan de reservar igual).
     let stockChanged = false;
+    const deducted: number[] = [];
     for (const item of items) {
       const parts = byItem.get(item.id) ?? [];
-      if (!item.stock_deducted) {
+      if (!item.stock_deducted && (item.variant_id || parts.length > 0)) {
         if (item.variant_id) await deductStock(client, item.variant_id, item.quantity);
         for (const a of parts) await deductStock(client, a.variantId, a.quantity);
+        deducted.push(item.id);
         stockChanged = true;
       }
       for (const a of parts) {
@@ -196,7 +201,7 @@ export async function dispatchOrder(req: Request, res: Response, next: NextFunct
         );
       }
     }
-    await client.query('UPDATE order_items SET stock_deducted = TRUE WHERE order_id = $1', [orderId]);
+    if (deducted.length) await client.query('UPDATE order_items SET stock_deducted = TRUE WHERE id = ANY($1)', [deducted]);
 
     const shipped = await client.query(
       `UPDATE orders SET status = 'shipped', shipped_at = NOW() WHERE id = $1 RETURNING shipped_at`,

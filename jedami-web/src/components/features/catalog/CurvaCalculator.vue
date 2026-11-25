@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { Product } from '@/types/api'
+import QtyStepper from '@/components/ui/QtyStepper.vue'
 
 const props = defineProps<{
   product: Product
@@ -38,11 +39,7 @@ const canConfirm = computed(() => curves.value > 0 && props.product.variants.len
   <div class="flex flex-col gap-4">
     <div class="flex items-center gap-4">
       <span id="curvas-label" class="text-sm font-semibold">Curvas</span>
-      <div class="inline-flex items-center rounded-full border border-[var(--t-border)]" role="group" aria-labelledby="curvas-label">
-        <button type="button" aria-label="Restar curva" class="flex h-11 w-11 items-center justify-center rounded-full text-lg hover:bg-[var(--t-surface)]" @click="curves = Math.max(1, curves - 1)">−</button>
-        <span class="min-w-[2rem] text-center font-semibold" aria-live="polite">{{ curves }}</span>
-        <button type="button" aria-label="Sumar curva" class="flex h-11 w-11 items-center justify-center rounded-full text-lg hover:bg-[var(--t-surface)]" @click="curves++">+</button>
-      </div>
+      <QtyStepper v-model="curves" :min="1" label="Curvas" />
     </div>
 
     <p class="text-sm text-[var(--t-muted)]">Una curva es una unidad de cada talle.</p>

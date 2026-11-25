@@ -2,6 +2,7 @@
 import { ref, computed, watch, watchEffect, onMounted } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
+import QtyStepper from '@/components/ui/QtyStepper.vue'
 import ProductCard from '@/components/features/catalog/ProductCard.vue'
 import VariantSelector from '@/components/features/catalog/VariantSelector.vue'
 import CurvaCalculator from '@/components/features/catalog/CurvaCalculator.vue'
@@ -513,8 +514,8 @@ async function handleCantidadConfirm() {
 
             <div v-else-if="wholesaleTab === 'cantidad'" class="flex flex-col gap-4">
               <p class="text-sm text-[var(--t-muted)]">
-                Se reparten en partes iguales entre los talles<span v-if="productSizes.length > 1"> ({{ productSizes[0] }} a {{ productSizes[productSizes.length - 1] }})</span>;
-                si sobran, la tienda elige el talle. Los colores van surtidos según disponibilidad.
+                Se reparten en partes iguales entre los talles<span v-if="productSizes.length > 1"> ({{ productSizes[0] }} a {{ productSizes[productSizes.length - 1] }})</span>,
+                como curvas. Si sobran unidades, las elegís vos: avisanos talle y color en la nota del pedido. Los colores van surtidos según disponibilidad.
               </p>
 
               <DiscountRulesTable
@@ -525,16 +526,12 @@ async function handleCantidadConfirm() {
 
               <div class="flex items-center gap-4">
                 <span class="text-sm font-semibold" id="cantidad-label">Cantidad total</span>
-                <div class="inline-flex items-center rounded-full border border-[var(--t-border)]" role="group" aria-labelledby="cantidad-label">
-                  <button type="button" aria-label="Restar" class="flex h-11 w-11 items-center justify-center rounded-full text-lg hover:bg-[var(--t-surface)]" @click="cantidadInput = Math.max(cantidadMin, cantidadInput - 1)">−</button>
-                  <span class="min-w-[2.5rem] text-center font-semibold" aria-live="polite">{{ cantidadInput }}</span>
-                  <button type="button" aria-label="Sumar" class="flex h-11 w-11 items-center justify-center rounded-full text-lg hover:bg-[var(--t-surface)]" @click="cantidadInput++">+</button>
-                </div>
+                <QtyStepper v-model="cantidadInput" :min="cantidadMin" label="Cantidad total" />
               </div>
               <p v-if="sizesCount > 1" class="-mt-2 text-sm font-semibold">
-                <template v-if="perSize > 0">{{ perSize }} por talle</template>
+                <template v-if="perSize > 0">Te llevás aprox. {{ perSize === 1 ? '1 curva' : `${perSize} curvas` }} ({{ perSize }} por talle)</template>
                 <template v-if="perSize > 0 && extraUnits > 0"> + </template>
-                <template v-if="extraUnits > 0">{{ extraUnits }} a elección de la tienda</template>
+                <template v-if="extraUnits > 0">{{ extraUnits === 1 ? '1 unidad suelta' : `${extraUnits} unidades sueltas` }} que elegís vos</template>
               </p>
 
               <p v-if="activeQuantityHint" class="rounded-2xl bg-[#E6F2EC] px-4 py-2.5 text-sm font-semibold text-[var(--t-price)]">
@@ -575,16 +572,15 @@ async function handleCantidadConfirm() {
             />
 
             <div class="flex flex-col gap-3 sm:flex-row">
-              <div
+              <QtyStepper
                 v-if="selectedVariant && selectedVariant.stock.quantity > 0"
-                class="inline-flex h-12 items-center justify-between self-start rounded-full border border-[var(--t-border)] sm:self-auto"
-                role="group"
-                aria-label="Cantidad"
-              >
-                <button type="button" aria-label="Restar" class="flex h-12 w-12 items-center justify-center rounded-full text-lg hover:bg-[var(--t-surface)]" @click="retailQuantity = Math.max(1, retailQuantity - 1)">−</button>
-                <span class="min-w-[2rem] text-center font-semibold" aria-live="polite">{{ retailQuantity }}</span>
-                <button type="button" aria-label="Sumar" class="flex h-12 w-12 items-center justify-center rounded-full text-lg hover:bg-[var(--t-surface)]" @click="retailQuantity = Math.min(selectedVariant.stock.quantity, retailQuantity + 1)">+</button>
-              </div>
+                v-model="retailQuantity"
+                :min="1"
+                :max="selectedVariant.stock.quantity"
+                size="lg"
+                label="Cantidad"
+                class="self-start sm:self-auto"
+              />
 
               <button
                 type="button"

@@ -4,6 +4,7 @@ import AdminLayout from '@/layouts/AdminLayout.vue'
 import DateRangeFilter from '@/components/features/admin/DateRangeFilter.vue'
 import SearchField from '@/components/features/admin/SearchField.vue'
 import TablePagination from '@/components/features/admin/TablePagination.vue'
+import AllocationGrid from '@/components/features/admin/AllocationGrid.vue'
 import { PAGE_SIZE, EMPTY_RANGE, inRange, type DateRange } from '@/lib/date-range'
 import { apiErrorDetail } from '@/lib/auth-errors'
 import {
@@ -17,12 +18,10 @@ import {
   needsAllocation,
   sizeTargets,
   freeUnits,
-  gridSizes,
   totalTarget,
-  rowAssigned,
   totalAssigned,
   problems,
-  autoFill,
+  allocationState,
   toAllocations,
 } from '@/lib/fulfillment'
 
@@ -53,16 +52,9 @@ async function load() {
   }
 }
 
-const variantAt = (p: PendingProduct, sizeId: number, colorId: number) =>
-  p.variants.find(v => v.sizeId === sizeId && v.colorId === colorId)
-
 function setCell(o: PendingOrder, p: PendingProduct, variantId: number, value: string) {
   const n = Math.max(0, Math.floor(Number(value) || 0))
   grids[key(o, p)] = { ...grids[key(o, p)], [variantId]: n }
-}
-
-function suggest(o: PendingOrder, p: PendingProduct) {
-  grids[key(o, p)] = autoFill(p)
 }
 
 function clearGrid(o: PendingOrder, p: PendingProduct) {
@@ -72,6 +64,17 @@ function clearGrid(o: PendingOrder, p: PendingProduct) {
 function orderProblems(o: PendingOrder) {
   return o.products.flatMap(p => problems(p, cellsOf(o, p)).map(msg => `${p.productName} — ${msg}`))
 }
+
+/** Reparto del pedido entero: null si no tiene curva/cantidad (minorista, ya trae color) */
+function orderState(o: PendingOrder): 'none' | 'partial' | 'full' | null {
+  const states = o.products.filter(needsAllocation).map(p => allocationState(p, cellsOf(o, p)))
+  if (states.length === 0) return null
+  if (states.every(st => st === 'none')) return 'none'
+  return states.every(st => st === 'full') ? 'full' : 'partial'
+}
+
+/** Por cantidad: curvas completas que equivale (las mismas unidades en cada talle) */
+const curvasOf = (p: PendingProduct) => Math.min(...[...sizeTargets(p).values()], Number.POSITIVE_INFINITY)
 
 /** Línea minorista: talle y color ya elegidos por el cliente */
 function retailLabel(p: PendingProduct, variantId: number) {
@@ -92,9 +95,12 @@ async function doDispatch(o: PendingOrder) {
   dispatchErrors.value[o.id] = ''
   try {
     const allocations = o.products.filter(needsAllocation).flatMap(p => toAllocations(p, cellsOf(o, p)))
+    const state = orderState(o)
     await dispatchOrder(o.id, allocations)
     orders.value = orders.value.filter(x => x.id !== o.id)
-    toast.value = `Pedido #${o.id} despachado y stock actualizado`
+    toast.value = state === 'none'
+      ? `Pedido #${o.id} despachado (sin descontar stock)`
+      : `Pedido #${o.id} despachado y stock actualizado`
     setTimeout(() => { toast.value = '' }, 3500)
   } catch (e: unknown) {
     dispatchErrors.value[o.id] = apiErrorDetail(e, 'Error al despachar')
@@ -156,7 +162,7 @@ function selectOrder(o: PendingOrder) {
   showDetailOnMobile.value = true
 }
 const orderUnits = (o: PendingOrder) => o.products.reduce((n, p) => n + p.lines.reduce((m, l) => m + l.quantity, 0), 0)
-const ready = (o: PendingOrder) => orderProblems(o).length === 0
+const ready = (o: PendingOrder) => orderState(o) === 'full' && orderProblems(o).length === 0
 </script>
 
 <template>
@@ -285,12 +291,7 @@ const ready = (o: PendingOrder) => orderProblems(o).length === 0
           <section v-for="p in order.products" :key="p.productId" class="px-5 py-3 border-b border-[var(--a-border)] last:border-0">
             <div class="flex items-center justify-between gap-3 mb-3 flex-wrap">
               <p class="font-medium text-[var(--a-ink)] text-sm">{{ p.productName }}</p>
-              <div v-if="needsAllocation(p)" class="flex gap-2">
-                <button
-                  type="button"
-                  class="h-8 px-3 rounded-lg border border-[#C9CDD2] text-xs font-semibold text-[var(--a-ink)] hover:border-gray-400"
-                  @click="suggest(order, p)"
-                >Sugerir reparto</button>
+              <div v-if="needsAllocation(p) && allocationState(p, cellsOf(order, p)) !== 'none'" class="flex gap-2">
                 <button
                   type="button"
                   class="h-8 px-3 rounded-lg text-xs text-[var(--a-muted)] hover:text-[var(--a-ink)]"
@@ -309,58 +310,20 @@ const ready = (o: PendingOrder) => orderProblems(o).length === 0
 
             <!-- Curva / cantidad: grilla talle × color -->
             <template v-else>
-              <p v-if="freeUnits(p) > 0" class="text-xs text-[var(--a-muted)] mb-2">
-                <template v-if="sizeTargets(p).size > 0">Además de lo de cada talle, </template>
-                {{ freeUnits(p) === 1 ? 'hay 1 unidad' : `hay ${freeUnits(p)} unidades` }} a tu elección: sumalas en el talle y color que quieras.
+              <p v-if="order.purchaseType === 'cantidad' && sizeTargets(p).size > 0" class="text-xs font-semibold text-[var(--a-ink)] mb-1">
+                Equivale a {{ curvasOf(p) === 1 ? '1 curva' : `${curvasOf(p)} curvas` }}<template v-if="freeUnits(p) > 0"> + {{ freeUnits(p) === 1 ? '1 unidad suelta' : `${freeUnits(p)} unidades sueltas` }} que elige el mayorista</template>
               </p>
-              <div class="overflow-x-auto -mx-1 px-1">
-                <table class="text-xs border-separate border-spacing-0">
-                  <thead>
-                    <tr class="text-[var(--a-muted)]">
-                      <th class="text-left font-medium pb-2 pr-3 sticky left-0 bg-white">Talle</th>
-                      <th v-for="c in p.colors" :key="c.id" class="font-medium pb-2 px-1.5 min-w-[64px]">
-                        <span class="inline-flex flex-col items-center gap-1">
-                          <span class="w-4 h-4 rounded-full border border-[var(--a-border)]" :style="{ backgroundColor: c.hexCode ?? '#ccc' }"></span>
-                          {{ c.name }}
-                        </span>
-                      </th>
-                      <th v-if="sizeTargets(p).size > 0" class="font-medium pb-2 pl-3 text-right">Pedido</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="s in gridSizes(p)" :key="s.id">
-                      <td class="py-0.5 pr-3 font-semibold text-[var(--a-ink)] sticky left-0 bg-white">{{ s.label }}</td>
-                      <td v-for="c in p.colors" :key="c.id" class="py-0.5 px-1.5 text-center">
-                        <template v-if="variantAt(p, s.id, c.id)">
-                          <input
-                            type="number"
-                            inputmode="numeric"
-                            min="0"
-                            :max="variantAt(p, s.id, c.id)!.stock"
-                            :value="cellsOf(order, p)[variantAt(p, s.id, c.id)!.id] || ''"
-                            :disabled="variantAt(p, s.id, c.id)!.stock === 0"
-                            :aria-label="`Talle ${s.label} ${c.name}`"
-                            placeholder="0"
-                            class="w-14 h-8 rounded-lg border text-center text-sm disabled:bg-gray-50 disabled:opacity-50"
-                            :class="(cellsOf(order, p)[variantAt(p, s.id, c.id)!.id] ?? 0) > variantAt(p, s.id, c.id)!.stock ? 'border-red-400 text-red-600' : 'border-[var(--a-border)]'"
-                            @input="setCell(order, p, variantAt(p, s.id, c.id)!.id, ($event.target as HTMLInputElement).value)"
-                          />
-                          <span class="block text-[10px] leading-3 text-[var(--a-muted)]">stock {{ variantAt(p, s.id, c.id)!.stock }}</span>
-                        </template>
-                        <span v-else class="text-[var(--a-muted)]">—</span>
-                      </td>
-                      <td v-if="sizeTargets(p).size > 0" class="py-1 pl-3 text-right whitespace-nowrap font-semibold"
-                        :class="rowAssigned(p, cellsOf(order, p), s.id) >= (sizeTargets(p).get(s.id) ?? 0) ? 'text-green-600' : 'text-[var(--a-ink)]'">
-                        {{ rowAssigned(p, cellsOf(order, p), s.id) }} / {{ sizeTargets(p).get(s.id) ?? 0 }}
-                        <span v-if="rowAssigned(p, cellsOf(order, p), s.id) >= (sizeTargets(p).get(s.id) ?? 0)">✓</span>
-                        <span v-if="rowAssigned(p, cellsOf(order, p), s.id) > (sizeTargets(p).get(s.id) ?? 0)" class="block text-[10px] font-normal text-[var(--a-muted)]">
-                          +{{ rowAssigned(p, cellsOf(order, p), s.id) - (sizeTargets(p).get(s.id) ?? 0) }} a elección
-                        </span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+              <p v-else-if="order.purchaseType === 'curva' && sizeTargets(p).size > 0" class="text-xs font-semibold text-[var(--a-ink)] mb-1">
+                {{ curvasOf(p) === 1 ? '1 curva' : `${curvasOf(p)} curvas` }} ({{ curvasOf(p) === 1 ? '1 unidad' : `${curvasOf(p)} unidades` }} por talle)
+              </p>
+              <p v-else-if="freeUnits(p) > 0" class="text-xs font-semibold text-[var(--a-ink)] mb-1">
+                {{ freeUnits(p) === 1 ? '1 unidad suelta' : `${freeUnits(p)} unidades sueltas` }} que elige el mayorista
+              </p>
+              <p class="text-xs text-[var(--a-muted)] mb-2">
+                Recomendado: cargá los colores que mandás y se descuenta ese stock. Si no, despachalo igual y ajustá el stock en Productos.
+                <template v-if="freeUnits(p) > 0"> Las sueltas sumalas en el talle y color que pidió el mayorista<template v-if="order.notes"> (mirá la nota)</template>.</template>
+              </p>
+              <AllocationGrid :product="p" :cells="cellsOf(order, p)" @set="(vid, n) => setCell(order, p, vid, String(n))" />
               <p class="mt-2 text-xs font-semibold"
                 :class="totalAssigned(p, cellsOf(order, p)) === totalTarget(p) ? 'text-green-600' : 'text-[var(--a-muted)]'">
                 Total: {{ totalAssigned(p, cellsOf(order, p)) }} de {{ totalTarget(p) }} unidades
@@ -371,10 +334,12 @@ const ready = (o: PendingOrder) => orderProblems(o).length === 0
           <!-- Confirmar -->
           <footer class="px-5 py-3 bg-[var(--a-bg)] flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <!-- Lo que falta: el primero y cuántos más (el detalle está en la columna "Pedido" de cada grilla) -->
-            <p v-if="orderProblems(order).length" class="text-xs text-[var(--a-muted)]" :title="orderProblems(order).join('\n')">
+            <p v-if="orderProblems(order).length" class="text-xs text-red-600" :title="orderProblems(order).join('\n')">
               {{ orderProblems(order)[0] }}<template v-if="orderProblems(order).length > 1"> · y {{ orderProblems(order).length - 1 }} más</template>
             </p>
-            <p v-else class="text-xs text-green-600 font-semibold">Listo para despachar</p>
+            <p v-else-if="orderState(order) === 'none'" class="text-xs text-[var(--a-muted)]">Sin reparto: se despacha sin descontar stock.</p>
+            <p v-else-if="orderState(order) === 'partial'" class="text-xs text-amber-700">Reparto parcial: se descuenta solo lo cargado.</p>
+            <p v-else class="text-xs text-green-600 font-semibold">{{ orderState(order) === 'full' ? 'Reparto completo: se descuenta el stock' : 'Listo para despachar' }}</p>
             <div class="sm:text-right">
               <button
                 type="button"
